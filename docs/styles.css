@@ -340,3 +340,6 @@ mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: in
   .topic-grid { grid-template-columns: 1fr; }
   .card h3 { font-size: 18.5px; }
 }
+
+/* the hidden attribute always wins over component display rules */
+[hidden] { display: none !important; }

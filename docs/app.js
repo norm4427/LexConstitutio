@@ -1670,6 +1670,347 @@
     });
   }
 
+  /* ------------------------------------------------------------ Quiz Me! (spaced-repetition flashcards) */
+  // Progress lives in this browser, per named profile: localStorage['cl-fc-profiles'] and ['cl-fc:<profile>'].
+  const FC = {
+    MIN: 60e3, DAY: 864e5,
+    LEARN_STEPS: [1, 10],        // minutes
+    RELEARN_STEPS: [10],         // minutes
+    GRAD_IVL: 1, EASY_IVL: 4,    // days
+    START_EASE: 2.5, MIN_EASE: 1.3,
+  };
+  const dayKey = (t = Date.now()) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const startOfDay = (t = Date.now()) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  function fcProfiles() {
+    let p; try { p = JSON.parse(localStorage.getItem('cl-fc-profiles')); } catch (e) {}
+    if (!p || !p.list || !p.list.length) p = { current: 'Default', list: ['Default'] };
+    return p;
+  }
+  const fcSaveProfiles = p => localStorage.setItem('cl-fc-profiles', JSON.stringify(p));
+  function fcLoad() {
+    const prof = fcProfiles().current;
+    let s; try { s = JSON.parse(localStorage.getItem('cl-fc:' + prof)); } catch (e) {}
+    s = s || {};
+    s.settings = Object.assign({ newPerDay: 20, reviewsPerDay: 200 }, s.settings || {});
+    s.cards = s.cards || {}; s.log = s.log || [];
+    if (!s.day || s.day.date !== dayKey()) s.day = { date: dayKey(), newDone: 0, revDone: 0 };
+    s.profile = prof;
+    return s;
+  }
+  const fcSave = s => { const { profile, ...rest } = s; localStorage.setItem('cl-fc:' + profile, JSON.stringify(rest)); };
+  function fcState(s, id) { return s.cards[id] || { q: 'new' }; }
+  // Anki-style scheduling: returns the next state for a rating 1=Again 2=Hard 3=Good 4=Easy
+  function fcSchedule(st, r, now = Date.now()) {
+    const n = Object.assign({ ease: FC.START_EASE, ivl: 0, reps: 0, lapses: 0, step: 0 }, st);
+    n.reps++;
+    const toReview = ivl => { n.q = 'review'; n.ivl = ivl; n.step = 0; n.due = startOfDay(now) + Math.round(ivl) * FC.DAY + 4 * 36e5; };
+    if (n.q === 'new' || n.q === 'learn') {
+      n.q = 'learn';
+      if (r === 1) { n.step = 0; n.due = now + FC.LEARN_STEPS[0] * FC.MIN; }
+      else if (r === 2) { n.due = now + (n.step === 0 ? (FC.LEARN_STEPS[0] + FC.LEARN_STEPS[1]) / 2 : FC.LEARN_STEPS[n.step]) * FC.MIN; }
+      else if (r === 3) { n.step++; if (n.step >= FC.LEARN_STEPS.length) toReview(FC.GRAD_IVL); else n.due = now + FC.LEARN_STEPS[n.step] * FC.MIN; }
+      else toReview(FC.EASY_IVL);
+    } else if (n.q === 'relearn') {
+      if (r <= 2) n.due = now + FC.RELEARN_STEPS[0] * FC.MIN;
+      else toReview(Math.max(1, n.ivl) * (r === 4 ? 1.5 : 1));
+    } else {
+      if (r === 1) { n.lapses++; n.ease = Math.max(FC.MIN_EASE, n.ease - 0.2); n.q = 'relearn'; n.ivl = Math.max(1, Math.round(n.ivl * 0.2)); n.due = now + FC.RELEARN_STEPS[0] * FC.MIN; }
+      else if (r === 2) { n.ease = Math.max(FC.MIN_EASE, n.ease - 0.15); toReview(Math.max(n.ivl + 1, n.ivl * 1.2)); }
+      else if (r === 3) toReview(Math.max(n.ivl + 1, n.ivl * n.ease));
+      else { n.ease += 0.15; toReview(Math.max(n.ivl + 1, n.ivl * n.ease * 1.3)); }
+    }
+    return n;
+  }
+  const fcIvlLabel = (st, now = Date.now()) => {
+    const ms = st.due - now;
+    if (ms < 3600e3) return Math.max(1, Math.round(ms / FC.MIN)) + 'm';
+    if (ms < FC.DAY) return Math.round(ms / 3600e3) + 'h';
+    const d = Math.round(st.ivl);
+    return d < 30 ? d + 'd' : d < 365 ? (d / 30).toFixed(1).replace(/\.0$/, '') + 'mo' : (d / 365).toFixed(1).replace(/\.0$/, '') + 'y';
+  };
+  function fcDeckCards(F, deck) { return deck === 'all' ? F.cards : F.cards.filter(c => c.d.includes(deck)); }
+  function fcCounts(F, s, deck, now = Date.now()) {
+    const endToday = startOfDay(now) + FC.DAY + 4 * 36e5;
+    let nw = 0, learn = 0, due = 0;
+    for (const c of fcDeckCards(F, deck)) {
+      const st = s.cards[c.id];
+      if (!st || st.q === 'new') nw++;
+      else if (st.q === 'learn' || st.q === 'relearn') { if (st.due <= now + 20 * FC.MIN) learn++; }
+      else if (st.due <= endToday) due++;
+    }
+    return { nw: Math.min(nw, Math.max(0, s.settings.newPerDay - s.day.newDone)), nwTotal: nw, learn, due: Math.min(due, Math.max(0, s.settings.reviewsPerDay - s.day.revDone)) };
+  }
+  function fcNext(F, s, deck, now = Date.now()) {
+    const cards = fcDeckCards(F, deck);
+    const endToday = startOfDay(now) + FC.DAY + 4 * 36e5;
+    let learn = null, rev = null, nw = null, nwSibling = null;
+    const introduced = new Set(s.day.cases || []);   // cases that already had a new card today ("bury siblings")
+    for (const c of cards) {
+      const st = s.cards[c.id];
+      if (!st || st.q === 'new') { if (!introduced.has(c.c)) { if (!nw) nw = c; } else if (!nwSibling) nwSibling = c; continue; }
+      if ((st.q === 'learn' || st.q === 'relearn') && st.due <= now && (!learn || st.due < s.cards[learn.id].due)) learn = c;
+      else if (st.q === 'review' && st.due <= endToday && (!rev || st.due < s.cards[rev.id].due)) rev = c;
+    }
+    if (learn) return learn;
+    if (!nw && nwSibling && !cards.some(c => !s.cards[c.id] && !introduced.has(c.c))) nw = nwSibling;   // only siblings left in this deck
+    const canRev = s.day.revDone < s.settings.reviewsPerDay, canNew = s.day.newDone < s.settings.newPerDay;
+    // interleave: one new card after every few reviews
+    if (rev && canRev && (!nw || !canNew || s.day.revDone % 4 !== 3)) return rev;
+    if (nw && canNew) return nw;
+    if (rev && canRev) return rev;
+    // learn ahead: a learning card due within 20 minutes
+    let soon = null;
+    for (const c of cards) { const st = s.cards[c.id]; if (st && (st.q === 'learn' || st.q === 'relearn') && st.due <= now + 20 * FC.MIN && (!soon || st.due < s.cards[soon.id].due)) soon = c; }
+    return soon;
+  }
+  const deckTitle = (F, id) => id === 'all' ? 'All decks' : (F.decks.find(d => d.id === id) || {}).title || id;
+  const deckIconHtml = id => id === 'all' ? `<span class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="13" height="15" rx="2"/><path d="M7 3h13v15"/></svg></span>` : guideIcon(id);
+  function quizTabs(active) {
+    return `<div class="subtabs"><a href="#/quiz" class="${active === 'study' ? 'on' : ''}">Study</a><a href="#/quiz/decks" class="${active === 'decks' ? 'on' : ''}">Decks &amp; settings</a><a href="#/quiz/stats" class="${active === 'stats' ? 'on' : ''}">Stats</a></div>`;
+  }
+  function quizHead(active, sub) {
+    const p = fcProfiles();
+    return `<div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Quiz Me!</span></div>
+      <div class="qm-head"><h1>Quiz Me!</h1><a class="qm-profile" href="#/quiz/decks" title="Switch profile"><span>Studying as</span><b>${esc(p.current)}</b></a></div>
+      <p>${sub}</p>${quizTabs(active)}</div>`;
+  }
+  function viewQuiz(seg) {
+    withData([['flashcards', 'FLASHCARDS']], F => {
+      const sub = seg[1] || '';
+      if (sub === 'study') return renderStudy(F, seg[2] || 'all');
+      if (sub === 'decks') return renderQuizDecks(F);
+      if (sub === 'stats') return renderQuizStats(F);
+      renderQuizHome(F);
+    });
+  }
+  function renderQuizHome(F) {
+    const s = fcLoad();
+    const total = fcCounts(F, s, 'all');
+    const tile = id => { const c = fcCounts(F, s, id); const d = F.decks.find(x => x.id === id); return `<a class="qm-deck" href="#/quiz/study/${id}">
+      ${deckIconHtml(id)}
+      <span class="qm-deck-body"><b>${esc(deckTitle(F, id))}</b><span>${id === 'all' ? `${fmt(F.cards.length)} cards from ${fmt(Object.keys(F.cases).length)} cases` : `${d.cards} cards · ${d.cases} cases`}</span></span>
+      <span class="qm-counts"><i class="c-new" title="New">${c.nw}</i><i class="c-learn" title="Learning">${c.learn}</i><i class="c-due" title="Due">${c.due}</i></span>
+    </a>`; };
+    const groups = [...new Set(F.decks.map(d => d.group))];
+    app.innerHTML = `<div class="fade-in">${quizHead('study', `Flashcards for ${fmt(Object.keys(F.cases).length)} essential Supreme Court cases, scheduled with spaced repetition: rate each card Again, Hard, Good or Easy, and the cards you find hard come back sooner.`)}
+      <section class="section" style="padding-top:24px">
+        <div class="qm-today"><div><b>${total.nw + total.learn + total.due}</b><span>cards to study today</span></div><div><b>${s.day.revDone + s.day.newDone}</b><span>studied today</span></div><div class="qm-legend"><i class="c-new"></i>New <i class="c-learn"></i>Learning <i class="c-due"></i>Due</div></div>
+        <div class="qm-decks">${tile('all')}</div>
+        ${groups.map(g => `<div class="qm-group"><h3>${esc(g)}</h3><div class="qm-decks">${F.decks.filter(d => d.group === g).map(d => tile(d.id)).join('')}</div></div>`).join('')}
+      </section></div>`;
+  }
+  function renderStudy(F, deck) {
+    const s = fcLoad();
+    const cardById = new Map(F.cards.map(c => [c.id, c]));
+    let card = null, shown = false, startedAt = 0;
+    const counts = () => fcCounts(F, s, deck);
+    const KIND = { held: 'Holding', which: 'Identify the case', qp: 'Question presented', rule0: 'Rule or principle' };
+    const draw = () => {
+      card = fcNext(F, s, deck);
+      const c = counts();
+      if (!card) {
+        app.innerHTML = `<div class="fade-in">${quizHead('study', 'Study session')}<div class="qm-study"><div class="qm-done">
+          ${deckIconHtml(deck)}<h2>All done for now</h2><p>You've finished today's cards in <b>${esc(deckTitle(F, deck))}</b>${s.day.newDone + s.day.revDone ? ` (${s.day.newDone + s.day.revDone} studied today)` : ''}. Come back tomorrow, raise your daily limits, or study another deck.</p>
+          <div class="actions" style="justify-content:center"><a class="btn btn-primary" href="#/quiz">Choose another deck</a><a class="btn btn-ghost" href="#/quiz/stats">See your stats</a><a class="btn btn-ghost" href="#/quiz/decks">Daily limits</a></div></div></div></div>`;
+        return;
+      }
+      shown = false; startedAt = Date.now();
+      const st = fcState(s, card.id);
+      const info = F.cases[card.c] || {};
+      const deckOfCard = deck === 'all' ? card.d[0] : deck;
+      app.innerHTML = `<div class="fade-in">${quizHead('study', `Studying <b>${esc(deckTitle(F, deck))}</b>. Press <kbd>Space</kbd> to reveal the answer and <kbd>1</kbd>–<kbd>4</kbd> to grade.`)}
+        <div class="qm-study">
+          <div class="qm-bar"><a href="#/quiz" class="link-arrow">← Decks</a><span class="qm-counts big"><i class="c-new" title="New">${c.nw}</i><i class="c-learn" title="Learning">${c.learn}</i><i class="c-due" title="Due">${c.due}</i></span></div>
+          <div class="qm-card ${st.q === 'new' ? 'is-new' : ''}">
+            <div class="qm-card-top">${deckIconHtml(deckOfCard)}<span>${esc(deckTitle(F, deckOfCard))} · ${esc(KIND[card.k] || 'Card')}</span>${st.q === 'new' ? '<em>New</em>' : ''}</div>
+            <div class="qm-front">${card.f}</div>
+            <div class="qm-back" hidden>
+              <div class="qm-answer">${card.b}</div>
+              <a class="qm-case" href="#/case/${esc(card.c)}"><b>${esc(info.n || '')}</b><span>${esc(info.cit || '')}${info.y ? ' · ' + info.y : ''} · Open the case page →</span></a>
+            </div>
+          </div>
+          <div class="qm-actions">
+            <button class="btn btn-primary qm-show">Show answer <kbd>Space</kbd></button>
+            <div class="qm-grades" hidden>${[1, 2, 3, 4].map(r => { const nx = fcSchedule(st, r); return `<button class="qm-grade g${r}" data-r="${r}"><b>${['Again', 'Hard', 'Good', 'Easy'][r - 1]}</b><span>${fcIvlLabel(nx)}</span><kbd>${r}</kbd></button>`; }).join('')}</div>
+          </div>
+          <p class="attrib" style="text-align:center">Case summaries from Oyez (oyez.org, CC BY-NC) and the Court's official holdings.</p>
+        </div></div>`;
+      app.querySelector('.qm-show').addEventListener('click', reveal);
+      app.querySelectorAll('.qm-grade').forEach(b => b.addEventListener('click', () => grade(+b.dataset.r)));
+    };
+    const reveal = () => {
+      if (shown || !card) return; shown = true;
+      app.querySelector('.qm-back').hidden = false;
+      app.querySelector('.qm-show').hidden = true;
+      app.querySelector('.qm-grades').hidden = false;
+    };
+    const grade = r => {
+      if (!shown || !card) return;
+      const before = fcState(s, card.id);
+      const after = fcSchedule(before, r);
+      s.cards[card.id] = after;
+      if (before.q === 'new') { s.day.newDone++; (s.day.cases = s.day.cases || []).push(card.c); } else if (before.q === 'review') s.day.revDone++;
+      s.log.push([Date.now(), card.id, r, before.q === 'new' ? 0 : before.q === 'review' ? 2 : 1, Math.round((Date.now() - startedAt) / 1000)]);
+      if (s.log.length > 50000) s.log = s.log.slice(-50000);
+      fcSave(s);
+      draw();
+    };
+    const onKey = e => {
+      if (!document.querySelector('.qm-study') || /input|textarea|select/i.test(document.activeElement.tagName)) return;
+      if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); if (!shown) reveal(); else grade(3); }
+      else if (shown && /^[1-4]$/.test(e.key)) grade(+e.key);
+    };
+    document.addEventListener('keydown', onKey);
+    const stop = () => { document.removeEventListener('keydown', onKey); window.removeEventListener('hashchange', stop); };
+    window.addEventListener('hashchange', stop);
+    draw();
+  }
+  function renderQuizDecks(F) {
+    const s = fcLoad(), p = fcProfiles();
+    const now = Date.now();
+    const rows = ['all', ...F.decks.map(d => d.id)].map(id => {
+      let nw = 0, learn = 0, young = 0, mature = 0;
+      for (const c of fcDeckCards(F, id)) { const st = s.cards[c.id]; if (!st || st.q === 'new') nw++; else if (st.q !== 'review') learn++; else if (st.ivl >= 21) mature++; else young++; }
+      const c = fcCounts(F, s, id, now);
+      return `<tr><td><a class="qm-row-deck" href="#/quiz/study/${id}">${deckIconHtml(id)}<span>${esc(deckTitle(F, id))}</span></a></td><td>${fmt(nw)}</td><td>${fmt(learn)}</td><td>${fmt(young)}</td><td>${fmt(mature)}</td><td><b>${c.nw + c.learn + c.due}</b></td><td><a class="btn btn-ghost btn-sm" href="#/quiz/study/${id}">Study</a></td></tr>`;
+    }).join('');
+    app.innerHTML = `<div class="fade-in">${quizHead('decks', 'Choose a deck, set your daily limits, and manage study profiles.')}
+      <section class="section" style="padding-top:24px">
+        <div class="qm-settings">
+          <div class="panel"><h4>Daily limits (${esc(p.current)})</h4>
+            <label class="qm-field"><span>New cards per day</span><input class="input" type="number" min="0" max="500" id="fc-new" value="${s.settings.newPerDay}"></label>
+            <label class="qm-field"><span>Maximum reviews per day</span><input class="input" type="number" min="0" max="5000" id="fc-rev" value="${s.settings.reviewsPerDay}"></label>
+            <p class="muted-line" style="font-size:13px">Today: ${s.day.newDone} new and ${s.day.revDone} reviews done. Again repeats a card in about 1 minute, and Good on a new card twice graduates it to a 1-day interval. Each correct review then multiplies the interval by the card's ease (about 2.5×).</p>
+          </div>
+          <div class="panel"><h4>Profiles</h4>
+            <p class="muted-line" style="font-size:13px;margin-top:-4px">Progress is stored in this browser. Each person can keep a separate profile, and export moves progress to another device.</p>
+            <div class="qm-profiles">${p.list.map(n => `<button class="chip ${n === p.current ? 'on' : ''}" data-profile="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+            <div class="qm-profile-actions">
+              <button class="btn btn-ghost btn-sm" id="fc-add">New profile</button>
+              <button class="btn btn-ghost btn-sm" id="fc-export">Export progress</button>
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer">Import progress<input type="file" id="fc-import" accept="application/json" hidden></label>
+              <button class="btn btn-ghost btn-sm" id="fc-reset">Reset this profile</button>
+              ${p.list.length > 1 ? '<button class="btn btn-ghost btn-sm" id="fc-del">Delete this profile</button>' : ''}
+            </div>
+          </div>
+        </div>
+        <div class="section-head" style="margin-top:30px"><div><h2 style="font-size:26px">Decks</h2><p>Card counts by stage: new (never seen), learning (in short steps), young (interval under 21 days) and mature (21 days or more).</p></div></div>
+        <div class="qm-table-wrap"><table class="qm-table"><thead><tr><th>Deck</th><th>New</th><th>Learning</th><th>Young</th><th>Mature</th><th>Today</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      </section></div>`;
+    const saveLimits = () => { const s2 = fcLoad(); s2.settings.newPerDay = Math.max(0, +document.getElementById('fc-new').value || 0); s2.settings.reviewsPerDay = Math.max(0, +document.getElementById('fc-rev').value || 0); fcSave(s2); toast('Daily limits saved'); };
+    document.getElementById('fc-new').addEventListener('change', saveLimits);
+    document.getElementById('fc-rev').addEventListener('change', saveLimits);
+    app.querySelectorAll('[data-profile]').forEach(b => b.addEventListener('click', () => { const pp = fcProfiles(); pp.current = b.dataset.profile; fcSaveProfiles(pp); renderQuizDecks(F); toast('Switched to ' + pp.current); }));
+    document.getElementById('fc-add').addEventListener('click', () => {
+      const name = (prompt('Name for the new profile:') || '').trim().slice(0, 40);
+      if (!name) return; const pp = fcProfiles();
+      if (!pp.list.includes(name)) pp.list.push(name);
+      pp.current = name; fcSaveProfiles(pp); renderQuizDecks(F); toast('Created profile ' + name);
+    });
+    document.getElementById('fc-export').addEventListener('click', () => {
+      const raw = localStorage.getItem('cl-fc:' + fcProfiles().current) || '{}';
+      const blob = new Blob([JSON.stringify({ app: 'lex-constitutio-flashcards', profile: fcProfiles().current, exported: new Date().toISOString(), data: JSON.parse(raw) })], { type: 'application/json' });
+      const u = URL.createObjectURL(blob); const l = document.createElement('a'); l.href = u; l.download = `flashcards-${fcProfiles().current.replace(/\W+/g, '-')}.json`; l.click(); URL.revokeObjectURL(u);
+    });
+    document.getElementById('fc-import').addEventListener('change', e => {
+      const f = e.target.files[0]; if (!f) return;
+      f.text().then(t => {
+        const j = JSON.parse(t);
+        if (j.app !== 'lex-constitutio-flashcards' || !j.data) throw new Error('not a flashcard export');
+        const pp = fcProfiles(); const name = j.profile || 'Imported';
+        if (!pp.list.includes(name)) pp.list.push(name);
+        if (!confirm(`Import progress into profile "${name}"? Its current progress will be replaced.`)) return;
+        localStorage.setItem('cl-fc:' + name, JSON.stringify(j.data)); pp.current = name; fcSaveProfiles(pp); renderQuizDecks(F); toast('Progress imported');
+      }).catch(err => toast('Import failed: ' + err.message));
+    });
+    document.getElementById('fc-reset').addEventListener('click', () => {
+      if (!confirm(`Reset all flashcard progress for "${fcProfiles().current}"? This cannot be undone.`)) return;
+      localStorage.removeItem('cl-fc:' + fcProfiles().current); renderQuizDecks(F); toast('Progress reset');
+    });
+    document.getElementById('fc-del')?.addEventListener('click', () => {
+      const pp = fcProfiles(); const name = pp.current;
+      if (!confirm(`Delete the profile "${name}" and its progress?`)) return;
+      localStorage.removeItem('cl-fc:' + name); pp.list = pp.list.filter(x => x !== name); pp.current = pp.list[0]; fcSaveProfiles(pp); renderQuizDecks(F);
+    });
+  }
+  // Single-series bar chart (SVG) with a hover tooltip on every bar.
+  function barChart(items, { h = 170, fmtTip, labelEvery = 1, horizontal = false, valueFmt = v => fmt(v), max } = {}) {
+    if (horizontal) {
+      const mx = max || Math.max(1, ...items.map(i => i.v));
+      return `<div class="hbars">${items.map(i => `<div class="hbar" data-tip="${esc(fmtTip ? fmtTip(i) : i.label + ': ' + valueFmt(i.v))}">
+        <span class="hbar-l">${i.icon || ''}${esc(i.label)}</span><span class="hbar-track"><i style="width:${!i.v ? 0 : Math.max(1.5, 100 * i.v / mx)}%"></i></span><span class="hbar-v">${i.v == null ? '—' : valueFmt(i.v)}</span></div>`).join('')}</div>`;
+    }
+    const W = 640, padL = 34, padB = 22, padT = 8, n = items.length, mx = max || Math.max(1, ...items.map(i => i.v));
+    const step = (W - padL) / n, bw = Math.max(3, Math.min(22, step * 0.62));
+    const nice = Math.ceil(mx / 4) * 4 || 4;
+    const y = v => padT + (h - padT - padB) * (1 - v / nice);
+    const grid = [0, nice / 2, nice].map(v => `<line x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}" class="cg"/><text x="${padL - 6}" y="${y(v) + 4}" class="ct" text-anchor="end">${fmt(v)}</text>`).join('');
+    const bars = items.map((i, k) => {
+      const x = padL + k * step + (step - bw) / 2, top = y(i.v), base = y(0), hh = Math.max(0, base - top);
+      const r = Math.min(4, bw / 2, hh);
+      const path = hh > 0 ? `M${x},${base} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${base} Z` : '';
+      return `<g class="cb" data-tip="${esc(fmtTip ? fmtTip(i) : i.label + ': ' + valueFmt(i.v))}"><rect x="${padL + k * step}" y="${padT}" width="${step}" height="${h - padT - padB}" fill="transparent"/>${path ? `<path d="${path}"/>` : ''}${k % labelEvery === 0 ? `<text x="${x + bw / 2}" y="${h - 6}" class="ct" text-anchor="middle">${esc(i.short || i.label)}</text>` : ''}</g>`;
+    }).join('');
+    return `<svg class="chart" viewBox="0 0 ${W} ${h}" role="img">${grid}${bars}</svg>`;
+  }
+  function mountTips(root) {
+    let tip = document.getElementById('chart-tip');
+    if (!tip) { tip = document.createElement('div'); tip.id = 'chart-tip'; tip.className = 'chart-tip'; document.body.appendChild(tip); }
+    root.querySelectorAll('[data-tip]').forEach(el => {
+      el.addEventListener('mousemove', e => { tip.textContent = el.dataset.tip; tip.style.opacity = 1; tip.style.left = e.clientX + 14 + 'px'; tip.style.top = e.clientY - 10 + 'px'; el.classList.add('hover'); });
+      el.addEventListener('mouseleave', () => { tip.style.opacity = 0; el.classList.remove('hover'); });
+    });
+  }
+  function renderQuizStats(F) {
+    const s = fcLoad();
+    const cardById = new Map(F.cards.map(c => [c.id, c]));
+    const now = Date.now(), today = dayKey();
+    const byDay = {};
+    for (const [t, id, r] of s.log) { const k = dayKey(t); const d = byDay[k] || (byDay[k] = { n: 0, ok: 0, secs: 0 }); d.n++; if (r > 1) d.ok++; }
+    for (const e of s.log) { const d = byDay[dayKey(e[0])]; if (d) d.secs += Math.min(e[4] || 0, 120); }
+    const days = []; for (let i = 29; i >= 0; i--) { const t = now - i * FC.DAY; days.push({ k: dayKey(t), d: new Date(t) }); }
+    const series = days.map(({ k, d }) => ({ label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), short: String(d.getDate()), v: (byDay[k] || {}).n || 0, ok: (byDay[k] || {}).ok || 0 }));
+    let streak = 0; for (let i = 0; ; i++) { const k = dayKey(now - i * FC.DAY); if (byDay[k]) streak++; else if (i === 0) continue; else break; }
+    const t = byDay[today] || { n: 0, ok: 0, secs: 0 };
+    const total = s.log.length, totalOk = s.log.filter(e => e[2] > 1).length;
+    // retention on review cards (excludes first sightings and learning steps)
+    const revLog = s.log.filter(e => e[3] === 2), revOk = revLog.filter(e => e[2] > 1).length;
+    const deckStats = F.decks.map(d => {
+      let n = 0, ok = 0; for (const e of s.log) { const c = cardById.get(e[1]); if (c && c.d.includes(d.id)) { n++; if (e[2] > 1) ok++; } }
+      let seen = 0; for (const c of fcDeckCards(F, d.id)) if (s.cards[c.id] && s.cards[c.id].q !== 'new') seen++;
+      return { id: d.id, label: d.title, icon: guideIcon(d.id), v: n ? Math.round(100 * ok / n) : null, n, seen, cards: d.cards };
+    });
+    const forecast = []; for (let i = 0; i < 14; i++) { const a = startOfDay(now) + i * FC.DAY, b = a + FC.DAY; const dd = new Date(a); let n = 0; for (const st of Object.values(s.cards)) if (st.q === 'review' && (i === 0 ? st.due < b : st.due >= a && st.due < b)) n++; forecast.push({ label: i === 0 ? 'Today' : dd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), short: i === 0 ? 'Today' : dd.toLocaleDateString('en-US', { weekday: 'narrow' }), v: n }); }
+    const hardest = Object.entries(s.cards).filter(([, st]) => st.lapses).sort((a, b) => b[1].lapses - a[1].lapses || a[1].ease - b[1].ease).slice(0, 8).map(([id, st]) => ({ c: cardById.get(id), st })).filter(x => x.c);
+    const ratings = [0, 0, 0, 0]; for (const e of s.log) ratings[e[2] - 1]++;
+    const seenCases = new Set(Object.keys(s.cards).map(id => id.split('|')[0]));
+    const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '—';
+    app.innerHTML = `<div class="fade-in">${quizHead('stats', `Your progress as <b>${esc(s.profile)}</b>, kept in this browser.`)}
+      <section class="section" style="padding-top:24px">
+        ${!total ? `<div class="empty" style="margin-bottom:24px"><h3>No reviews yet</h3><p>Study a deck and your stats will appear here.</p><p style="margin-top:14px"><a class="btn btn-primary" href="#/quiz">Start studying</a></p></div>` : ''}
+        <div class="qm-tiles">
+          <div class="qm-tile"><span>Cards today</span><b>${fmt(t.n)}</b><em>${t.n ? pct(t.ok, t.n) + ' correct' : 'none yet'}</em></div>
+          <div class="qm-tile"><span>Study streak</span><b>${streak}</b><em>day${streak === 1 ? '' : 's'} in a row</em></div>
+          <div class="qm-tile"><span>Retention</span><b>${pct(revOk, revLog.length)}</b><em>on review cards</em></div>
+          <div class="qm-tile"><span>Cases started</span><b>${fmt(seenCases.size)}</b><em>of ${fmt(Object.keys(F.cases).length)}</em></div>
+          <div class="qm-tile"><span>All reviews</span><b>${fmt(total)}</b><em>${pct(totalOk, total)} correct</em></div>
+        </div>
+        <div class="qm-charts">
+          <div class="panel qm-chart"><h4>Cards reviewed per day · last 30 days</h4>${barChart(series, { labelEvery: 5, fmtTip: i => `${i.label}: ${i.v} card${i.v === 1 ? '' : 's'}${i.v ? `, ${Math.round(100 * i.ok / i.v)}% correct` : ''}` })}</div>
+          <div class="panel qm-chart"><h4>Review forecast · next 14 days</h4>${barChart(forecast, { labelEvery: 1, fmtTip: i => `${i.label}: ${i.v} review${i.v === 1 ? '' : 's'} due` })}</div>
+        </div>
+        <div class="qm-charts">
+          <div class="panel"><h4>Accuracy by topic</h4><p class="muted-line" style="font-size:12.5px;margin:-6px 0 10px">Share of answers rated Hard, Good or Easy. Hover a bar for counts.</p>
+            ${barChart(deckStats.filter(d => d.n).sort((a, b) => a.v - b.v).concat(deckStats.filter(d => !d.n)), { horizontal: true, max: 100, valueFmt: v => v + '%', fmtTip: i => i.n ? `${i.label}: ${i.v}% correct over ${i.n} answers · ${i.seen}/${i.cards} cards started` : `${i.label}: not studied yet` })}</div>
+          <div>
+            <div class="panel"><h4>How you rated cards</h4>${barChart(['Again', 'Hard', 'Good', 'Easy'].map((l, k) => ({ label: l, v: ratings[k] })), { horizontal: true, fmtTip: i => `${i.label}: ${i.v} (${pct(i.v, total)})` })}</div>
+            <div class="panel"><h4>Cards to work on</h4>${hardest.length ? `<ul class="mini-list">${hardest.map(x => { const info = F.cases[x.c.c] || {}; return `<li><a class="t" href="#/case/${esc(x.c.c)}">${esc(info.n || x.c.c)}</a><div class="m">Forgotten ${x.st.lapses}× · next review ${x.st.due > now ? 'in ' + fcIvlLabel(x.st) : 'now'}</div></li>`; }).join('')}</ul>` : '<p class="muted-line" style="font-size:13px">Cards you forget will be listed here.</p>'}</div>
+          </div>
+        </div>
+      </section></div>`;
+    mountTips(app);
+  }
+
   function viewNotFound() {
     app.innerHTML = `<div class="prose fade-in"><h1>Not found</h1><p>That page doesn't exist in the index. <a href="#/">Return home</a>.</p></div>`;
   }
@@ -1707,6 +2048,7 @@
       case 'book': viewBook(decodeURIComponent(seg[1] || '')); break;
       case 'guide': seg[1] ? viewGuideTopic(seg[1]) : viewGuide(); break;
       case 'doctrine': viewDoctrine(seg[1], seg[2]); break;
+      case 'quiz': viewQuiz(seg); break;
       case 'corner': seg[1] ? viewCornerTopic(seg[1], params) : viewCorner(); break;
       case 'library': viewLibrary(seg, params); break;
       case 'about': viewAbout(); break;

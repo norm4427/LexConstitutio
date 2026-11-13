@@ -15,7 +15,7 @@ sub write_js { my ($file, $var, $data) = @_; open my $o, '>:raw', $file or die "
 # ------------------------------------------------------------------ Supreme Court
 my %slip;   # docket -> { pdf, holding }
 for my $f (glob 'data/raw/scotus/slip-*.html') {
-  my $html = slurp($f);
+  my $html = slurp($f); utf8::decode($html);   # pages are UTF-8
   while ($html =~ m{<tr>(.*?)</tr>}gs) {
     my $row = $1;
     my @td = $row =~ m{<td[^>]*>(.*?)</td>}gs;
@@ -28,7 +28,7 @@ for my $f (glob 'data/raw/scotus/slip-*.html') {
 }
 my %transcript;   # docket -> pdf
 for my $f (glob 'data/raw/scotus/tr-*.html') {
-  my $html = slurp($f);
+  my $html = slurp($f); utf8::decode($html);
   while ($html =~ m{href=['"]?\.\./argument_transcripts/(\d{4})/([^'"\s>]+\.pdf)['"]?[^>]*>\s*([^<]+?)\s*</a>}gs) {
     my ($y, $file, $dk) = ($1, $2, lc $3);
     $transcript{$dk} //= "https://www.supremecourt.gov/oral_arguments/argument_transcripts/$y/$file";
