@@ -616,7 +616,7 @@
       <h2>Originalist's Corner</h2>
       <p>The Corner indexes the full texts of Blackstone's <em>Commentaries</em>, St. George Tucker's annotated Blackstone, Joseph Story's <em>Commentaries on the Constitution</em>, James Kent's <em>Commentaries</em>, Vattel's <em>Law of Nations</em> and Locke's <em>Two Treatises</em> (via the Lonang Institute). It also covers <em>The Federalist</em> (Project Gutenberg), Madison's Notes of the Convention debates and founding documents (the Avalon Project at Yale Law School), and the acts of the first five Congresses (<em>Statutes at Large</em>, vol. 1, via Wikisource). Passages are matched to topics automatically and should be read in context. The full texts of <em>The Federalist</em>, the founding documents and the statutes can be read in the site's library.</p>
       <h2>Supreme Court, lectures and guide</h2>
-      <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (CC BY-NC). Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
+      <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (text licensed <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>; flashcard and summary text is excerpted or adapted). Oyez is a registered trademark of Oyez, Inc. Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
     </div></div>`;
   }
 
@@ -625,7 +625,7 @@
   function loadData(name, globalName) {
     if (window[globalName]) return Promise.resolve(window[globalName]);
     if (!loading[name]) loading[name] = new Promise((res, rej) => {
-      const s = document.createElement('script'); s.src = `data/${name}.js`;
+      const s = document.createElement('script'); s.src = `data/${name}.js?v=${window.LC_VER || ""}`;
       s.onload = () => res(window[globalName]); s.onerror = () => { delete loading[name]; rej(new Error(`Couldn't load data/${name}.js`)); };
       document.body.appendChild(s);
     });
@@ -967,7 +967,7 @@
         d.question ? `<h2>Question</h2><div class="prose-sm">${htmlParas(d.question)}</div>` : '',
         d.conclusion ? `<h2>Conclusion</h2><div class="prose-sm">${htmlParas(d.conclusion)}</div>` : ''
       ].join('') || '<p class="muted-line">Oyez has no written summary for this case.</p>';
-      live.insertAdjacentHTML('beforeend', '<p class="attrib">Summary text © Oyez (oyez.org), used under CC BY-NC.</p>');
+      live.insertAdjacentHTML('beforeend', '<p class="attrib">Summary text © Oyez (oyez.org), used under <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>.</p>');
       // precedents named in Oyez's summary, plus Oyez's own related-case links
       const plain = [d.facts_of_the_case, d.question, d.conclusion].map(h => h ? new DOMParser().parseFromString(h, 'text/html').body.textContent : '').join(' ');
       const cited = citedCases(S, plain, c.id);
@@ -1833,7 +1833,7 @@
             <button class="btn btn-primary qm-show">Show answer <kbd>Space</kbd></button>
             <div class="qm-grades" hidden>${[1, 2, 3, 4].map(r => { const nx = fcSchedule(st, r); return `<button class="qm-grade g${r}" data-r="${r}"><b>${['Again', 'Hard', 'Good', 'Easy'][r - 1]}</b><span>${fcIvlLabel(nx)}</span><kbd>${r}</kbd></button>`; }).join('')}</div>
           </div>
-          <p class="attrib" style="text-align:center">Case summaries from Oyez (oyez.org, CC BY-NC) and the Court's official holdings.</p>
+          <p class="attrib" style="text-align:center">Card text is adapted from Oyez (oyez.org, <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>), the Court’s official holdings, the <i>Constitution Annotated</i> (public domain), and this site’s doctrine notes.</p>
         </div></div>`;
       app.querySelector('.qm-show').addEventListener('click', reveal);
       app.querySelectorAll('.qm-grade').forEach(b => b.addEventListener('click', () => grade(+b.dataset.r)));

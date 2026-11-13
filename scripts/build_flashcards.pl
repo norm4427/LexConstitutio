@@ -109,6 +109,124 @@ sub mask_parties {
   for my $w (@words) { $text =~ s/\b\Q$w\E\b/\x{2014}\x{2014}\x{2014}/g }
   return $text;
 }
+
+# ---- three-part answers: background (Oyez facts of the case), ruling (Oyez conclusion + vote), importance (site notes, CONAN)
+my %ENT = (amp => '&', quot => '"', apos => "'", nbsp => ' ', lt => '<', gt => '>', ldquo => "\x{201C}", rdquo => "\x{201D}", lsquo => "\x{2018}", rsquo => "\x{2019}", mdash => "\x{2014}", ndash => "\x{2013}", hellip => "\x{2026}", sect => "\x{A7}");
+sub plain { my $s = shift // ''; $s =~ s/<[^>]+>/ /g; $s =~ s/&#(\d+);/chr($1)/ge; $s =~ s/&#x([0-9a-f]+);/chr(hex $1)/gie; $s =~ s/&(\w+);/$ENT{$1} \/\/ "&$1;"/ge; $s =~ s/\s+/ /g; $s =~ s/\s+([,.;:])/$1/g; $s =~ s/^\s+|\s+$//g; $s }
+my $NOSPLIT = qr/(?:\b(?:v|U\.S|U\.S\.C|Mr|Mrs|Ms|Dr|St|Co|Inc|Corp|Jr|Sr|No|Nos|Art|Stat|Cong|Sess|Ct|Cir|Supp|ed|al|Gen|Gov|Rev|Sen|Rep|Ltd|Bros|Dist|Ass'n|Dep't|Comm'n|cl|amend|ch|pp|p|seq|e\.g|i\.e|cf|viz)|\b[A-Z])\.$/;
+sub sents {
+  my $t = shift; my (@out, $start); $start = 0;
+  while ($t =~ /[.!?]["\x{201D}')\]]?\s+(?=["\x{201C}(\[]?[A-Z0-9])/g) {
+    my $end = pos($t); my $head = substr($t, $start, $-[0] + 1 - $start);
+    next if substr($t, $-[0], 1) eq '.' && $head =~ $NOSPLIT;
+    push @out, substr($t, $start, $end - $start) =~ s/\s+$//r; $start = $end;
+  }
+  push @out, substr($t, $start) if $start < length $t;
+  return grep { /\w/ } @out;
+}
+sub words { scalar(() = $_[0] =~ /\S+/g) }
+my $LAWWORD = qr/\b(?:Act|statute|statutory|law|laws|ordinance|regulation|rule|provision|code|policy|amendment|constitution|clause|forbids|prohibit|required?s?|bann?e?d?|criminali[sz])/i;
+sub background {
+  my $facts = plain(shift); return '' unless $facts;
+  my @s = grep { !/^(?:Decided|Consolidated|Argued) (?:together )?with\b/ } sents($facts); $facts = join ' ', @s; return $facts if words($facts) <= 110;
+  my (@keep, $n); my $haveLaw = 0;
+  for my $i (0 .. $#s) {
+    my $isLaw = $s[$i] =~ $LAWWORD;
+    my $w = words($s[$i]);
+    if ($i < 2 || ($isLaw && !$haveLaw) || ($n + $w <= 95 && ($isLaw || $i < 4))) { push @keep, $i; $n += $w; $haveLaw ||= $isLaw }
+    last if $n >= 95 && $haveLaw;
+  }
+  my $out = join ' ', @s[@keep];
+  return $out;
+}
+sub overlap {
+  my %A = map { lc($_) => 1 } grep { length > 3 } $_[0] =~ /(\w+)/g; my %B = map { lc($_) => 1 } grep { length > 3 } $_[1] =~ /(\w+)/g;
+  my $common = grep { $B{$_} } keys %A; my $min = (keys %A) < (keys %B) ? keys %A : keys %B; $min ? $common / $min : 0 }
+sub reasoning {
+  my ($concl, $hold) = @_; my $t = plain($concl); return '' unless $t;
+  $t =~ s/^(?:Yes|No|Yes and no|No and yes|Not necessarily|Probably not|Maybe)[.,;:]\s*//i;
+  my @s = sents($t); my @keep; my $n = 0;
+  for my $x (@s) {
+    $x =~ s/^(?:In|With) an? (?:[\w\x{2013}-]+ )?(?:decision|ruling|opinion|vote)\b[^,]{0,140}, (?:the Court|the majority|it) //i and $x = 'The Court ' . $x;
+    $x =~ s/^(?:Justice|Chief Justice) [\w. ]+? (?:delivered|wrote|authored) (?:the|a) (?:majority |plurality |unanimous )?opinion(?: of the Court| for the Court)?[^.]*?(?:\.\s*|, )//i;
+    next if $x !~ /\w{4}/ || $x =~ /^(?:Justice|Chief Justice) [\w. ]+ (?:concurred|dissented|filed)/i || $x =~ /^(?:Justice|Chief Justice)\b[^.]{0,60}?\b(?:delivered|wrote|authored|announced)\b/i;
+    next if grep { overlap($x, $_) > 0.5 } grep { $_ } ($hold, @keep);
+    my $w = words($x); last if @keep && $n + $w > 75;
+    push @keep, ucfirst $x; $n += $w; last if @keep == 2;
+  }
+  return join ' ', @keep;
+}
+sub vote_line {
+  my $o = shift; return '' unless $o;
+  my $d = (@{ $o->{decisions} || [] })[0] || {}; my @bits;
+  push @bits, "Vote: $d->{majority_vote}\x{2013}$d->{minority_vote}" if defined $d->{majority_vote} && defined $d->{minority_vote} && $d->{majority_vote} =~ /^\d+$/;
+  if (($d->{decision_type} // '') =~ /per curiam/i) { push @bits, 'per curiam' }
+  else { my ($m) = grep { ($_->{type} // '') =~ /majority|plurality/i } @{ $o->{written_opinion} || [] }; push @bits, ($m->{type} =~ /plurality/i ? 'plurality' : 'majority') . " opinion by $m->{judge}" if $m && $m->{judge} }
+  return join "\x{2003}\x{B7}\x{2003}", @bits;
+}
+# importance: sentences that discuss the case in the site's doctrine text and the Constitution Annotated (public domain)
+my $C = load('docs/data/commentary.js');
+my (@advText, @conText);
+for my $p (@{ $A->{parts} }) { for my $s (@{ $p->{sections} }) { my $h = $s->{html} // ''; push @advText, plain($1) while $h =~ /<p>(.*?)<\/p>/gs } }
+for my $list (values %{ $C->{sections} }) { for my $e (@$list) { push @conText, map { plain($_) } @{ $e->{p} } } }
+for my $f (glob 'data/raw/conan/g*.txt') {   # full Constitution Annotated text (GovInfo PDFs via pdftotext): body paragraphs are single long lines
+  open my $h, '<:encoding(UTF-8)', $f or next;
+  while (my $l = <$h>) {
+    $l =~ s/\r?\n$//; next if $l =~ /^\d+ / || words($l) < 40 || $l =~ /\.{8}/;
+    $l =~ s/([a-z.,;:\x{201D}\x{2019})])\d{1,3}(?=[\s,.;:]|$)/$1/g;   # inline footnote markers
+    push @conText, plain($l);
+  }
+}
+my %seenPara; @conText = grep { !$seenPara{$_}++ } @conText;
+# Congressional Research Service reports (public domain), via EveryCRSReport's mirror; see scripts/crs_fetch.py
+my (%crsDate, @crsText);
+if (open my $h, '<:encoding(UTF-8)', 'data/raw/crs/reports.csv') { <$h>; while (<$h>) { my ($num, undef, undef, $date) = split /,/, $_, 5; $crsDate{$num} = $date if $date } }
+for my $f (glob 'data/raw/crs/html/*.html') {
+  my ($num) = $f =~ m{([A-Za-z0-9-]+)[.]html$}; my $date = $crsDate{$num} // next;
+  open my $h, '<:encoding(UTF-8)', $f or next; local $/; my $html = <$h>;
+  $html =~ s{</?(?:span|a|em|i|b|strong|u|sup|sub)\b[^>]*>}{}gi;   # inline tags split words ("A</span><span>dditional")
+  while ($html =~ m{<p\b[^>]*>(.*?)</p>}gs) { my $t = plain($1); push @crsText, [$date, $num, $t] if words($t) >= 25 }
+}
+my $SIG = qr/\b(?:landmark|first|overrul|establish|announc|adopt|test|framework|standard|doctrine|rule|reject|extend|limit|narrow|expan|recogni|struck|invalidat|upheld|foundation|leading|seminal|principle|precedent|later|since|remain|today|reaffirm|repudiat|abandon|transform|watershed|marked|began|ended|cornerstone|canonical|era|famous)/i;
+my %nameKeys;   # how many decided cases share a "Party v. Party" key (e.g. several "Davis v. United States")
+for my $c (@cases) { my $k = ckey($c->{n} // ''); $nameKeys{$k}++ if $k }
+sub importance {
+  my ($name, $decided, $year, $cit) = @_;
+  my $ambiguous = ($nameKeys{ ckey($name) } // 0) > 1;
+  my ($vol) = ($cit // '') =~ /^(\d+) U\.S\./;
+  $vol //= 'NOVOLUME'; $year = 'NOYEAR' unless ($year // '') =~ /^\d{4}$/;
+  my $disamb = qr/\b(?:$year|$vol U\.\s?S\.)/;
+  my ($p1, $p2) = $name =~ /^(?:The )?(.+?) v\. (?:The )?(.+)$/ or return ('', '');
+  my $f1 = ($p1 =~ /^([A-Z][\w'&.-]+)/)[0] // return ('', ''); my $f2 = ($p2 =~ /^([A-Z][\w'&.-]+)/)[0] // return ('', '');
+  my $full = qr/(?<![\w.])\Q$f1\E(?!\w)[^;]{0,60}? v\. (?:The )?\Q$f2\E(?!\w)/;
+  my $short = $p1 =~ /^(United States|State|People|Commonwealth|[A-Z][a-z]+ (?:County|City))\b/ || $f1 =~ /^(?:Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|Ohio|Oklahoma|Oregon|Pennsylvania|Tennessee|Texas|Utah|Vermont|Virginia|Washington|Wisconsin|Wyoming)$/ ? $f2 : $f1;
+  my $best = sub {
+    my ($min, @paras) = @_; my ($top, $score) = ('', 0);
+    for my $para (@paras) {
+      next unless index($para, $f2) >= 0 && index($para, $f1) >= 0 && $para =~ $full;
+      for my $s (sents($para)) {
+        next unless $s =~ $full || $s =~ /(?<![\w.])\Q$short\E(?!\w)/;
+        next if $ambiguous && $s !~ $disamb;
+        my $w = words($s); next if $w < 10 || $w > 70;
+        next if $s =~ /^(?:See|Cf|Id|Compare)\b/;
+        next if $s =~ /\bCRS (?:Resources|Legal Sidebar|Report|In Focus|Insight)\b|^[^.;:]{0,60}[;:]\s/;   # CRS cross-reference lists; fragments that open mid-citation
+        my $sc = (() = $s =~ /$SIG/g) * 2 + ($s =~ $full ? 1 : 0) - ($w > 50 ? 1 : 0);
+        ($top, $score) = ($s, $sc) if $sc > $score;
+      }
+    }
+    return $score >= $min ? $top : '';
+  };
+  my %num; my @crs = grep { !$decided || $_->[0] gt $decided } @crsText;
+  $num{ $_->[2] } = $_->[1] for @crs;
+  my $crs = $best->(2, map { $_->[2] } @crs);
+  my ($crsNum) = $crs ? (grep { index($_->[2], $crs) >= 0 } @crs)[0][1] : ();
+  return ($best->(2, @advText), $best->(2, @conText) || $best->(1, @conText), $crs, $crsNum);
+}
+sub clean_cite { my $s = shift // ""; $s =~ s/^\d{1,3}\s+(?=[A-Z])//; $s =~ s/^(?:Indeed|Thus|Moreover|However|Accordingly|Similarly|Likewise|Nonetheless|Nevertheless|Further|Furthermore|Also|And|But|So|Still|Again|Finally|Notably|Instead|Rather|Consequently|Hence|Therefore),?\s+(\w)/\u$1/; $s =~ s/\s+(\x{2019}s|'s)\b/$1/g; $s =~ s/,?\s*\d+\s+U\.\s?S\.\s+\d+(?:,\s*\d+(?:\x{2013}\d+)?)*(?:\s*\(\d{4}\))?//g; $s =~ s/\s*\(\d{4}\)//g; $s =~ s/\s+([,.;])/$1/g; $s =~ /^[^.;:]{0,60}[;:]\s/ ? '' : $s }
+sub sec { my ($h, $body) = @_; $body ? "<div class=\"fc-sec\"><h4>$h</h4><p>$body</p></div>" : '' }
+sub oyez { my $id = shift; my $f = 'data/raw/oyez/cases/' . ($id =~ s{/}{_}r) . '.json'; -e $f ? load($f) : undef }
+my %STAT = (bg => 0, rs => 0, imp => 0, impNote => 0, impAdv => 0, impCon => 0);
+
 my (@cards, %deckCount);
 my $topicName = { map { $_->{id} => $_->{title} } @decks };
 for my $x (@chosen) {
@@ -119,9 +237,27 @@ for my $x (@chosen) {
   my $official = tidy($c->{h} // '');
   my $answer = $hold || $official;
   my @mk;
-  push @mk, ['held', "What did the Court decide in <i>$label</i>?", $answer . ($official && $hold ? "<br><span class=\"fc-sub\">Official holding: $official</span>" : '')] if $answer;
+  my $oy = oyez($c->{id});
+  my $bg = tidy(background($oy && $oy->{facts_of_the_case}));
+  my $why = tidy(reasoning($oy && $oy->{conclusion}, $hold || $official));
+  my $vote = tidy(vote_line($oy));
+  my $ruling = join(' ', grep { $_ } ($hold || $official), $why);
+  $ruling .= "<span class=\"fc-vote\">$vote</span>" if $ruling && $vote;
+  my ($impAdv, $impCon, $impCrs, $crsNum) = importance($name, $c->{dec}, $c->{y} // '', $c->{cit});
+  $impCrs = '' if $impCon;
+  my $note = $notes{ $c->{id} } ? tidy($notes{ $c->{id} }[0]) : '';
+  my $imp = join(' ', grep { $_ } ($note ? "Known for: $note" . ($note =~ /[.!?]["\x{201D}\x{2019}']?$/ ? '' : '.') : ''), tidy(clean_cite($impAdv)), ($impAdv && $note ? '' : tidy(clean_cite($impCon || $impCrs))));
+  my $usesCrs = $impCrs && !($impAdv && $note);
+  $STAT{bg}++ if $bg; $STAT{rs}++ if $why; $STAT{imp}++ if $imp; $STAT{impNote}++ if $note; $STAT{impAdv}++ if $impAdv; $STAT{impCon}++ if $impCon; $STAT{impCrs}++ if $impCrs && !($impAdv && $note);
+  my $usesCon = $impCon && !($impAdv && $note);
+  my @src;
+  push @src, "Background and ruling adapted from <a href=\"https://www.oyez.org/cases/$c->{id}\" target=\"_blank\" rel=\"noopener\">Oyez</a> (<a href=\"https://creativecommons.org/licenses/by-nc/4.0/\" target=\"_blank\" rel=\"noopener\">CC BY-NC 4.0</a>)" if $bg || $why || $hold;
+  push @src, 'importance from ' . join(' and ', grep { $_ } (($note || $impAdv) ? "Lex Constitutio's doctrine notes" : ''), ($usesCon ? 'the <i>Constitution Annotated</i> (public domain)' : ''), ($usesCrs ? "the Congressional Research Service (<a href=\"https://crsreports.congress.gov/product/pdf/LSB/$crsNum\" target=\"_blank\" rel=\"noopener\">$crsNum</a>, public domain)" : '')) if $imp;
+  my $srcLine = @src ? '<p class="fc-src">' . ucfirst(join('; ', @src)) . '.</p>' : '';
+  my $three = sec('Background', $bg) . sec('Ruling', $ruling) . sec('Importance', $imp);
+  push @mk, ['held', "What did the Court decide in <i>$label</i>?", "<div class=\"fc-secs\">$three</div>$srcLine"] if $ruling;
   if ($hold && length $hold > 40) { push @mk, ['which', 'Which case? ' . mask_parties($hold, $name), "<i>$label</i>" . ($c->{cit} ? " &middot; $c->{cit}" : '')] }
-  if ($c->{q} && length($c->{q}) < 700) { push @mk, ['qp', "Question presented in <i>$label</i>: " . tidy($c->{q}), $official || $answer] }
+  if ($c->{q} && length($c->{q}) < 700 && $ruling) { push @mk, ['qp', "Question presented in <i>$label</i>: " . tidy($c->{q}), '<div class="fc-secs">' . sec('Ruling', $ruling) . sec('Importance', $imp) . "</div>$srcLine"] }
   for my $i (0 .. $#{ $notes{ $c->{id} } || [] }) {
     push @mk, ["rule$i", "What rule or principle is <i>$label</i> known for?", tidy($notes{ $c->{id} }[$i])] if $i == 0;
   }
@@ -137,4 +273,6 @@ open my $o, '>:raw', 'docs/data/flashcards.js';
 print $o 'window.FLASHCARDS=', $J->encode({ decks => \@decks, cases => \%cases, cards => \@cards }), ';';
 close $o;
 printf "cases: %d (curated %d); cards: %d; wrote docs/data/flashcards.js (%.0f KB)\n", scalar @chosen, scalar(grep { $curated{ $_->[1]{id} } } @chosen), scalar @cards, (-s 'docs/data/flashcards.js') / 1024;
+printf "three-part answers: background %d, reasoning %d, importance %d (doctrine notes %d, doctrine text %d, CONAN %d, CRS %d)
+", @STAT{qw(bg rs imp impNote impAdv impCon impCrs)};
 printf "  %-24s %3d cases %4d cards\n", $_->{id}, $_->{cases}, $_->{cards} for @decks;
