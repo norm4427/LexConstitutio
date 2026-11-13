@@ -1,0 +1,54 @@
+# Advanced-doctrine section -> Constitution Annotated essays (IDs from data/conan_essays.tsv).
+# A prefix includes its sub-essays; a trailing ! means that essay only.
+functions	Intro.7, Intro.6.2, Intro.6.3
+interpretation	Intro.8, ArtIII.S1.7.2
+supremacy-review	ArtIII.S1.1, ArtIII.S1.2, ArtIII.S1.3, ArtIII.S2.C1.10.2, ArtIII.S2.C1.10.3, Intro.7.5, ArtVI.C2.1
+review-of-states	ArtIII.S2.C2.5, ArtIII.S1.6.5, ArtIII.S1.6.1, ArtIII.S1.6.3
+advisory	ArtIII.S2.C1.1, ArtIII.S2.C1.2, ArtIII.S2.C1.3, ArtIII.S2.C1.4, ArtIII.S2.C1.5, ArtIII.S1.5.2, ArtIII.S1.5.3
+standing	ArtIII.S2.C1.6
+ripeness	ArtIII.S2.C1.7
+mootness	ArtIII.S2.C1.8
+political-question	ArtIII.S2.C1.9, ArtIV.S4.2
+jurisdiction-control	ArtIII.S2.C2.6, ArtIII.S1.8.4, ArtIII.S1.8.5, ArtIII.S1.9.1, ArtIII.S1.9.6, ArtIII.S1.9.7, ArtIII.S1.9.9
+sovereign-immunity	Amdt11
+enumerated	ArtI.S8.C18.1, ArtI.S8.C18.2, ArtI.S8.C18.3, ArtI.S8.C18.4, ArtI.S8.C18.5, ArtI.S8.C18.6, ArtI.S8.1, ArtI.S8.C1.1.5
+commerce	ArtI.S8.C3.1, ArtI.S8.C3.2, ArtI.S8.C3.3, ArtI.S8.C3.4, ArtI.S8.C3.5.11, ArtI.S8.C3.6, Amdt10.4
+tax-spend	ArtI.S8.C1.1.1, ArtI.S8.C1.1.4, ArtI.S8.C1.2
+section-five	Amdt14.S5, Amdt13.S2, Amdt15.S2
+other-powers	ArtI.S8.C18.7.1, ArtI.S8.C18.7.9, ArtI.S8.C18.7.10, ArtI.S8.C18.8.1, ArtI.S8.C18.8.7, ArtII.S2.C2.1.3, ArtII.S2.C2.1.9
+youngstown	ArtII.S1.C1.1, ArtII.S1.C1.2, ArtII.S1.C1.3, ArtII.S1.C1.5, ArtII.S1.C1.8
+article-two	ArtII.S2.C2.3.1, ArtII.S2.C2.3.10, ArtII.S2.C2.3.11, ArtII.S2.C2.3.15, ArtII.S1.C1.4, ArtII.S3.3.3, ArtII.S3.3.4, ArtII.S2.C1.3.1, ArtII.S2.C1.3.5, ArtII.S2.C2.1.1, ArtII.S2.C2.1.4, ArtII.S2.C2.2.2, ArtII.S2.C1.1.10, ArtII.S2.C1.1.11, ArtII.S2.C1.1.18
+separation-of-powers	Intro.7.2, ArtI.S1.4.1, ArtI.S1.5, ArtII.S1.C1.6, ArtII.S1.C1.7, ArtII.S4.1, ArtII.S4.4, ArtI.S8.C18.7.7
+immunity-privilege	ArtII.S3.4.1, ArtII.S3.4.2, ArtII.S3.4.4, ArtII.S3.4.5, ArtII.S3.4.6, ArtII.S3.5
+dormant-commerce	ArtI.S8.C3.7.1, ArtI.S8.C3.7.2, ArtI.S8.C3.7.4, ArtI.S8.C3.7.5, ArtI.S8.C3.7.6, ArtI.S8.C3.7.7, ArtI.S8.C3.7.8, ArtI.S8.C3.7.9
+article-iv-pi	ArtIV.S2.C1
+preemption	ArtVI.C2.3
+state-tax	ArtI.S8.C3.7.11, Amdt14.S1.7.2
+state-action	Amdt14.2, Amdt1.7.2.4
+incorporation	Amdt14.S1.4, Amdt14.S1.3
+pdp-interests	Amdt14.S1.5.1, Amdt14.S1.5.2, Amdt14.S1.5.3
+mathews	Amdt14.S1.5.4, Amdt5.6.1
+pdp-timing	Amdt14.S1.5.8, Amdt14.S1.5.5
+economic-sdp	Amdt14.S1.6.1, Amdt14.S1.6.2, Amdt5.7.2
+takings	Amdt5.9
+contracts-clause	ArtI.S10.C1.6
+p-or-i	Amdt14.S1.2
+ep-framework	Amdt14.S1.8.1.1, Amdt14.S1.8.1.2, Amdt14.S1.8.5
+strict	Amdt14.S1.8.1, Amdt14.S1.8.2, Amdt14.S1.8.3
+intermediate	Amdt14.S1.8.8, Amdt14.S1.8.7
+rational	Amdt14.S1.8.9, Amdt14.S1.8.10, Amdt14.S1.8.11, Amdt14.S1.8.12
+race-remedies	Amdt14.S1.8.4, Amdt15.S1.4, Amdt14.S1.8.6
+identifying	Amdt14.S1.6.3.1, Amdt14.S1.6.3.2, Amdt5.7.1
+privacy-family	Amdt14.S1.6.3, Amdt14.S1.6.4, Amdt14.S1.6.5
+other-fundamental	Amdt14.S1.8.13, Amdt2, ArtIV.S2.C1.13
+speech-coverage	Amdt1.7.1, Amdt1.7.2.1, Amdt1.7.2.2, Amdt1.7.8.2
+content	Amdt1.7.3, Amdt1.7.4.1, Amdt1.7.4.2, Amdt1.7.4.3
+forums	Amdt1.7.7, Amdt1.7.4.5
+prior-restraints	Amdt1.7.2.3, Amdt1.9.1
+categories	Amdt1.7.5, Amdt1.7.6
+special-contexts	Amdt1.7.14, Amdt1.7.9.4, Amdt1.7.8.3, Amdt1.7.11, Amdt1.7.12, Amdt1.8.1
+free-exercise	Amdt1.4
+establishment	Amdt1.2.1, Amdt1.3
+religion-interaction	Amdt1.5, Amdt1.6
+checklist	Intro.8.1
+principles	ArtIII.S2.C1.10.1, ArtIII.S2.C1.10.4, ArtIII.S2.C1.10.7, Intro.7.3, Intro.7.4

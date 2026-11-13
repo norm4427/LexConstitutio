@@ -612,6 +612,7 @@
       <p>Citation counts come from OpenAlex and are available for ${fmt(citedCount)} articles. The percentile compares an article with others in the index published in the same decade. OpenAlex sometimes credits a reviewed book's citations to its review. Titles that appear in more than one journal are treated as book reviews and left unranked. Law review citation data is less complete than in the sciences, so treat the counts as a rough guide.</p>
       <h2>Advanced doctrine</h2>
       <p>The advanced half of the Beginner's Guide is an original doctrinal treatment written for this site. It is organized after the chapter structure of Erwin Chemerinsky's <em>Constitutional Law: Principles and Policies</em> and covers judicial power, legislative and executive power, federalism, state action, due process, economic liberties, equal protection, fundamental rights, speech and religion. Excerpts from opinions are public-domain text extracted from the official <em>United States Reports</em> (Library of Congress) and supremecourt.gov slip opinions, or from Wikisource transcriptions. The open casebooks at opencasebook.org (H2O, CC BY-NC-SA) are cited as further reading.</p>
+      <p>The in-depth commentary in each section comes from the <em>Constitution of the United States of America: Analysis and Interpretation</em> ("Constitution Annotated"), prepared by the Congressional Research Service of the Library of Congress. The site uses the 2022 GPO edition, a public-domain U.S. government work. Essays are extracted from the official PDFs on GovInfo with their footnotes omitted.</p>
       <h2>Originalist's Corner</h2>
       <p>The Corner indexes the full texts of Blackstone's <em>Commentaries</em>, St. George Tucker's annotated Blackstone, Joseph Story's <em>Commentaries on the Constitution</em>, James Kent's <em>Commentaries</em>, Vattel's <em>Law of Nations</em> and Locke's <em>Two Treatises</em> (via the Lonang Institute). It also covers <em>The Federalist</em> (Project Gutenberg), Madison's Notes of the Convention debates and founding documents (the Avalon Project at Yale Law School), and the acts of the first five Congresses (<em>Statutes at Large</em>, vol. 1, via Wikisource). Passages are matched to topics automatically and should be read in context. The full texts of <em>The Federalist</em>, the founding documents and the statutes can be read in the site's library.</p>
       <h2>Supreme Court, lectures and guide</h2>
@@ -1073,12 +1074,57 @@
     document.getElementById('lec-ch').addEventListener('change', e => go({ ch: e.target.value }));
     app.querySelectorAll('[data-cat]').forEach(b => b.addEventListener('click', () => go({ cat: b.dataset.cat })));
   }
-  function videoTile(v) {
+  // Uniform, generated thumbnails (title, creator, length, topic icon) instead of YouTube's images
+  const LECTURE_ICON = {
+    'Courses & Overviews': 'interpretation', 'Interpretation & Theory': 'interpretation', 'The Supreme Court': 'judicial-review',
+    'Constitutional History': 'incorporation', 'Executive Power': 'executive-power', 'Administrative State': 'administrative-state',
+    'Free Speech': 'free-speech', 'Federalism': 'federalism', 'Separation of Powers': 'separation-of-powers', 'Criminal Procedure': 'fourth-amendment',
+    'Due Process & Privacy': 'due-process', 'Democracy & Elections': 'voting', 'Religious Liberty': 'religion', 'Equal Protection': 'equal-protection',
+    'Second Amendment': 'second-amendment'
+  };
+  const cleanTitle = t => {
+    let s = String(t || ''), prev;
+    do { prev = s; s = s.replace(/\s*[|–—-]\s*(Constitution 101|US government and civics|Khan Academy|Crash Course[^|]*?#\d+|BRI's Homework Help Series)\s*$/i, '').replace(/:\s*Crash Course [^#]*#\d+$/i, ''); } while (s !== prev);
+    return s.trim();
+  };
+  function videoThumb(v, iconKey, big) {
+    const icon = GUIDE_ICONS[iconKey] || '<path d="M9 7.5v9l7.5-4.5z"/><circle cx="12" cy="12" r="9"/>';
+    return `<span class="vthumb vthumb-gen${big ? ' big' : ''}">
+      <span class="vg-top"><span class="vg-icon"><svg viewBox="0 0 24 24">${icon}</svg></span><span class="vg-brand">Lex <em>Constitutio</em></span></span>
+      <span class="vg-title">${esc(cleanTitle(v.t))}</span>
+      <span class="vg-ch">${esc(v.ch)}</span>
+      ${v.len ? `<span class="vlen">${esc(v.len)}</span>` : ''}<span class="vplay">▶</span>
+    </span>`;
+  }
+  function videoTile(v, iconKey) {
     return `<button class="vtile" data-video="${esc(v.id)}" data-title="${esc(v.t)}" data-ch="${esc(v.ch)}">
-      <span class="vthumb"><img loading="lazy" src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt=""><span class="vlen">${esc(v.len || '')}</span><span class="vplay">▶</span></span>
-      <span class="vt">${esc(v.t)}</span>
-      <span class="vm">${esc(v.ch)}${v.v ? ' · ' + compact(v.v) + ' views' : ''}</span>
+      ${videoThumb(v, iconKey || LECTURE_ICON[(v.cat || [])[0]])}
+      <span class="vm">${[(v.cat || [])[0], v.v ? compact(v.v) + ' views' : ''].filter(Boolean).map(esc).join(' · ')}</span>
     </button>`;
+  }
+  // One video at a time with arrows and dots; the poster becomes the player on click
+  function mountCarousel(videos, iconKey) {
+    const el = document.getElementById('vcarousel');
+    if (!el || !videos.length) return;
+    const stage = el.querySelector('.vc-stage'), cap = document.querySelector('.vc-cap'), dots = [...document.querySelectorAll('.vc-dots button')];
+    let i = 0;
+    const show = (n, play) => {
+      i = (n + videos.length) % videos.length;
+      const v = videos[i];
+      stage.innerHTML = play
+        ? `<div class="embed"><iframe src="${embedSrc(v.id)}&autoplay=1" title="${esc(v.t)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`
+        : `<button class="vc-poster" aria-label="Play ${esc(v.t)}">${videoThumb(v, iconKey, true)}</button>`;
+      cap.innerHTML = `<b>${esc(cleanTitle(v.t))}</b> · ${esc(v.ch)}${v.len ? ' · ' + esc(v.len) : ''}${videos.length > 1 ? `<span class="vc-count">${i + 1} / ${videos.length}</span>` : ''}`;
+      dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      const poster = stage.querySelector('.vc-poster');
+      if (poster) poster.addEventListener('click', () => show(i, true));
+    };
+    el.querySelector('.vc-prev')?.addEventListener('click', () => show(i - 1));
+    el.querySelector('.vc-next')?.addEventListener('click', () => show(i + 1));
+    dots.forEach((d, k) => d.addEventListener('click', () => show(k)));
+    el.tabIndex = 0;
+    el.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') show(i - 1); if (e.key === 'ArrowRight') show(i + 1); });
+    show(0);
   }
   const compact = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : String(n);
   const embedSrc = id => `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0&modestbranding=1`;
@@ -1131,6 +1177,30 @@
     amendment: 'Amendment', 'natural-rights': 'Natural Rights', 'common-law': 'Common Law & Precedent', privileges: 'Privileges & Immunities', 'bankruptcy-ip': 'Bankruptcy & IP',
     money: 'Money & Banking', indians: 'Indian Tribes', territories: 'Territories', guarantee: 'Republican Government'
   };
+  // Line icons for the beginner topics (24×24 grid, drawn with the shared stroke style)
+  const GUIDE_ICONS = {
+    'judicial-review': '<path d="M14.5 3.5l6 6M12 6l6 6M10.5 7.5l6 6"/><path d="M13 4.5l-4 4 6.5 6.5 4-4z"/><path d="M11.2 12.8L4 20"/><path d="M3 21h9"/>',
+    'interpretation': '<path d="M3 5.5C5.5 4.5 8.5 4.5 12 6.5c3.5-2 6.5-2 9-1v13c-2.5-1-5.5-1-9 1-3.5-2-6.5-2-9-1z"/><path d="M12 6.5v13"/><circle cx="17" cy="11" r="2.6"/><path d="M18.9 12.9l2.1 2.1"/>',
+    'incorporation': '<path d="M7 3h7l4 4v8"/><path d="M14 3v4h4"/><path d="M9.5 9h5M9.5 12h3"/><path d="M7 3v12"/><path d="M4 21h16"/><path d="M6 21v-4h12v4"/><path d="M12 15v2"/>',
+    'separation-of-powers': '<path d="M3 9l9-5 9 5"/><path d="M4 21h16"/><path d="M5.5 10v8M10 10v8M14 10v8M18.5 10v8"/><path d="M4 18h16"/>',
+    'executive-power': '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2l1.45 2.95 3.25.47-2.35 2.29.56 3.24L12 14.6l-2.91 1.55.56-3.24L7.3 10.62l3.25-.47z"/>',
+    'federalism': '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 3.5V9M12 15v5.5M3.5 12H9M15 12h5.5"/>',
+    'commerce-clause': '<path d="M3 7.5l4-2.5 4 2.5v5l-4 2.5-4-2.5z"/><path d="M3 7.5l4 2.5 4-2.5M7 10v5"/><path d="M13.5 9.5h6m-2-2l2 2-2 2"/><path d="M20.5 16.5h-6m2 2l-2-2 2-2"/>',
+    'standing': '<circle cx="9" cy="5.5" r="2.2"/><path d="M5.5 21v-6.5L4.5 11c0-1.5 1.5-2.6 3-2.6h3c1.5 0 3 1.1 3 2.6l-1 3.5V21"/><path d="M9 14.5V21"/><path d="M15.5 12l2 2 3.5-4"/>',
+    'administrative-state': '<path d="M3 21h11"/><path d="M4 21V8l5-4 5 4v13"/><path d="M7 11h4M7 14.5h4M7 18h4"/><circle cx="18" cy="15" r="2.3"/><path d="M18 10.7v1.5M18 17.8v1.5M13.7 15h1.5M20.8 15h1.5M15 12l1 1M20 17l1 1M21 12l-1 1M16 17l-1 1"/>',
+    'free-speech': '<path d="M4 5.5h16v10H10l-4.5 3.5v-3.5H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+    'religion': '<path d="M12 3c-2.5 3-4 5.2-4 7.6a4 4 0 0 0 8 0C16 8.2 14.5 6 12 3z"/><path d="M12 9.5c-.9 1.1-1.4 2-1.4 2.9a1.4 1.4 0 0 0 2.8 0c0-.9-.5-1.8-1.4-2.9z"/><path d="M6.5 21h11M8.5 21l1-6.4M15.5 21l-1-6.4"/>',
+    'second-amendment': '<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M12 7.5v9M8.2 10.5h7.6"/>',
+    'equal-protection': '<circle cx="6.5" cy="6.5" r="2.2"/><circle cx="17.5" cy="6.5" r="2.2"/><path d="M3 15c0-2.6 1.6-4.4 3.5-4.4S10 12.4 10 15M14 15c0-2.6 1.6-4.4 3.5-4.4S21 12.4 21 15"/><path d="M8 18.5h8M8 21h8"/>',
+    'due-process': '<path d="M12 3v18M7.5 21h9"/><path d="M4.5 7h15"/><path d="M4.5 7L2 13a2.5 2.5 0 0 0 5 0zM19.5 7L17 13a2.5 2.5 0 0 0 5 0z"/><circle cx="12" cy="4.5" r="1.3"/>',
+    'fourth-amendment': '<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h14V9.5"/><rect x="9.5" y="13" width="5" height="4.5" rx=".8"/><path d="M10.5 13v-1.3a1.5 1.5 0 0 1 3 0V13"/>',
+    'trial-rights': '<circle cx="6" cy="8" r="1.9"/><circle cx="12" cy="6.5" r="1.9"/><circle cx="18" cy="8" r="1.9"/><path d="M3 15c.3-2 1.6-3.3 3-3.3s2.7 1.3 3 3.3M9 13.5c.3-2 1.6-3.3 3-3.3s2.7 1.3 3 3.3M15 15c.3-2 1.6-3.3 3-3.3s2.7 1.3 3 3.3"/><path d="M2.5 17.5h19v3.5h-19z"/>',
+    'punishment': '<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8.5 3.5v17M12 3.5v17M15.5 3.5v17"/><path d="M4 9.5h16"/>',
+    'takings': '<path d="M2.5 12L10 5.5l7.5 6.5"/><path d="M4.5 10.5V20h11v-9.5"/><path d="M8.5 20v-5h3v5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M18.5 15.6v3.8M17.4 16.4c.3-.4 2.2-.5 2.2.4s-2.2.6-2.2 1.5 1.9.8 2.2.4"/>',
+    'voting': '<path d="M4 12h16v8.5H4z"/><path d="M8.5 15.5h7"/><path d="M8 12V3.5h8V12"/><path d="M10 8l1.6 1.6L14.5 6.5"/>',
+    'war-powers': '<path d="M5 21V3.5"/><path d="M5 4.5c4.5-2 7.5 2.5 14 0v8.5c-6.5 2.5-9.5-2-14 0"/><path d="M8.5 7.5l.5 1 1 .2-.75.7.2 1.1-.95-.5-.95.5.2-1.1-.75-.7 1-.2z"/>',
+  };
+  const guideIcon = id => `<span class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${GUIDE_ICONS[id] || '<circle cx="12" cy="12" r="8"/>'}</svg></span>`;
   function viewGuide() { withData([['guide', 'GUIDE'], ['advanced', 'ADVANCED']], (G, A) => renderGuide(G, A)); }
   function renderGuide(G, A) {
     const groups = [...new Set(G.topics.map(t => t.group))];
@@ -1145,7 +1215,7 @@
       ${groups.map(g => `<section class="section" style="padding-top:44px">
         <div class="section-head"><div><h2>${esc(g)}</h2></div></div>
         <div class="guide-grid">${G.topics.filter(t => t.group === g).map((t, i) => `<a class="guide-card" href="#/guide/${t.id}">
-          ${t.videos[0] ? `<span class="guide-thumb"><img loading="lazy" src="https://i.ytimg.com/vi/${esc(t.videos[0].id)}/mqdefault.jpg" alt=""></span>` : ''}
+          ${guideIcon(t.id)}
           <span class="guide-body"><b>${esc(t.title)}</b><span>${esc(t.tagline)}</span>
           <span class="guide-meta">${t.videos.length} videos · ${t.cases.length} cases · ${(t.books || []).length} book${(t.books || []).length === 1 ? '' : 's'} · ${t.articles.length} readings</span></span>
         </a>`).join('')}</div>
@@ -1154,7 +1224,7 @@
         <div class="adv-banner">
           <span class="eyebrow">Advanced</span>
           <h2>Constitutional law in depth</h2>
-          <p>A doctrine-by-doctrine treatment of American constitutional law in ${A.parts.length} parts, organized after the chapter structure of Chemerinsky's <em>Constitutional Law: Principles and Policies</em>. Each section explains the doctrine and sets out the black-letter tests. It links the controlling cases, quotes key passages from the opinions, and points to related scholarship and founding-era sources.</p>
+          <p>A doctrine-by-doctrine treatment of American constitutional law in ${A.parts.length} parts, organized after the chapter structure of Chemerinsky's <em>Constitutional Law: Principles and Policies</em>. Each section explains the doctrine and sets out the black-letter tests. It links the controlling cases, quotes key passages from the opinions, and includes in-depth commentary from the Library of Congress&rsquo;s <em>Constitution Annotated</em> on how each doctrine developed and has been applied, along with related scholarship and founding-era sources.</p>
         </div>
         <div class="adv-grid">${A.parts.map((p, i) => `<a class="adv-card" href="#/doctrine/${p.id}">
           <span class="adv-num">${esc(p.title.split('.')[0])}</span>
@@ -1167,8 +1237,26 @@
   }
 
   /* ------------------------------------------------------------ advanced doctrine */
-  function viewDoctrine(partId, secId) { withData([['advanced', 'ADVANCED'], ['quizzes', 'QUIZZES']], (A, Q) => renderDoctrine(A, partId, secId, Q)); }
-  function renderDoctrine(A, partId, secId, Q) {
+  function viewDoctrine(partId, secId) { withData([['advanced', 'ADVANCED'], ['quizzes', 'QUIZZES'], ['commentary', 'COMMENTARY']], (A, Q, C) => renderDoctrine(A, partId, secId, Q, C)); }
+  // In-depth commentary from the Constitution Annotated (CRS, Library of Congress; public domain)
+  function commentaryHtml(C, secId) {
+    const essays = (C && C.sections[secId]) || [];
+    if (!essays.length) return '';
+    const words = e => e.p.reduce((n, p) => n + p.replace(/<[^>]+>/g, '').split(/\s+/).length, 0);
+    const total = essays.reduce((n, e) => n + words(e), 0);
+    const depth = id => Math.max(0, id.split('.').length - Math.min(...essays.map(x => x.id.split('.').length)));
+    return `<div class="doc-block commentary">
+      <div class="commentary-h"><div><h3>In depth: how the doctrine has developed</h3>
+        <p>${essays.length} essay${essays.length === 1 ? '' : 's'} from the <i>Constitution Annotated</i> tracing the history, the leading cases and how the Court has applied this doctrine (${fmt(Math.round(total / 230))} min read).</p></div>
+        <button class="btn btn-ghost btn-sm" data-expand-all>Expand all</button></div>
+      ${essays.map((e, i) => `<details class="essay" style="--d:${depth(e.id)}" ${i === 0 ? 'open' : ''}>
+        <summary><span class="essay-id">${esc(e.id)}</span><b>${esc(e.title)}</b><em>${Math.max(1, Math.round(words(e) / 230))} min</em></summary>
+        <div class="essay-body">${e.p.map(p => `<p>${p}</p>`).join('')}</div>
+      </details>`).join('')}
+      <p class="attrib">From <i>Constitution of the United States of America: Analysis and Interpretation</i> (the "Constitution Annotated"), prepared by the Congressional Research Service, Library of Congress (2022 ed.). A U.S. government work in the public domain. Footnotes are omitted; the annotated edition with full citations is at <a href="https://constitution.congress.gov/" target="_blank" rel="noopener">constitution.congress.gov</a>. Developments after 2022 are covered in the summaries above.</p>
+    </div>`;
+  }
+  function renderDoctrine(A, partId, secId, Q, C) {
     const pi = A.parts.findIndex(p => p.id === partId);
     const p = A.parts[pi];
     if (!p) return viewNotFound();
@@ -1193,6 +1281,7 @@
           <div class="doc-body">${s.html}</div>
           ${s.cases.length ? `<div class="doc-block"><h3>Key cases</h3><ul class="case-list">${s.cases.map(c => `<li>${c.id ? `<a href="#/case/${esc(c.id)}"><i>${esc(c.n)}</i></a>` : `<i>${esc(c.n)}</i>`}${c.cit ? ` <span class="cit">${esc(c.cit)}</span>` : ''} <span class="yr">(${c.y})</span><div>${esc(c.note || '')}</div></li>`).join('')}</ul></div>` : ''}
           ${s.excerpts.length ? `<div class="doc-block"><h3>From the opinions</h3>${s.excerpts.map(excerpt).join('')}</div>` : ''}
+          ${commentaryHtml(C, s.id)}
           ${(s.corner.length || s.articles.length) ? `<div class="doc-block doc-more">
             ${s.corner.length ? `<div><h3>Originalist's Corner</h3><div class="tags">${s.corner.map(c => `<a class="tag corner-tag" href="#/corner/${esc(c)}">${esc(CORNER_NAMES[c] || c)}</a>`).join('')}</div></div>` : ''}
             ${s.articles.length ? `<div><h3>Scholarship</h3><ul class="mini-list">${s.articles.map(id => byId.get(id)).filter(Boolean).map(a => `<li><a class="t" href="${articleHref(a)}">${esc(a.t)}</a><div class="m">${esc(a.a.slice(0, 2).join(', '))}${a.a.length > 2 ? ' et al.' : ''} · ${esc(journalById[a.j]?.name || '')}${a.y ? ' · ' + a.y : ''}${a.c != null ? ' · ' + fmt(a.c) + ' citations' : ''}</div></li>`).join('')}</ul></div>` : ''}
@@ -1210,6 +1299,12 @@
     app.querySelectorAll('[data-sec]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', `#/doctrine/${p.id}/${a.dataset.sec}`); go(a.dataset.sec); }));
     app.querySelector('[data-adv]').addEventListener('click', e => { e.preventDefault(); location.hash = '#/guide'; setTimeout(() => document.getElementById('advanced')?.scrollIntoView(), 300); });
     if (Q) mountQuiz(app, 'doctrine:' + p.id, Q.doctrine[p.id] || []);
+    app.querySelectorAll('[data-expand-all]').forEach(b => b.addEventListener('click', () => {
+      const ds = b.closest('.commentary').querySelectorAll('details.essay');
+      const open = [...ds].some(d => !d.open);
+      ds.forEach(d => { d.open = open; });
+      b.textContent = open ? 'Collapse all' : 'Expand all';
+    }));
     if (secId) setTimeout(() => go(secId), 60);
   }
   function doctrineHref(A, secId) {
@@ -1228,7 +1323,7 @@
     app.innerHTML = `<div class="fade-in"><div class="article guide-page">
       <div>
         <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/guide">Beginner's Guide</a><span>/</span><span>${esc(t.group)}</span></div>
-        <h1>${esc(t.title)}</h1>
+        <div class="guide-title">${guideIcon(t.id)}<h1>${esc(t.title)}</h1></div>
         <p class="guide-tagline">${esc(t.tagline)}</p>
         ${t.wiki ? `<div class="explainer">
           <div class="explainer-h"><span>The short version</span><a href="${esc(t.wiki.url)}" target="_blank" rel="noopener">Wikipedia: ${esc(t.wiki.title)} ↗</a></div>
@@ -1236,9 +1331,11 @@
           <div class="explainer-f">Text from Wikipedia, licensed CC BY-SA 4.0.${t.wex ? ` For a legal-dictionary definition, see <a href="${esc(t.wex)}" target="_blank" rel="noopener">Cornell LII Wex ↗</a>` : ''}</div>
         </div>` : ''}
         ${main ? `<h2>Watch</h2>
-          <div class="embed"><iframe loading="lazy" src="${embedSrc(main.id)}" title="${esc(main.t)}" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
-          <div class="embed-cap"><b>${esc(main.t)}</b> · ${esc(main.ch)} · ${esc(main.len)}</div>
-          ${more.length ? `<div class="vgrid small" style="margin-top:16px">${more.map(v => videoTile(v)).join('')}</div>` : ''}` : ''}
+          <div class="vcarousel" id="vcarousel">
+            <div class="vc-stage"></div>
+            ${t.videos.length > 1 ? `<button class="vc-nav vc-prev" aria-label="Previous video">‹</button><button class="vc-nav vc-next" aria-label="Next video">›</button>` : ''}
+          </div>
+          <div class="vc-foot"><div class="embed-cap vc-cap"></div>${t.videos.length > 1 ? `<div class="vc-dots">${t.videos.map((_, i) => `<button data-vi="${i}" aria-label="Video ${i + 1}"></button>`).join('')}</div>` : ''}</div>` : ''}
         ${(t.books || []).length ? `<h2>Start with a book</h2>
         <div class="guide-books">${t.books.map(bid => B.books.find(x => x.id === bid)).filter(Boolean).map(b => `<a class="guide-book" href="#/book/${esc(b.id)}">
           ${bookCover(b, 'sm')}
@@ -1281,6 +1378,7 @@
       </aside>
     </div></div>`;
     if (Q) mountQuiz(app, 'guide:' + t.id, Q.guide[t.id] || []);
+    mountCarousel(t.videos, t.id);
   }
 
   /* ------------------------------------------------------------ books */

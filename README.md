@@ -27,6 +27,7 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 | Wikipedia REST API | Guide overviews (CC BY-SA) | `wiki.sh` |
 | Lonang Institute, Gutenberg, Avalon Project, Wikisource | Originalist's Corner texts and early statutes | `corner.sh`, `wikisource_retry.sh` |
 | U.S. Reports PDFs (LOC), slip opinions, Wikisource | Opinion excerpts in the advanced section | `build_advanced.pl` (needs `pdftotext`) |
+| Constitution Annotated (CRS / Library of Congress, GovInfo PDFs, public domain) | In-depth commentary in the advanced section | `conan_extract.py` (needs `pip install pymupdf`), `build_conan.pl`, `conan_map.tsv` |
 | Open Library API | Book covers, ISBNs, page counts | `books.sh` |
 | Goodreads search suggestions (unofficial; Goodreads has no public API) | Book ratings, descriptions | `books.sh` |
 
@@ -49,6 +50,7 @@ perl scripts/build_extras.pl            # writes scotus.js, lectures.js, guide.j
 bash scripts/corner.sh && bash scripts/wikisource_retry.sh   # founding-era sources (Wikisource rate-limits; the retry script backs off)
 perl scripts/build_corner.pl           # writes corner.js and library-*.js
 perl scripts/build_advanced.pl         # writes advanced.js from scripts/advanced/*.md
+bash scripts/conan_fetch.sh && python scripts/conan_extract.py && perl scripts/build_conan.pl   # Constitution Annotated commentary (PDFs in data/raw/conan from GovInfo)
 perl scripts/build_quizzes.pl          # writes quizzes.js from scripts/quizzes/*.txt
 perl scripts/flag_reviews.pl           # confirms book reviews via Open Library so they leave the article rankings
 bash scripts/books_impact.sh && perl scripts/books_impact_merge.pl   # citation counts for books (Books tab only)

@@ -140,3 +140,54 @@
   .rank-c { grid-column: 2; text-align: left; display: flex; gap: 8px; align-items: baseline; }
   .guide-nav { grid-template-columns: 1fr; }
 }
+
+/* ---- generated video thumbnails (uniform across Lectures and the guide) */
+.vthumb-gen { display: flex; flex-direction: column; padding: 14px 16px 12px; text-align: left; color: #f4efe6;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgb(194 86 47 / .45), transparent 60%),
+    radial-gradient(90% 80% at 0% 100%, rgb(64 92 140 / .35), transparent 60%),
+    linear-gradient(160deg, #1d2333, #12151d);
+  border: 1px solid rgb(255 255 255 / .06); }
+.vthumb-gen::after { content: "§"; position: absolute; right: -6px; bottom: -34px; font: 400 130px/1 var(--serif); color: rgb(255 255 255 / .05); pointer-events: none; }
+.vg-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.vg-icon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgb(240 138 93 / .16); color: #f5a27c; border: 1px solid rgb(240 138 93 / .28); }
+.vg-icon svg { width: 18px; height: 18px; stroke-width: 1.7; }
+.vg-brand { font: 500 10.5px var(--serif); letter-spacing: .02em; color: rgb(244 239 230 / .5); }
+.vg-brand em { color: rgb(245 162 124 / .7); }
+.vg-title { margin-top: auto; font: 500 16px/1.22 var(--serif); letter-spacing: -.005em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; padding-right: 8px; }
+.vg-ch { margin-top: 6px; font: 600 10.5px var(--sans); letter-spacing: .07em; text-transform: uppercase; color: #f5a27c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%; }
+.vthumb-gen .vlen { background: rgb(255 255 255 / .12); backdrop-filter: blur(4px); }
+.vthumb-gen .vplay { background: rgb(240 138 93 / .9); color: #1a0f0a; }
+.vtile:hover .vthumb-gen { border-color: rgb(240 138 93 / .45); }
+.vtile:hover .vthumb-gen .vg-title { color: #fff; }
+.vthumb-gen.big { padding: 30px 34px 26px; border-radius: var(--radius); }
+.vthumb-gen.big .vg-icon { width: 46px; height: 46px; border-radius: 13px; }
+.vthumb-gen.big .vg-icon svg { width: 26px; height: 26px; }
+.vthumb-gen.big .vg-brand { font-size: 13px; }
+.vthumb-gen.big .vg-title { font-size: clamp(22px, 3vw, 32px); -webkit-line-clamp: 3; max-width: 85%; }
+.vthumb-gen.big .vg-ch { font-size: 12.5px; margin-top: 10px; }
+.vthumb-gen.big .vplay { width: 72px; height: 72px; font-size: 24px; opacity: 1; }
+.vthumb-gen.big::after { font-size: 260px; bottom: -70px; }
+.vm { margin-top: 2px; }
+
+/* ---- guide video carousel */
+.vcarousel { position: relative; outline: none; }
+.vc-stage .embed { margin: 0; }
+.vc-poster { all: unset; display: block; width: 100%; cursor: pointer; border-radius: var(--radius); box-shadow: var(--shadow); }
+.vc-poster .vthumb { display: flex; aspect-ratio: 16/9; position: relative; overflow: hidden; }
+.vc-poster:hover .vplay { transform: scale(1.06); }
+.vc-poster .vplay { transition: transform .2s; }
+.vc-poster:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.vc-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2);
+  background: color-mix(in srgb, var(--bg-elev) 88%, transparent); backdrop-filter: blur(8px); color: var(--ink); font-size: 26px; line-height: 1; cursor: pointer;
+  display: grid; place-items: center; box-shadow: var(--shadow); transition: all .15s; z-index: 2; padding-bottom: 3px; }
+.vc-nav:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.vc-prev { left: -22px; }
+.vc-next { right: -22px; }
+.vc-foot { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-top: 10px; }
+.vc-cap { margin: 0; }
+.vc-count { margin-left: 10px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.vc-dots { display: flex; gap: 6px; flex-shrink: 0; }
+.vc-dots button { width: 8px; height: 8px; border-radius: 50%; border: 0; padding: 0; background: var(--line-2); cursor: pointer; transition: all .15s; }
+.vc-dots button.on { background: var(--accent); width: 22px; border-radius: 6px; }
+@media (max-width: 720px) { .vc-prev { left: 8px; } .vc-next { right: 8px; } .vthumb-gen.big { padding: 18px 20px; } }
