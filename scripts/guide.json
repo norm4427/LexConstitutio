@@ -1,0 +1,588 @@
+[
+   {
+      "articleRx" : "judicial review|marbury|judicial supremacy|countermajoritarian",
+      "books" : [
+         "supreme-court-vsi",
+         "least-dangerous-branch"
+      ],
+      "cases" : [
+         [
+            "Marbury v. Madison",
+            1803
+         ],
+         [
+            "Cooper v. Aaron",
+            1958
+         ]
+      ],
+      "group" : "Foundations",
+      "id" : "judicial-review",
+      "tagline" : "How courts came to have the final word on what the Constitution means.",
+      "title" : "Judicial Review & the Supreme Court",
+      "topics" : [
+         "court",
+         "article3"
+      ],
+      "videoQuery" : "judicial review Marbury v. Madison explained",
+      "wex" : "judicial_review",
+      "wiki" : "Judicial review in the United States"
+   },
+   {
+      "articleRx" : "originalis|living constitution|constitutional interpretation|interpretive",
+      "books" : [
+         "matter-of-interpretation",
+         "living-constitution"
+      ],
+      "cases" : [
+         [
+            "District of Columbia v. Heller",
+            2008
+         ],
+         [
+            "Home Building & Loan Assoc. v. Blaisdell",
+            1934
+         ]
+      ],
+      "group" : "Foundations",
+      "id" : "interpretation",
+      "tagline" : "Originalism, living constitutionalism, and the debate over method.",
+      "title" : "Constitutional Interpretation",
+      "topics" : [
+         "originalism",
+         "living",
+         "method"
+      ],
+      "videoQuery" : "originalism vs living constitution explained",
+      "wex" : "originalism",
+      "wiki" : "Originalism"
+   },
+   {
+      "articleRx" : "incorporat|fourteenth amendment|privileges or immunities|bill of rights",
+      "books" : [
+         "bill-of-rights-amar",
+         "second-founding"
+      ],
+      "cases" : [
+         [
+            "Barron ex rel. Tiernan v. Mayor of Baltimore",
+            1833
+         ],
+         [
+            "McDonald v. Chicago",
+            2010
+         ],
+         [
+            "Timbs v. Indiana",
+            2019
+         ]
+      ],
+      "group" : "Foundations",
+      "id" : "incorporation",
+      "tagline" : "How the Fourteenth Amendment made the Bill of Rights binding on the states.",
+      "title" : "The Bill of Rights & Incorporation",
+      "topics" : [
+         "dueprocess",
+         "history"
+      ],
+      "videoQuery" : "incorporation doctrine Bill of Rights explained",
+      "wex" : "incorporation_doctrine",
+      "wiki" : "Incorporation of the Bill of Rights"
+   },
+   {
+      "articleRx" : "separation of powers|checks and balances|appointments clause|removal",
+      "books" : [
+         "federalist",
+         "currie-primer"
+      ],
+      "cases" : [
+         [
+            "Youngstown Sheet & Tube Company v. Sawyer",
+            1952
+         ],
+         [
+            "INS v. Chadha",
+            1983
+         ],
+         [
+            "Morrison v. Olson",
+            1988
+         ]
+      ],
+      "group" : "Structure",
+      "id" : "separation-of-powers",
+      "tagline" : "Why the Constitution divides power among three branches, and how they check one another.",
+      "title" : "Separation of Powers",
+      "topics" : [
+         "seppowers"
+      ],
+      "videoQuery" : "separation of powers Constitution 101",
+      "wex" : "separation_of_powers",
+      "wiki" : "Separation of powers under the United States Constitution"
+   },
+   {
+      "articleRx" : "executive power|presiden|unitary executive|article ii",
+      "books" : [
+         "imperial-presidency",
+         "unitary-executive"
+      ],
+      "cases" : [
+         [
+            "United States v. Nixon",
+            1974
+         ],
+         [
+            "Trump v. United States",
+            2024
+         ]
+      ],
+      "group" : "Structure",
+      "id" : "executive-power",
+      "tagline" : "The President's powers under Article II, and their limits.",
+      "title" : "Executive Power",
+      "topics" : [
+         "executive"
+      ],
+      "videoQuery" : "Article II executive power explained",
+      "wex" : "executive_power",
+      "wiki" : "Unitary executive theory"
+   },
+   {
+      "articleRx" : "federalism|state sovereignty|tenth amendment|commandeering",
+      "books" : [
+         "federalist",
+         "americas-constitution"
+      ],
+      "cases" : [
+         [
+            "McCulloch v. Maryland",
+            1819
+         ],
+         [
+            "New York v. United States",
+            1992
+         ],
+         [
+            "Printz v. United States",
+            1997
+         ]
+      ],
+      "group" : "Structure",
+      "id" : "federalism",
+      "tagline" : "The division of power between the national government and the states.",
+      "title" : "Federalism",
+      "topics" : [
+         "federalism"
+      ],
+      "videoQuery" : "federalism explained Constitution",
+      "wex" : "federalism",
+      "wiki" : "Federalism in the United States"
+   },
+   {
+      "articleRx" : "commerce clause|commerce power|necessary and proper|spending clause|enumerated powers",
+      "books" : [
+         "chemerinsky-principles",
+         "restoring-lost-constitution"
+      ],
+      "cases" : [
+         [
+            "Gibbons v. Ogden",
+            1824
+         ],
+         [
+            "Wickard v. Filburn",
+            1942
+         ],
+         [
+            "United States v. Lopez",
+            1995
+         ]
+      ],
+      "group" : "Structure",
+      "id" : "commerce-clause",
+      "tagline" : "The source of most federal legislation, and the fights over how far it reaches.",
+      "title" : "The Commerce Clause & Congressional Power",
+      "topics" : [
+         "congress"
+      ],
+      "videoQuery" : "Commerce Clause explained",
+      "wex" : "commerce_clause",
+      "wiki" : "Commerce Clause"
+   },
+   {
+      "articleRx" : "standing|justiciab|political question|article iii|case or controversy",
+      "books" : [
+         "chemerinsky-federal-jurisdiction"
+      ],
+      "cases" : [
+         [
+            "Lujan v. Defenders of Wildlife",
+            1992
+         ],
+         [
+            "Massachusetts v. Environmental Protection Agency",
+            2007
+         ]
+      ],
+      "group" : "Structure",
+      "id" : "standing",
+      "tagline" : "Who can sue in federal court, and which disputes courts will decide.",
+      "title" : "Standing & Justiciability",
+      "topics" : [
+         "article3"
+      ],
+      "videoQuery" : "Article III standing explained law",
+      "wex" : "standing",
+      "wiki" : "Standing (law)"
+   },
+   {
+      "articleRx" : "administrative state|nondelegation|chevron|major questions|agenc",
+      "books" : [
+         "law-and-leviathan",
+         "administrative-law-unlawful"
+      ],
+      "cases" : [
+         [
+            "Chevron U.S.A. Inc. v. Natural Resources Defense Council, Inc.",
+            1984
+         ],
+         [
+            "West Virginia v. Environmental Protection Agency",
+            2022
+         ],
+         [
+            "Loper Bright Enterprises v. Raimondo",
+            2024
+         ]
+      ],
+      "group" : "Structure",
+      "id" : "administrative-state",
+      "tagline" : "Agencies, delegation, and judicial deference after Chevron.",
+      "title" : "The Administrative State",
+      "topics" : [
+         "admin"
+      ],
+      "videoQuery" : "nondelegation doctrine Chevron explained",
+      "wex" : "nondelegation_doctrine",
+      "wiki" : "Nondelegation doctrine"
+   },
+   {
+      "articleRx" : "free speech|freedom of speech|first amendment",
+      "books" : [
+         "freedom-for-thought",
+         "make-no-law"
+      ],
+      "cases" : [
+         [
+            "New York Times Company v. Sullivan",
+            1964
+         ],
+         [
+            "Brandenburg v. Ohio",
+            1969
+         ],
+         [
+            "Tinker v. Des Moines Independent Community School District",
+            1969
+         ]
+      ],
+      "group" : "Rights",
+      "id" : "free-speech",
+      "tagline" : "What the First Amendment protects, from protest to libel to online speech.",
+      "title" : "Freedom of Speech",
+      "topics" : [
+         "speech"
+      ],
+      "videoQuery" : "freedom of speech First Amendment explained",
+      "wex" : "freedom_of_speech",
+      "wiki" : "Freedom of speech in the United States"
+   },
+   {
+      "articleRx" : "establishment clause|free exercise|religious liberty|religious freedom",
+      "books" : [
+         "divided-by-god"
+      ],
+      "cases" : [
+         [
+            "Employment Division, Department of Human Resources of Oregon v. Smith",
+            1990
+         ],
+         [
+            "Kennedy v. Bremerton School District",
+            2022
+         ]
+      ],
+      "group" : "Rights",
+      "id" : "religion",
+      "tagline" : "The Establishment Clause, the Free Exercise Clause, and the tension between them.",
+      "title" : "Freedom of Religion",
+      "topics" : [
+         "religion"
+      ],
+      "videoQuery" : "Establishment Clause Free Exercise Clause explained",
+      "wex" : "establishment_clause",
+      "wiki" : "Freedom of religion in the United States"
+   },
+   {
+      "articleRx" : "second amendment|bear arms|firearm",
+      "books" : [
+         "gunfight"
+      ],
+      "cases" : [
+         [
+            "District of Columbia v. Heller",
+            2008
+         ],
+         [
+            "McDonald v. Chicago",
+            2010
+         ],
+         [
+            "New York State Rifle & Pistol Association Inc. v. Bruen",
+            2022
+         ]
+      ],
+      "group" : "Rights",
+      "id" : "second-amendment",
+      "tagline" : "The right to keep and bear arms, and the history-and-tradition test.",
+      "title" : "The Second Amendment",
+      "topics" : [
+         "guns"
+      ],
+      "videoQuery" : "Second Amendment explained Constitution 101",
+      "wex" : "second_amendment",
+      "wiki" : "Second Amendment to the United States Constitution"
+   },
+   {
+      "articleRx" : "equal protection|discriminat|affirmative action|race-conscious|segregation",
+      "books" : [
+         "simple-justice",
+         "jim-crow-civil-rights"
+      ],
+      "cases" : [
+         [
+            "Brown v. Board of Education of Topeka (1)",
+            1954
+         ],
+         [
+            "Loving v. Virginia",
+            1967
+         ],
+         [
+            "Students for Fair Admissions v. President and Fellows of Harvard College",
+            2023
+         ]
+      ],
+      "group" : "Rights",
+      "id" : "equal-protection",
+      "tagline" : "The Fourteenth Amendment's guarantee of equality, and the tiers of scrutiny.",
+      "title" : "Equal Protection",
+      "topics" : [
+         "equality"
+      ],
+      "videoQuery" : "Equal Protection Clause explained",
+      "wex" : "equal_protection",
+      "wiki" : "Equal Protection Clause"
+   },
+   {
+      "articleRx" : "due process|privacy|unenumerated|fundamental right|abortion",
+      "books" : [
+         "right-to-privacy",
+         "chemerinsky-principles"
+      ],
+      "cases" : [
+         [
+            "Griswold v. Connecticut",
+            1965
+         ],
+         [
+            "Obergefell v. Hodges",
+            2015
+         ],
+         [
+            "Dobbs v. Jackson Women's Health Organization",
+            2022
+         ]
+      ],
+      "group" : "Rights",
+      "id" : "due-process",
+      "tagline" : "Fair procedures, fundamental rights, and the debate over unenumerated liberties.",
+      "title" : "Due Process & the Right to Privacy",
+      "topics" : [
+         "dueprocess"
+      ],
+      "videoQuery" : "substantive due process explained",
+      "wex" : "substantive_due_process",
+      "wiki" : "Substantive due process"
+   },
+   {
+      "articleRx" : "fourth amendment|search|seizure|exclusionary rule|warrant",
+      "books" : [
+         "constitution-criminal-procedure"
+      ],
+      "cases" : [
+         [
+            "Mapp v. Ohio",
+            1961
+         ],
+         [
+            "Katz v. United States",
+            1967
+         ],
+         [
+            "Carpenter v. United States",
+            2018
+         ]
+      ],
+      "group" : "Criminal Justice",
+      "id" : "fourth-amendment",
+      "tagline" : "The Fourth Amendment, warrants, and the exclusionary rule in the digital age.",
+      "title" : "Search & Seizure",
+      "topics" : [
+         "crimpro"
+      ],
+      "videoQuery" : "Fourth Amendment search and seizure explained",
+      "wex" : "fourth_amendment",
+      "wiki" : "Fourth Amendment to the United States Constitution"
+   },
+   {
+      "articleRx" : "miranda|self-incrimination|right to counsel|sixth amendment|confrontation|jury",
+      "books" : [
+         "gideons-trumpet"
+      ],
+      "cases" : [
+         [
+            "Gideon v. Wainwright",
+            1963
+         ],
+         [
+            "Miranda v. Arizona",
+            1966
+         ],
+         [
+            "Crawford v. Washington",
+            2004
+         ]
+      ],
+      "group" : "Criminal Justice",
+      "id" : "trial-rights",
+      "tagline" : "Self-incrimination, the right to counsel, juries, and confrontation.",
+      "title" : "Rights of the Accused",
+      "topics" : [
+         "crimpro"
+      ],
+      "videoQuery" : "Miranda rights right to counsel Fifth Sixth Amendment explained",
+      "wex" : "right_to_counsel",
+      "wiki" : "Sixth Amendment to the United States Constitution"
+   },
+   {
+      "articleRx" : "eighth amendment|cruel and unusual|death penalty|capital punishment",
+      "books" : [
+         "courting-death"
+      ],
+      "cases" : [
+         [
+            "Gregg v. Georgia",
+            1976
+         ],
+         [
+            "Roper v. Simmons",
+            2005
+         ]
+      ],
+      "group" : "Criminal Justice",
+      "id" : "punishment",
+      "tagline" : "The Eighth Amendment, the death penalty, and evolving standards of decency.",
+      "title" : "Cruel & Unusual Punishment",
+      "topics" : [
+         "crimpro"
+      ],
+      "videoQuery" : "Eighth Amendment cruel and unusual punishment explained",
+      "wex" : "eighth_amendment",
+      "wiki" : "Eighth Amendment to the United States Constitution"
+   },
+   {
+      "articleRx" : "taking|eminent domain|just compensation",
+      "books" : [
+         "takings-epstein"
+      ],
+      "cases" : [
+         [
+            "Penn Central Transportation Company v. New York City",
+            1978
+         ],
+         [
+            "Kelo v. New London",
+            2005
+         ]
+      ],
+      "group" : "Rights",
+      "id" : "takings",
+      "tagline" : "When the government must pay for the property it takes or regulates.",
+      "title" : "Property & Takings",
+      "topics" : [
+         "takings"
+      ],
+      "videoQuery" : "Takings Clause eminent domain explained",
+      "wex" : "takings",
+      "wiki" : "Takings Clause"
+   },
+   {
+      "articleRx" : "voting rights|right to vote|gerrymander|redistricting|one person",
+      "books" : [
+         "right-to-vote",
+         "supreme-court-election-law"
+      ],
+      "cases" : [
+         [
+            "Baker v. Carr",
+            1962
+         ],
+         [
+            "Reynolds v. Sims",
+            1964
+         ],
+         [
+            "Shelby County v. Holder",
+            2013
+         ]
+      ],
+      "group" : "Democracy",
+      "id" : "voting",
+      "tagline" : "The right to vote, one person one vote, and the law of redistricting.",
+      "title" : "Voting Rights & Democracy",
+      "topics" : [
+         "voting",
+         "districting"
+      ],
+      "videoQuery" : "voting rights Constitution explained one person one vote",
+      "wex" : "suffrage",
+      "wiki" : "Voting rights in the United States"
+   },
+   {
+      "articleRx" : "war powers|national security|military|commander in chief|habeas",
+      "books" : [
+         "war-and-responsibility",
+         "imperial-presidency"
+      ],
+      "cases" : [
+         [
+            "Hamdi v. Rumsfeld",
+            2004
+         ],
+         [
+            "Boumediene v. Bush",
+            2008
+         ]
+      ],
+      "group" : "Structure",
+      "id" : "war-powers",
+      "tagline" : "Who decides when the country goes to war, and the limits of wartime power.",
+      "title" : "War Powers & National Security",
+      "topics" : [
+         "security"
+      ],
+      "videoQuery" : "war powers Constitution Congress President explained",
+      "wex" : "war_powers",
+      "wiki" : "War Powers Clause"
+   }
+]

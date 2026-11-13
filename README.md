@@ -1,0 +1,63 @@
+# Lex Constitutio
+
+A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) built from openly published metadata.
+
+## Sections
+- **Articles:** about 22,600 constitutional law articles from 27 law reviews. Includes full-text search, a topic taxonomy (5 areas, 29 subtopics), filters, author pages, and Bluebook and BibTeX citations.
+- **Impact:** OpenAlex citation counts with a percentile within each decade, a "Most cited" sort, and rankings by topic, decade and journal.
+- **Supreme Court:** about 8,500 cases from Oyez. Each has a summary, the official one-line holding (recent terms), and an opinion PDF (supremecourt.gov or Library of Congress). Argument and opinion-announcement audio plays on the page with a synced, click-to-seek transcript.
+- **Lectures:** about 230 lectures and debates from law schools, universities and constitutional institutions, embedded from YouTube.
+- **Guide:** 20 beginner topics. Each has a Wikipedia overview, a Wex link, explainer videos, landmark cases, and starter articles.
+- **Books:** 76 curated major works (`scripts/books.json`) with covers, Goodreads ratings, matched law review book reviews, and Amazon, publisher, Goodreads and Open Library links. Guide topics link 1–2 introductory books each.
+- **My list:** a saved bibliography with Bluebook and BibTeX export.
+
+## Data sources
+| Source | Used for | Script |
+|---|---|---|
+| Digital Commons OAI-PMH | 16 law reviews (Michigan, Chicago, Duke, Cornell, Constitutional Commentary, …) | `harvest.sh` |
+| WordPress REST API and article pages | NYU, Texas, UCLA (and their bylines) | `harvest.sh`, `enrich.sh` |
+| OpenAlex API | Harvard, Yale, Columbia, Virginia, California, Penn, Stanford, Georgetown, plus citation counts | `openalex.sh`, `openalex_flatten.pl` |
+| Oyez API | Case lists (build time); facts, audio, transcripts (fetched live in the browser) | `scotus.sh` |
+| supremecourt.gov | Slip-opinion PDFs and holdings (OT2017–), argument transcript PDFs | `scotus.sh` |
+| Library of Congress | *U.S. Reports* PDFs (through vol. 576) | constructed in `build_extras.pl` |
+| YouTube | Lecture and explainer search, embeddability check via oEmbed | `youtube.sh`, `yt_search.pl` |
+| Wikipedia REST API | Guide overviews (CC BY-SA) | `wiki.sh` |
+| Open Library API | Book covers, ISBNs, page counts | `books.sh` |
+| Goodreads search suggestions (unofficial; Goodreads has no public API) | Book ratings, descriptions | `books.sh` |
+
+`scripts/sources.tsv` lists the journals. `scripts/guide.json` defines the guide topics and their landmark cases. `scripts/yt_queries.tsv` defines the lecture searches.
+
+## Rebuilding
+Run these from the project root. The shell and Perl steps need Git Bash, and `build.ps1` needs Windows PowerShell.
+
+```bash
+bash scripts/harvest.sh                 # repository and WordPress journals (about 15 min)
+bash scripts/openalex.sh                # OpenAlex journals and citation counts (about 250 requests)
+perl scripts/openalex_flatten.pl
+bash scripts/scotus.sh                  # Oyez lists and supremecourt.gov listings
+bash scripts/youtube.sh                 # lecture and guide video searches
+bash scripts/wiki.sh                    # guide overviews
+bash scripts/books.sh                   # book metadata and ratings (cached; delete data/raw/books/<id>.* to refresh)
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1     # writes docs/data/articles.js
+bash scripts/enrich.sh                  # bylines for new WordPress articles, then re-run build.ps1
+perl scripts/build_extras.pl            # writes scotus.js, lectures.js, guide.js, books.js
+```
+
+OpenAlex works without an API key, but unkeyed requests share a small daily budget per IP address. If `openalex.sh` starts returning errors, wait a day or add `&api_key=…` to its URL.
+
+## Running
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/serve.ps1 -Port 8080
+```
+Then open http://localhost:8080. The site is fully static, so `docs/` can be deployed to any web host. Oyez case details and audio are fetched from api.oyez.org in the visitor's browser.
+
+## Hosting on GitHub Pages
+The site is served from the `docs/` folder of the `main` branch (Settings → Pages → Deploy from a branch → `main` / `/docs`).
+After rebuilding the data, commit the changed files in `docs/data/` and push, and Pages redeploys automatically.
+`data/raw/` is git-ignored because it can be regenerated.
+
+## Known limitations
+- Citation counts exist for about 8,000 articles. They are mostly for journals that OpenAlex covers well, and are sparse for BYU, Northwestern, Hastings, W&M and the WordPress journals.
+- OpenAlex sometimes credits a reviewed book's citations to its review. Repeated titles are flagged as reviews, but a few single reviews of famous books still rank high.
+- Georgetown has little coverage in OpenAlex.
+- Opinion PDFs are missing for roughly the 2015–2016 terms, which fall between Library of Congress coverage and the slip-opinion listings. Those cases link to Justia.
