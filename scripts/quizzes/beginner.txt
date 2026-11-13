@@ -1,0 +1,726 @@
+# Beginner's Guide quizzes. Format:
+#   ## guide:<topic-id>
+#   Q: question
+#   - wrong answer
+#   * correct answer
+#   E: explanation shown after answering
+
+## guide:judicial-review
+Q: Which case first established that federal courts may refuse to enforce a statute that conflicts with the Constitution?
+- McCulloch v. Maryland
+* Marbury v. Madison
+- Cooper v. Aaron
+- Gibbons v. Ogden
+E: In Marbury v. Madison (1803), Chief Justice Marshall reasoned that a written constitution limiting Congress would be meaningless if courts had to enforce laws that violate it.
+
+Q: Where does the text of the Constitution expressly grant courts the power of judicial review?
+- Article III, Section 1
+- The Supremacy Clause of Article VI
+- The Tenth Amendment
+* Nowhere; judicial review is inferred from the Constitution's structure and the judicial role
+E: Judicial review is not spelled out in the text. Marbury inferred it from the written Constitution, the Supremacy Clause, the judicial oath and the nature of judging.
+
+Q: In Cooper v. Aaron (1958), what did the Court tell Arkansas officials resisting school desegregation?
+- That Brown v. Board applied only to Kansas
+* That state officials are bound by the Supreme Court's interpretation of the Constitution
+- That desegregation could be postponed indefinitely
+- That the question was a political question for Congress
+E: Cooper declared that "the federal judiciary is supreme in the exposition of the law of the Constitution," binding state officials to Brown.
+
+Q: What is the difference between judicial review and judicial supremacy?
+* Judicial review is the power to refuse to apply an unconstitutional law in a case; judicial supremacy is the claim that the Court's interpretations bind everyone
+- They are two names for the same doctrine
+- Judicial supremacy applies only to state courts
+- Judicial review applies only to federal statutes, judicial supremacy only to state laws
+E: The two ideas come apart. Departmentalists accept judicial review but deny that the other branches must always defer to the Court's reading of the Constitution.
+
+Q: The "counter-majoritarian difficulty," a phrase coined by Alexander Bickel, refers to what problem?
+- Courts are too slow to decide cases
+* Unelected judges can strike down laws passed by elected majorities
+- The Senate can block a majority of the House
+- States can ignore federal court rulings
+E: Bickel's The Least Dangerous Branch framed the central puzzle of judicial review: how unelected judges can legitimately override democratic majorities.
+
+## guide:interpretation
+Q: Which statement best describes original public meaning originalism?
+- The Constitution means whatever the framers privately intended
+* Constitutional text should be read as a reasonable reader understood it when it was ratified
+- The Constitution's meaning evolves with society's values
+- Courts should follow only their own precedents
+E: Modern originalism focuses on the public meaning of the words at ratification rather than the subjective intentions of the drafters.
+
+Q: Living constitutionalism holds that:
+- The Constitution can be changed only by Article V amendment
+* Constitutional meaning can develop over time, often through precedent and changing understandings
+- Judges should always defer to Congress
+- Only the text matters, not history
+E: Living constitutionalists, such as David Strauss in The Living Constitution, emphasize common-law-style development through precedent.
+
+Q: District of Columbia v. Heller (2008) is often cited as an example of:
+- A purely precedent-based decision
+* Extensive originalist analysis of a constitutional provision
+- The political question doctrine
+- Judicial deference to the legislature
+E: Both Justice Scalia's majority and Justice Stevens's dissent devoted most of their opinions to the historical meaning of the Second Amendment.
+
+Q: In Home Building & Loan v. Blaisdell (1934), the Court upheld a mortgage moratorium despite the Contracts Clause. Why is the case often discussed in debates over interpretation?
+- It adopted a strict originalist reading of the clause
+* It read the clause flexibly in light of an economic emergency, which critics see as departing from original meaning
+- It held the Contracts Clause unconstitutional
+- It was decided under the political question doctrine
+E: Blaisdell is a classic example of reading constitutional text in light of changed circumstances, and originalists often criticize it on that ground.
+
+Q: "Stare decisis" refers to:
+- The rule that statutes override the Constitution
+* The principle that courts should generally follow precedent
+- The power of the President to interpret the Constitution
+- The requirement that cases be decided unanimously
+E: Stare decisis ("to stand by things decided") promotes stability, though the Court treats it as weaker in constitutional cases.
+
+## guide:incorporation
+Q: Barron v. Baltimore (1833) held that the Bill of Rights:
+* Limited only the federal government, not the states
+- Applied fully to the states
+- Applied only to criminal cases
+- Was unenforceable in court
+E: Chief Justice Marshall held the Fifth Amendment's Takings Clause did not restrain the city of Baltimore, because the Bill of Rights limited only the national government.
+
+Q: Through which clause has the Court applied most of the Bill of Rights to the states?
+- The Privileges or Immunities Clause
+* The Due Process Clause of the Fourteenth Amendment
+- The Supremacy Clause
+- The Necessary and Proper Clause
+E: After the Slaughter-House Cases narrowed the Privileges or Immunities Clause, the Court used Fourteenth Amendment due process to "incorporate" rights one by one.
+
+Q: McDonald v. City of Chicago (2010) held that:
+- The Second Amendment protects only militia service
+* The Second Amendment right recognized in Heller applies against the states
+- Cities may ban all handguns
+- Incorporation applies only to the First Amendment
+E: McDonald incorporated the individual right to keep and bear arms against state and local governments.
+
+Q: Timbs v. Indiana (2019) incorporated which protection?
+- The right to a grand jury
+- The Third Amendment
+* The Excessive Fines Clause of the Eighth Amendment
+- The Seventh Amendment civil jury right
+E: Timbs held that the protection against excessive fines, which dates back to Magna Carta, is fundamental and applies to the states.
+
+Q: Which of these has the Supreme Court NOT incorporated against the states?
+- Freedom of speech
+- The right to counsel
+* The Fifth Amendment requirement of a grand jury indictment
+- Protection against unreasonable searches
+E: Hurtado v. California (1884) held that states need not use grand juries, and that remains the law.
+
+## guide:separation-of-powers
+Q: Which branch of the federal government does Article I create?
+* Congress
+- The President
+- The Supreme Court
+- The states
+E: Article I vests "all legislative Powers herein granted" in a Congress made up of a Senate and a House of Representatives.
+
+Q: In Youngstown Sheet & Tube Co. v. Sawyer (1952), the Court held that President Truman's seizure of the steel mills was:
+- Valid under his commander-in-chief power
+* Unconstitutional, because the President lacked authority from the Constitution or Congress
+- A political question
+- Valid because of the Korean War emergency
+E: The seizure was struck down. Justice Jackson's concurrence set out the famous three-category framework for presidential power.
+
+Q: INS v. Chadha (1983) struck down the "legislative veto" because it violated:
+- The First Amendment
+* Bicameralism and presentment, the requirements that laws pass both houses and go to the President
+- The Tenth Amendment
+- The Appointments Clause
+E: A one-house resolution overriding an executive decision was lawmaking without passage by both houses and presentment to the President.
+
+Q: Which of these is a "check" the Senate has on the President?
+- Vetoing laws
+* Confirming or rejecting nominees and treaties
+- Pardoning offenders
+- Commanding the military
+E: The Senate gives "advice and consent" to appointments (by majority) and to treaties (by two-thirds).
+
+Q: Morrison v. Olson (1988) upheld a law that:
+* Protected an independent counsel from being fired except for good cause
+- Allowed Congress to fire executive officers
+- Gave the President a line-item veto
+- Abolished the Department of Justice
+E: The Court found the good-cause removal limit did not unduly interfere with the President's duties. Justice Scalia's lone dissent is now often quoted.
+
+## guide:executive-power
+Q: United States v. Nixon (1974) held that executive privilege:
+- Is absolute and cannot be overcome
+* Exists but is qualified, and here yielded to the need for evidence in a criminal trial
+- Does not exist at all
+- Applies only to national security matters
+E: The Court ordered President Nixon to produce the White House tapes, which led to his resignation.
+
+Q: In Justice Jackson's Youngstown framework, presidential power is at its "lowest ebb" when the President:
+- Acts with congressional authorization
+- Acts where Congress has said nothing
+* Acts contrary to the express or implied will of Congress
+- Acts in foreign affairs
+E: At the lowest ebb, the President can rely only on his own constitutional powers minus whatever powers Congress has over the matter.
+
+Q: Trump v. United States (2024) addressed whether a former President:
+- Can run for a third term
+* Has immunity from criminal prosecution for official acts
+- Can be impeached after leaving office
+- Can pardon himself
+E: The Court held that a former President has absolute immunity for core constitutional acts, at least presumptive immunity for other official acts, and none for unofficial acts.
+
+Q: The "unitary executive" theory holds that:
+* The President must be able to control, including by removing, officers who execute federal law
+- The executive branch should be run by a committee
+- States share executive power with the President
+- Congress controls the executive branch
+E: The theory draws on Article II's Vesting Clause, which vests "the executive Power" in a single President.
+
+Q: Which power does the President NOT have under Article II?
+- Granting pardons for federal offenses
+- Making treaties with Senate consent
+* Declaring war
+- Nominating federal judges
+E: Article I gives Congress the power to declare war. The President is commander in chief of the armed forces.
+
+## guide:federalism
+Q: McCulloch v. Maryland (1819) held that:
+* Congress could create a national bank, and Maryland could not tax it
+- States could tax federal institutions
+- Congress has only the powers expressly listed
+- The national bank was unconstitutional
+E: Marshall read the Necessary and Proper Clause broadly and declared that "the power to tax involves the power to destroy."
+
+Q: The Tenth Amendment provides that:
+- Congress may regulate any activity
+* Powers not delegated to the United States are reserved to the states or the people
+- States may leave the Union
+- Federal law is supreme
+E: The Tenth Amendment confirms the principle of enumerated federal powers.
+
+Q: Printz v. United States (1997) held that Congress may not:
+- Regulate guns at all
+* Command state officers to carry out a federal regulatory program
+- Give money to states
+- Preempt state law
+E: Requiring local sheriffs to run background checks under the Brady Act violated the "anti-commandeering" principle.
+
+Q: New York v. United States (1992) struck down a provision that:
+- Banned radioactive waste
+* Required states to take title to radioactive waste or enact federal regulations
+- Taxed nuclear power plants
+- Gave states money for waste disposal
+E: Congress cannot compel state legislatures to enact or administer a federal program. It can offer incentives or regulate directly.
+
+Q: In the American system, the general "police power" to regulate health, safety and welfare belongs primarily to:
+- Congress
+* The states
+- The President
+- The federal courts
+E: The national government has only enumerated powers. States keep a general power to legislate for the public good.
+
+## guide:commerce-clause
+Q: Gibbons v. Ogden (1824) defined "commerce" to include:
+- Only the buying and selling of goods
+* Commercial intercourse, including navigation
+- Only foreign trade
+- Agriculture and manufacturing
+E: Marshall rejected a narrow "traffic" definition. Commerce, he said, "is intercourse," which includes navigation between states.
+
+Q: In Wickard v. Filburn (1942), a farmer was penalized for growing wheat that:
+- He sold across state lines
+* He grew for use on his own farm
+- He imported from Canada
+- He gave to charity
+E: The Court aggregated the effect of all such home-grown wheat on the national market. That substantial effect justified federal regulation.
+
+Q: United States v. Lopez (1995) was significant because:
+* It was the first time in decades the Court held that a law exceeded the commerce power
+- It upheld a federal gun law
+- It expanded federal power over schools
+- It overruled Gibbons v. Ogden
+E: The Gun-Free School Zones Act regulated noneconomic activity with only an attenuated connection to interstate commerce.
+
+Q: Which is NOT one of the three categories of activity Congress may regulate under the Commerce Clause?
+- Channels of interstate commerce
+- Instrumentalities of interstate commerce
+- Activities that substantially affect interstate commerce
+* Any activity Congress finds morally harmful
+E: Lopez identified the three categories. Congress has no general police power.
+
+Q: In NFIB v. Sebelius (2012), the Affordable Care Act's individual mandate was ultimately upheld under:
+- The Commerce Clause
+* The taxing power
+- The Necessary and Proper Clause alone
+- The Spending Clause
+E: Five Justices said the Commerce Clause does not let Congress compel people to buy insurance. A different five upheld the mandate's penalty as a tax.
+
+## guide:standing
+Q: What are the three elements of constitutional standing under Lujan v. Defenders of Wildlife?
+* Injury in fact, causation, and redressability
+- Citizenship, residence, and age
+- Ripeness, mootness, and finality
+- Notice, hearing, and appeal
+E: The plaintiff must show a concrete and particularized injury, fairly traceable to the defendant, that a court decision would likely redress.
+
+Q: Why do federal courts require standing?
+- To reduce court costs
+* Because Article III limits federal courts to deciding actual "cases" and "controversies"
+- Because the Tenth Amendment requires it
+- To protect the President
+E: Standing keeps courts from issuing advisory opinions and keeps them within the judicial role.
+
+Q: Massachusetts v. EPA (2007) gave states "special solicitude" in standing analysis. What was the dispute about?
+- School funding
+* EPA's refusal to regulate greenhouse gas emissions from vehicles
+- Voting rights
+- Gun control
+E: The Court found Massachusetts had standing based on harm to its coastline from climate change.
+
+Q: A citizen sues because she believes a federal program is wasteful but suffers no personal harm. A court will most likely:
+- Hear the case because all citizens have an interest in lawful government
+* Dismiss for lack of standing because it is a generalized grievance
+- Refer the case to Congress
+- Award nominal damages
+E: Generalized grievances shared by all citizens do not satisfy Article III's requirement of a particularized injury.
+
+Q: "Mootness" means a case:
+- Was filed too early
+* No longer presents a live controversy
+- Involves a political question
+- Lacks a proper defendant
+E: If events resolve the dispute while the case is pending, it becomes moot. There are exceptions, such as for disputes "capable of repetition, yet evading review."
+
+## guide:administrative-state
+Q: The "nondelegation doctrine" concerns:
+* Whether Congress may hand off its lawmaking power to agencies
+- Whether states may delegate power to cities
+- Whether the President may delegate the pardon power
+- Whether courts may delegate cases to magistrates
+E: Article I vests legislative power in Congress. The Court allows delegation only with an "intelligible principle" to guide the agency.
+
+Q: Chevron v. NRDC (1984) instructed courts to:
+- Ignore agency interpretations
+* Defer to reasonable agency interpretations of ambiguous statutes
+- Always side with regulated parties
+- Let Congress decide statutory meaning
+E: Chevron deference governed for 40 years until Loper Bright overruled it in 2024.
+
+Q: Loper Bright Enterprises v. Raimondo (2024) held that:
+- Agencies may make binding law without Congress
+* Courts must exercise independent judgment about what statutes mean, without Chevron deference
+- The nondelegation doctrine is abolished
+- Fishing regulations are unconstitutional
+E: Relying on the Administrative Procedure Act and the judicial role, the Court overruled Chevron.
+
+Q: Under the "major questions doctrine," as in West Virginia v. EPA (2022):
+* Agencies need clear congressional authorization to decide issues of vast economic and political significance
+- Only Congress may regulate the economy
+- Major questions must be decided by the Supreme Court
+- Agencies may act on any question Congress has not addressed
+E: The Court held EPA lacked clear authority to restructure the power sector by shifting generation away from coal.
+
+Q: The phrase "intelligible principle" comes from which case?
+- Marbury v. Madison
+* J.W. Hampton, Jr. & Co. v. United States (1928)
+- Chevron v. NRDC
+- INS v. Chadha
+E: J.W. Hampton upheld a tariff delegation and supplied the test that has governed delegation ever since.
+
+## guide:free-speech
+Q: Under Brandenburg v. Ohio (1969), speech advocating illegal action can be punished only if it is:
+- Offensive to most people
+* Directed to inciting imminent lawless action and likely to produce it
+- Critical of the government
+- Spoken by a political party member
+E: Brandenburg protected a Klan leader's speech and set the modern incitement test.
+
+Q: New York Times v. Sullivan (1964) requires a public official suing for defamation to prove:
+- Only that the statement was false
+* "Actual malice": knowledge of falsity or reckless disregard for the truth
+- That the newspaper made a profit
+- That the statement caused physical harm
+E: The rule protects robust debate about public officials, even when it includes some errors.
+
+Q: Tinker v. Des Moines (1969) held that students wearing black armbands to protest the Vietnam War:
+- Could be suspended for any reason
+* Were protected because their speech did not substantially disrupt school
+- Lost all First Amendment rights at school
+- Could be punished because the armbands were political
+E: Students do not "shed their constitutional rights … at the schoolhouse gate."
+
+Q: A law banning all signs that criticize the mayor is an example of:
+- A content-neutral time, place and manner rule
+* Viewpoint discrimination
+- A permissible commercial speech rule
+- A prior restraint on obscenity
+E: Targeting speech because of the speaker's opinion is the most disfavored form of content discrimination.
+
+Q: Which of these categories is NOT protected by the First Amendment?
+- Flag burning
+- Offensive political speech
+* True threats of violence
+- Hate speech that does not threaten or incite
+E: True threats are unprotected. Flag burning (Texas v. Johnson) and offensive political speech are protected.
+
+## guide:religion
+Q: The two religion clauses of the First Amendment are:
+* The Establishment Clause and the Free Exercise Clause
+- The Speech Clause and the Press Clause
+- The Due Process Clause and the Equal Protection Clause
+- The Commerce Clause and the Spending Clause
+E: Congress may make no law "respecting an establishment of religion, or prohibiting the free exercise thereof."
+
+Q: Employment Division v. Smith (1990) held that:
+- Religious exemptions are always required
+* Neutral, generally applicable laws need not exempt religious practices
+- States may ban religious practices they disfavor
+- Peyote use is constitutionally protected
+E: Smith denied an exemption for sacramental peyote use. Congress responded with the Religious Freedom Restoration Act (RFRA).
+
+Q: Kennedy v. Bremerton School District (2022) involved:
+- A school banning religious clubs
+* A football coach praying at midfield after games
+- A state funding religious schools
+- A city displaying a nativity scene
+E: The Court held the coach's prayer was protected, and replaced the Lemon test with a focus on historical practices and understandings.
+
+Q: Which phrase did Thomas Jefferson famously use to describe the Establishment Clause?
+- "A more perfect union"
+* "A wall of separation between church and state"
+- "Liberty of conscience"
+- "No religious test"
+E: Jefferson's 1802 letter to the Danbury Baptists, later quoted in Everson v. Board of Education (1947).
+
+Q: Under current law, a law that targets a particular religious practice must satisfy:
+- Rational basis review
+* Strict scrutiny
+- No review at all
+- Intermediate scrutiny
+E: Church of the Lukumi Babalu Aye v. Hialeah (1993) struck down ordinances aimed at animal sacrifice by Santería practitioners.
+
+## guide:second-amendment
+Q: District of Columbia v. Heller (2008) held that the Second Amendment protects:
+- Only the right of states to maintain militias
+* An individual right to keep and bear arms, including handguns in the home for self-defense
+- An unlimited right to own any weapon
+- Only hunting rifles
+E: Heller struck down D.C.'s handgun ban and noted that the right is "not unlimited."
+
+Q: New York State Rifle & Pistol Ass'n v. Bruen (2022) requires a gun regulation to be:
+- Supported by a compelling interest
+* Consistent with the nation's historical tradition of firearm regulation
+- Approved by a majority of states
+- Narrowly tailored and the least restrictive means
+E: Bruen replaced means-end scrutiny with a test based on text, history and tradition.
+
+Q: United States v. Rahimi (2024) upheld a federal law disarming people who:
+* Are subject to domestic-violence restraining orders
+- Are under 21
+- Live in public housing
+- Have unpaid taxes
+E: The Court found the law consistent with historical traditions of disarming people who pose a credible threat to others.
+
+Q: Which case applied the Second Amendment to state and local governments?
+- Heller
+* McDonald v. City of Chicago
+- Bruen
+- Miller
+E: McDonald (2010) incorporated the right through the Fourteenth Amendment.
+
+Q: Heller said which of the following kinds of laws are "presumptively lawful"?
+- Bans on handguns in the home
+* Prohibitions on possession by felons and in sensitive places like schools
+- Bans on all public carry
+- Requirements that guns be kept disassembled at home
+E: The Court listed "longstanding prohibitions" that its decision did not cast doubt on.
+
+## guide:equal-protection
+Q: Brown v. Board of Education (1954) held that:
+* Racially segregated public schools are inherently unequal
+- Separate but equal facilities are constitutional
+- Only private schools may segregate
+- Desegregation must happen immediately in every district
+E: Brown overruled Plessy v. Ferguson in public education. Brown II (1955) ordered desegregation "with all deliberate speed."
+
+Q: Which level of scrutiny applies to government classifications based on race?
+- Rational basis
+- Intermediate scrutiny
+* Strict scrutiny
+- No scrutiny
+E: Racial classifications must be narrowly tailored to a compelling government interest.
+
+Q: Loving v. Virginia (1967) struck down:
+- School segregation
+* Laws banning interracial marriage
+- Poll taxes
+- Literacy tests
+E: Virginia's argument that the law applied equally to both races failed. The racial classification itself was the problem.
+
+Q: Students for Fair Admissions v. Harvard (2023) held that:
+* Harvard's and UNC's race-conscious admissions programs violated equal protection
+- Affirmative action is required at public universities
+- Universities may use racial quotas
+- Admissions decisions are political questions
+E: The programs lacked measurable goals and a logical end point, and they used race as a negative.
+
+Q: Sex-based classifications receive which level of scrutiny?
+- Rational basis
+* Intermediate scrutiny, requiring an "exceedingly persuasive justification"
+- Strict scrutiny
+- None
+E: Craig v. Boren (1976) and United States v. Virginia (1996) set the standard.
+
+## guide:due-process
+Q: "Substantive due process" protects:
+- Only fair procedures
+* Certain fundamental liberties from government interference, regardless of the procedures used
+- Only property rights
+- Only criminal defendants
+E: Substantive due process is the doctrine behind rights to marry, to raise one's children, and to make certain intimate decisions.
+
+Q: Griswold v. Connecticut (1965) recognized a right of married couples to:
+* Use contraception
+- Divorce
+- Adopt children
+- Refuse medical treatment
+E: Justice Douglas found the right in the "penumbras" of specific Bill of Rights guarantees.
+
+Q: Dobbs v. Jackson Women's Health Organization (2022) held that:
+- Abortion is a fundamental right
+* The Constitution does not confer a right to abortion, overruling Roe and Casey
+- States must permit abortion until viability
+- Congress must decide abortion policy
+E: Dobbs applied Glucksberg's history-and-tradition test and returned abortion regulation to elected bodies.
+
+Q: Under Washington v. Glucksberg (1997), an unenumerated right is fundamental only if it is:
+- Popular today
+* Deeply rooted in the nation's history and tradition and implicit in ordered liberty
+- Recognized by a majority of states
+- Approved by Congress
+E: Glucksberg rejected a claimed right to physician-assisted suicide under this test.
+
+Q: Obergefell v. Hodges (2015) held that:
+* The Fourteenth Amendment requires states to license and recognize same-sex marriages
+- States may choose whether to allow same-sex marriage
+- Marriage is not a fundamental right
+- Only Congress can define marriage
+E: The Court relied on both due process and equal protection.
+
+## guide:fourth-amendment
+Q: The Fourth Amendment protects against:
+* Unreasonable searches and seizures
+- Self-incrimination
+- Excessive bail
+- Double jeopardy
+E: It also requires warrants to be supported by probable cause and to describe particularly what is to be searched.
+
+Q: Mapp v. Ohio (1961) applied which rule to the states?
+- The Miranda warnings
+* The exclusionary rule, barring illegally obtained evidence from trial
+- The right to a jury
+- The right to counsel
+E: Mapp extended the exclusionary rule from Weeks v. United States (1914) to state prosecutions.
+
+Q: Katz v. United States (1967) held that the Fourth Amendment protects:
+- Only physical property
+* People, not places, including conversations where there is a reasonable expectation of privacy
+- Only homes
+- Only written papers
+E: Wiretapping a public phone booth was a search. Justice Harlan's "reasonable expectation of privacy" test came from his concurrence.
+
+Q: Carpenter v. United States (2018) held that police generally need a warrant to obtain:
+- Trash left at the curb
+* Historical cell-site location records
+- Bank records
+- License plate numbers
+E: The Court declined to extend the "third-party doctrine" to the detailed location records phones generate.
+
+Q: The founders' hostility to "general warrants" and "writs of assistance" helped produce which amendment?
+- The First
+* The Fourth
+- The Sixth
+- The Tenth
+E: General warrants let officers search wherever they pleased. The Fourth Amendment requires particularity.
+
+## guide:trial-rights
+Q: Gideon v. Wainwright (1963) held that:
+* States must provide counsel to defendants charged with felonies who cannot afford a lawyer
+- Defendants must represent themselves
+- Counsel is required only in federal court
+- Counsel is required only in capital cases
+E: Clarence Earl Gideon's handwritten petition led the Court to overrule Betts v. Brady.
+
+Q: Miranda v. Arizona (1966) requires police to warn suspects of their rights before:
+- Any conversation
+* Custodial interrogation
+- Arrest only
+- Trial
+E: The warnings protect the Fifth Amendment privilege against self-incrimination in the coercive setting of custody.
+
+Q: The Sixth Amendment's Confrontation Clause, as interpreted in Crawford v. Washington (2004), bars:
+- All hearsay evidence
+* Testimonial statements of a witness who does not testify, unless the witness is unavailable and the defendant had a prior chance to cross-examine
+- Testimony from police officers
+- Evidence from foreign countries
+E: Crawford tied the clause to its historical core: preventing trial by affidavit.
+
+Q: Which amendment protects against being "twice put in jeopardy" for the same offense?
+- The Fourth
+* The Fifth
+- The Sixth
+- The Eighth
+E: The Double Jeopardy Clause is in the Fifth Amendment, alongside the privilege against self-incrimination and the grand jury requirement.
+
+Q: Ramos v. Louisiana (2020) held that:
+* Conviction for a serious offense requires a unanimous jury, in state and federal court
+- Juries are optional in state courts
+- Non-unanimous verdicts are acceptable
+- Jury trials apply only to federal crimes
+E: Ramos overruled Apodaca v. Oregon and ended non-unanimous verdicts in Louisiana and Oregon.
+
+## guide:punishment
+Q: The Eighth Amendment prohibits:
+* Cruel and unusual punishments, excessive bail, and excessive fines
+- Unreasonable searches
+- Self-incrimination
+- Double jeopardy
+E: The text was drawn almost word for word from the English Bill of Rights of 1689.
+
+Q: Gregg v. Georgia (1976) held that:
+- The death penalty is always unconstitutional
+* The death penalty is not per se unconstitutional when imposed under guided-discretion procedures
+- Only federal executions are permitted
+- Executions must be public
+E: Gregg ended the four-year moratorium that followed Furman v. Georgia (1972).
+
+Q: Roper v. Simmons (2005) held that the death penalty may not be imposed on:
+- Anyone convicted of a nonviolent crime
+* Offenders who were under 18 when they committed the crime
+- Women
+- First-time offenders
+E: The Court relied on "evolving standards of decency" and national consensus.
+
+Q: The phrase "evolving standards of decency that mark the progress of a maturing society" comes from:
+* Trop v. Dulles (1958)
+- Marbury v. Madison
+- Gideon v. Wainwright
+- McCulloch v. Maryland
+E: Trop struck down revoking citizenship as a punishment for desertion. The phrase became the touchstone of Eighth Amendment analysis.
+
+Q: Timbs v. Indiana (2019) involved the forfeiture of:
+- A house
+* A Land Rover worth far more than the maximum fine for the drug offense
+- A bank account
+- A business license
+E: The Court held that the Excessive Fines Clause applies to the states.
+
+## guide:takings
+Q: The Takings Clause requires that private property taken for public use be accompanied by:
+* Just compensation
+- A jury trial
+- Congressional approval
+- The owner's consent
+E: The clause does not forbid takings. It conditions them on payment.
+
+Q: Kelo v. City of New London (2005) held that "public use" includes:
+- Only roads and government buildings
+* Economic development under a comprehensive plan, even when the land goes to private developers
+- Only uses open to the public
+- Nothing involving private parties
+E: The decision prompted widespread state reforms limiting eminent domain.
+
+Q: Penn Central v. New York City (1978) considered whether a historic landmark designation that barred a skyscraper above Grand Central Terminal was a taking. The Court:
+- Required compensation
+* Held it was not a taking, using a balancing test
+- Held landmarks cannot be designated
+- Declared the issue a political question
+E: Penn Central's factors (economic impact, investment-backed expectations, and the character of the government action) govern most regulatory takings claims.
+
+Q: Under Lucas v. South Carolina Coastal Council (1992), a regulation is a per se taking when it:
+* Deprives land of all economically beneficial use
+- Reduces property value by any amount
+- Applies to coastal property
+- Is enacted by a state rather than Congress
+E: The exception is uses already prohibited by background principles of nuisance or property law.
+
+Q: A permanent physical occupation of property authorized by the government, such as a cable box on a building, is:
+- Never a taking
+* A taking regardless of how small
+- A taking only if it is large
+- Subject to the political question doctrine
+E: Loretto v. Teleprompter (1982); compare Cedar Point Nursery v. Hassid (2021).
+
+## guide:voting
+Q: Baker v. Carr (1962) held that challenges to legislative apportionment:
+- Are political questions courts cannot decide
+* Are justiciable in federal court
+- Must be decided by Congress
+- Apply only to Congress, not state legislatures
+E: Baker opened the courthouse doors to malapportionment claims.
+
+Q: The principle of "one person, one vote" requires:
+* Legislative districts to have roughly equal populations
+- Every adult to vote in every election
+- Each state to have one senator
+- Voting by secret ballot
+E: Reynolds v. Sims (1964) applied it to both houses of state legislatures: "Legislators represent people, not trees or acres."
+
+Q: Shelby County v. Holder (2013) struck down:
+- The entire Voting Rights Act
+* The coverage formula that determined which jurisdictions needed federal preclearance
+- Voter ID laws
+- Poll taxes
+E: The Court held the formula relied on decades-old data and violated the states' equal sovereignty.
+
+Q: Rucho v. Common Cause (2019) held that partisan gerrymandering claims:
+- Must be decided under strict scrutiny
+* Present political questions beyond the reach of federal courts
+- Are always unconstitutional
+- Can be decided only by the Supreme Court
+E: The Court found no judicially manageable standard. State courts and legislatures can still address the problem.
+
+Q: Which amendment prohibits denying the vote based on race?
+- The Thirteenth
+- The Fourteenth
+* The Fifteenth
+- The Nineteenth
+E: Ratified in 1870. The Nineteenth Amendment (1920) prohibits sex discrimination in voting.
+
+## guide:war-powers
+Q: Who has the constitutional power to declare war?
+* Congress
+- The President
+- The Secretary of Defense
+- The Senate alone
+E: Article I, Section 8 gives Congress the power "To declare War." The President is commander in chief.
+
+Q: The War Powers Resolution of 1973 requires the President to:
+- Obtain a declaration of war before any military action
+* Report to Congress within 48 hours and end unauthorized hostilities within 60–90 days
+- Consult the Supreme Court
+- Get approval from the United Nations
+E: Presidents of both parties have questioned its constitutionality.
+
+Q: Hamdi v. Rumsfeld (2004) held that a U.S. citizen detained as an enemy combatant:
+- Has no rights
+* Is entitled to notice and a meaningful opportunity to contest the detention before a neutral decisionmaker
+- Must be tried by jury immediately
+- Must be released
+E: Justice O'Connor's plurality wrote that "a state of war is not a blank check for the President."
+
+Q: Boumediene v. Bush (2008) held that detainees at Guantanamo Bay:
+* Have the constitutional privilege of habeas corpus
+- Have no rights because Guantanamo is outside the U.S.
+- Must be tried in state court
+- Are protected only by treaties
+E: The Military Commissions Act's elimination of habeas jurisdiction was an unconstitutional suspension of the writ.
+
+Q: The Suspension Clause provides that the writ of habeas corpus may be suspended only:
+- By the President at any time
+* When in cases of rebellion or invasion the public safety may require it
+- By the Supreme Court
+- During presidential elections
+E: Article I, Section 9. Lincoln's 1861 suspension without Congress was famously challenged in Ex parte Merryman.

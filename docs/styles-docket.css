@@ -1,0 +1,42 @@
+/* Current docket: calendar, status badges, briefs, precedents */
+.cal { display: grid; gap: 18px; }
+.cal-sitting { background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+.cal-h { font: 500 20px var(--serif); margin-bottom: 12px; }
+.cal-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.cal-day { display: flex; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.cal-day.past { opacity: .62; }
+.cal-day.next { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+.cal-date { flex: 0 0 56px; text-align: center; border-right: 1px solid var(--line); padding-right: 10px; }
+.cal-date span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); font-weight: 700; }
+.cal-date b { display: block; font: 500 17px/1.2 var(--serif); }
+.cal-date em { display: inline-block; margin-top: 4px; font-style: normal; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #fff; background: var(--accent); border-radius: 5px; padding: 1px 6px; }
+[data-theme="dark"] .cal-date em { color: #1a0f0a; }
+.cal-day ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; min-width: 0; }
+.cal-day li a { font: 500 14.5px/1.3 var(--serif); display: block; }
+.cal-day li a:hover { color: var(--accent); }
+.cal-day li span { font-size: 11.5px; color: var(--ink-3); }
+
+.status { font-weight: 700; font-size: 11.5px; letter-spacing: .03em; padding: 2px 8px; border-radius: 6px; }
+.status-argued { background: var(--accent-soft); color: var(--accent); }
+.status-scheduled { background: color-mix(in srgb, #3a7bd5 16%, transparent); color: #3a6fc0; }
+[data-theme="dark"] .status-scheduled { color: #8fb4f0; }
+.status-granted, .status-pending { background: var(--bg-sunk); color: var(--ink-2); }
+.pending-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; margin: 4px 0 20px; font-size: 14.5px; border: 1px solid var(--line); background: var(--bg-elev); }
+.pending-banner b { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; padding: 3px 8px; border-radius: 6px; background: var(--ink); color: var(--bg); }
+
+.briefs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.brief { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 12px; transition: all .15s; }
+.brief:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.brief b { font: 500 16px/1.25 var(--serif); }
+.brief span { font-size: 12.5px; color: var(--ink-3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.brief em { font-style: normal; font-size: 12px; color: var(--accent); font-weight: 600; margin-top: auto; padding-top: 4px; }
+.brief-qp { background: var(--accent-soft); border-color: transparent; }
+.brief-sub { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin: 16px 0 8px; }
+.amici { margin-top: 12px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.amici summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.amici ul { list-style: none; margin: 10px 0 0; padding: 0; max-height: 340px; overflow: auto; display: grid; gap: 6px; font-size: 13.5px; }
+.amici a { color: var(--accent); }
+.amici span, .amici em { color: var(--ink-3); font-size: 12px; font-style: normal; }
+
+.prec-group + .prec-group { margin-top: 14px; }
+.prec-h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); margin-bottom: 4px; }

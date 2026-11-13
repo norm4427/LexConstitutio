@@ -262,10 +262,10 @@
 
       <section class="section">
         <div class="features">
-          <a class="feature" href="#/guide"><span class="f-icon">◎</span><b>Beginner's guide</b><span>Twenty core topics, each with an overview, explainer videos, landmark cases and first readings.</span><em>Start learning →</em></a>
+          <a class="feature" href="#/guide"><span class="f-icon">◎</span><b>Beginner's Guide</b><span>Twenty core topics for newcomers, then an advanced, doctrine-by-doctrine treatment with tests and excerpts from the opinions.</span><em>Start learning →</em></a>
+          <a class="feature" href="#/corner"><span class="f-icon">❦</span><b>Originalist's Corner</b><span>Blackstone, The Federalist, the Convention debates, Story and the first Congresses' statutes, organized by topic.</span><em>Read the sources →</em></a>
           <a class="feature" href="#/scotus"><span class="f-icon">⚖</span><b>Supreme Court</b><span>Case summaries, opinion PDFs, and oral arguments you can play here with a synced transcript.</span><em>Browse decisions →</em></a>
-          <a class="feature" href="#/lectures"><span class="f-icon">▶</span><b>Lecture library</b><span>Lectures and debates from law schools, universities and constitutional institutions.</span><em>Watch lectures →</em></a>
-          <a class="feature" href="#/impact"><span class="f-icon">↗</span><b>Impact rankings</b><span>The most-cited constitutional scholarship, by topic, decade and journal.</span><em>See rankings →</em></a>
+          <a class="feature" href="#/impact"><span class="f-icon">↗</span><b>Most influential articles</b><span>The most-cited constitutional scholarship, by topic, decade and journal.</span><em>See rankings →</em></a>
         </div>
       </section>
 
@@ -297,7 +297,7 @@
     const maxChild = Math.max(...topics.filter(t => t.parent).map(t => topicCount[t.id] || 0), 1);
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Topics</span></div>
-        <h1>Topics</h1><p>Five areas and ${topics.filter(t => t.parent).length} subtopics. Topics are assigned automatically from each article's title, abstract, and subject keywords, so an article can sit under more than one.</p></div>
+        <h1>Topics</h1><p>Five areas and ${topics.filter(t => t.parent).length} subtopics. Topics are assigned automatically from each article's title, abstract, and subject keywords, so an article can sit under more than one.</p>${articleTabs('topics')}</div>
       <section class="section" style="padding-top:28px"><div class="topic-grid">${parents.map(p => topicCard(p, maxChild)).join('')}</div></section>
     </div>`;
   }
@@ -354,7 +354,7 @@
     if (st.from || st.to) chips.push(`<button class="chip on" data-clear="years">${st.from || '…'}–${st.to || '…'} <span class="x">✕</span></button>`);
 
     app.innerHTML = `<div class="fade-in">
-      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span>${crumbs}</div><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}</div>
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span>${crumbs}</div><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}${articleTabs('all', st.topic)}</div>
       <div class="layout">
         <aside class="sidebar" id="sidebar">
           <div class="side-block"><h4>Search within</h4>
@@ -610,6 +610,10 @@
       <p>The <em>Harvard</em>, <em>Yale</em>, <em>Columbia</em>, <em>Virginia</em>, <em>California</em>, <em>Penn</em>, <em>Stanford</em>, and <em>Georgetown</em> law reviews block automated access to their own websites. Their articles are indexed from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> metadata instead, and link to the article through its DOI (usually JSTOR) or the journal's site. Coverage of Georgetown in OpenAlex is thin. Older volumes may lack abstracts. Index last rebuilt ${esc(DATA.generated)}.</p>
       <h2>Citations and impact</h2>
       <p>Citation counts come from OpenAlex and are available for ${fmt(citedCount)} articles. The percentile compares an article with others in the index published in the same decade. OpenAlex sometimes credits a reviewed book's citations to its review. Titles that appear in more than one journal are treated as book reviews and left unranked. Law review citation data is less complete than in the sciences, so treat the counts as a rough guide.</p>
+      <h2>Advanced doctrine</h2>
+      <p>The advanced half of the Beginner's Guide is an original doctrinal treatment written for this site. It is organized after the chapter structure of Erwin Chemerinsky's <em>Constitutional Law: Principles and Policies</em> and covers judicial power, legislative and executive power, federalism, state action, due process, economic liberties, equal protection, fundamental rights, speech and religion. Excerpts from opinions are public-domain text extracted from the official <em>United States Reports</em> (Library of Congress) and supremecourt.gov slip opinions, or from Wikisource transcriptions. The open casebooks at opencasebook.org (H2O, CC BY-NC-SA) are cited as further reading.</p>
+      <h2>Originalist's Corner</h2>
+      <p>The Corner indexes the full texts of Blackstone's <em>Commentaries</em>, St. George Tucker's annotated Blackstone, Joseph Story's <em>Commentaries on the Constitution</em>, James Kent's <em>Commentaries</em>, Vattel's <em>Law of Nations</em> and Locke's <em>Two Treatises</em> (via the Lonang Institute). It also covers <em>The Federalist</em> (Project Gutenberg), Madison's Notes of the Convention debates and founding documents (the Avalon Project at Yale Law School), and the acts of the first five Congresses (<em>Statutes at Large</em>, vol. 1, via Wikisource). Passages are matched to topics automatically and should be read in context. The full texts of <em>The Federalist</em>, the founding documents and the statutes can be read in the site's library.</p>
       <h2>Supreme Court, lectures and guide</h2>
       <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (CC BY-NC). Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
     </div></div>`;
@@ -632,7 +636,10 @@
     if (!specs.every(([, g]) => window[g])) app.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading…</p></div>';
     Promise.all(specs.map(([n, g]) => loadData(n, g)))
       .then(ds => { if (token === routeToken) fn(...ds); })
-      .catch(e => { app.innerHTML = `<div class="prose"><h1>Couldn't load this section</h1><p>${esc(e.message)}</p></div>`; });
+      .catch(e => {
+        app.innerHTML = `<div class="prose"><h1>Couldn't load this section</h1><p>${esc(e.message)}. This is usually a temporary network or hosting hiccup.</p><p><button class="btn btn-primary" id="retry-load">Try again</button></p></div>`;
+        document.getElementById('retry-load').addEventListener('click', route);
+      });
   }
   // Oyez returns HTML; parse it inertly (no scripts, no image loads) and keep only paragraph text
   function htmlParas(html) {
@@ -651,7 +658,14 @@
     return new Set(topicById[id]?.parent ? [id] : [id, ...childrenOf(id).map(c => c.id)]);
   }
 
-  /* ------------------------------------------------------------ impact */
+  /* ------------------------------------------------------------ impact (a view within Articles) */
+  function articleTabs(active, topic) {
+    return `<div class="subtabs">
+      <a href="${hashFor('search', topic ? { topic } : {})}" class="${active === 'all' ? 'on' : ''}">All articles</a>
+      <a href="${hashFor('impact', topic ? { topic } : {})}" class="${active === 'impact' ? 'on' : ''}">Most influential</a>
+      <a href="#/topics" class="${active === 'topics' ? 'on' : ''}">Topics</a>
+    </div>`;
+  }
   function viewImpact(params) {
     const topic = params.get('topic') || '', dec = +params.get('dec') || 0, j = params.get('j') || '';
     const page = Math.max(1, +params.get('page') || 1);
@@ -666,9 +680,9 @@
     const go = patch => { location.hash = hashFor('impact', Object.assign({ topic, dec, j }, { page: 1 }, patch)); };
     const slice = list.slice((page - 1) * 25, page * 25);
     app.innerHTML = `<div class="fade-in">
-      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Impact</span></div>
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/search">Articles</a><span>/</span><span>Most influential</span></div>
         <h1>Most influential articles</h1>
-        <p>Ranked by citations recorded in <a href="https://openalex.org" target="_blank" rel="noopener" style="color:var(--accent)">OpenAlex</a>, an open index of scholarly literature. ${fmt(citedCount)} of ${fmt(articles.length)} articles have citation data. The percentile badge compares an article with others from the same decade, so older work doesn't automatically dominate.</p></div>
+        <p>Ranked by citations recorded in <a href="https://openalex.org" target="_blank" rel="noopener" style="color:var(--accent)">OpenAlex</a>, an open index of scholarly literature. ${fmt(citedCount)} of ${fmt(articles.length)} articles have citation data. The percentile badge compares an article with others from the same decade, so older work doesn't automatically dominate. Book reviews are excluded: OpenAlex often credits a review with the reviewed book's citations. Book impact is ranked separately on the <a href="${hashFor('books', { sort: 'cited' })}" style="color:var(--accent)">Books</a> tab.</p>${articleTabs('impact')}</div>
       <div class="layout">
         <aside class="sidebar">
           <div class="side-block"><h4>Topic</h4><select class="select" id="imp-topic">${topicOptions(topic)}</select></div>
@@ -730,7 +744,7 @@
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Supreme Court</span></div>
         <h1>Supreme Court decisions</h1>
-        <p>${fmt(S.cases.length)} cases with summaries, opinion PDFs, and oral argument audio you can play here, with a transcript that follows along. Summaries and audio come from <a href="https://www.oyez.org" target="_blank" rel="noopener" style="color:var(--accent)">Oyez</a>. Opinions come from supremecourt.gov and the Library of Congress.</p></div>
+        <p>${fmt(S.cases.length)} cases with summaries, opinion PDFs, and oral argument audio you can play here, with a transcript that follows along. Summaries and audio come from <a href="https://www.oyez.org" target="_blank" rel="noopener" style="color:var(--accent)">Oyez</a>. Opinions come from supremecourt.gov and the Library of Congress.</p>${scotusTabs('decided')}</div>
       <div class="layout">
         <aside class="sidebar" id="sidebar">
           <div class="side-block"><h4>Search cases</h4><form id="sc-form"><input class="input" id="sc-q" type="search" value="${esc(st.q)}" placeholder="Case name, issue, docket…"></form></div>
@@ -770,23 +784,154 @@
       <div class="tags">${c.arg ? '<span class="tag tag-audio">▶ Argument audio</span>' : ''}${c.pdf ? '<span class="tag">Opinion PDF</span>' : ''}${c.tr ? '<span class="tag">Transcript PDF</span>' : ''}${(c.tg || []).slice(0, 3).map(t => `<a class="tag" href="${hashFor('scotus', { tag: t })}">${esc(topicById[t]?.name || t)}</a>`).join('')}</div>
     </article>`;
   }
-  function viewCase(id) { withData([['scotus', 'SCOTUS']], S => renderCase(S, id)); }
-  function renderCase(S, id) {
+  /* ---- current docket */
+  function scotusTabs(active) {
+    return `<div class="subtabs"><a href="#/docket" class="${active === 'docket' ? 'on' : ''}">Current docket</a><a href="#/scotus" class="${active === 'decided' ? 'on' : ''}">Decided cases</a></div>`;
+  }
+  const todayIso = () => new Date().toISOString().slice(0, 10);
+  function docketStatus(e) {
+    if (e.argued) return { k: 'argued', label: `Argued ${fmtDate(e.argued)} · awaiting decision` };
+    if (e.sched) return { k: 'scheduled', label: `Argument scheduled ${fmtDate(e.sched)}` };
+    if (e.granted) return { k: 'granted', label: `Granted ${fmtDate(e.granted)} · argument not yet scheduled` };
+    return { k: 'pending', label: 'Pending' };
+  }
+  const BRIEF_LABEL = { petitioner: "Petitioner's merits brief", respondent: "Respondent's merits brief", 'united-states': 'Brief of the United States', reply: 'Reply brief', appendix: 'Joint appendix', petition: 'Petition for certiorari', opposition: 'Brief in opposition' };
+  function viewDocket(params) { withData([['docket', 'DOCKET']], K => renderDocket(K, params)); }
+  function renderDocket(K, params) {
+    const f = params.get('f') || '';
+    const today = todayIso();
+    const isUp = e => !e.argued && e.sched && e.sched >= today;
+    const filters = [['', 'All pending', () => true], ['argued', 'Argued, awaiting decision', e => !!e.argued], ['upcoming', 'Upcoming arguments', isUp], ['granted', 'Granted, not yet scheduled', e => !e.argued && !e.sched]];
+    const [, , pred] = filters.find(x => x[0] === f) || filters[0];
+    const list = K.cases.filter(pred);
+    const byDk = new Map(K.cases.map(e => [e.d, e]));
+    const nextDay = K.sittings.flatMap(s => s.days).map(d => d.date).filter(d => d >= today).sort()[0];
+    const dayFmt = iso => { const d = new Date(iso + 'T12:00:00Z'); return { wd: d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }), md: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) }; };
+    app.innerHTML = `<div class="fade-in">
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a><span>/</span><span>Current docket</span></div>
+        <h1>The current docket</h1>
+        <p>October Term ${K.term}: ${K.cases.length} cases awaiting decision, with the questions presented, the briefs, and argument audio and transcripts once a case has been argued. Updated ${esc(fmtDate(K.updated))} from supremecourt.gov and Oyez.</p>${scotusTabs('docket')}</div>
+      <section class="section" style="padding-top:26px">
+        <div class="section-head"><div><h2 style="font-size:26px">Argument calendar</h2><p>The Court's published sittings for the Term. ${nextDay ? `Next argument day: <b>${esc(fmtDate(nextDay))}</b>.` : ''}</p></div></div>
+        <div class="cal">${K.sittings.map(s => `<div class="cal-sitting">
+          <div class="cal-h">${esc(s.label)} sitting</div>
+          <div class="cal-days">${s.days.map(d => { const df = dayFmt(d.date); const cls = d.date < today ? 'past' : d.date === nextDay ? 'next' : ''; return `<div class="cal-day ${cls}">
+            <div class="cal-date"><span>${df.wd}</span><b>${df.md}</b>${cls === 'next' ? '<em>Next</em>' : ''}</div>
+            <ul>${d.cases.map(dk => { const e = byDk.get(dk); return `<li>${e ? `<a href="#/case/${esc(e.id)}">${esc(e.n)}</a>` : esc(dk)}<span>No. ${esc(dk)}</span></li>`; }).join('')}</ul>
+          </div>`; }).join('')}</div>
+        </div>`).join('') || '<div class="empty"><h3>No calendar published yet</h3></div>'}</div>
+      </section>
+      <section class="section" style="padding-top:36px">
+        <div class="section-head"><div><h2 style="font-size:26px">Cases</h2></div></div>
+        <div class="suggest" style="margin:0 0 18px">${filters.map(([k, label, p]) => `<a class="chip ${f === k ? 'on' : ''}" href="${hashFor('docket', { f: k })}">${label} · ${K.cases.filter(p).length}</a>`).join('')}</div>
+        <div class="cards">${list.map(e => { const st = docketStatus(e); const merits = e.briefs.filter(b => ['petitioner', 'respondent', 'united-states', 'reply'].includes(b.k)).length; return `<article class="card case-card">
+          <div class="card-meta"><span class="status status-${st.k}">${esc(st.label)}</span><span>No. ${esc(e.d)}</span>${e.lower ? `<span>${esc(e.lower)}</span>` : ''}</div>
+          <h3><a href="#/case/${esc(e.id)}">${esc(e.n)}</a></h3>
+          ${e.q || e.ds ? `<p class="abs">${esc(e.q || e.ds)}</p>` : ''}
+          <div class="tags">${e.argued ? '<span class="tag tag-audio">▶ Argument audio</span>' : ''}${e.qp ? '<span class="tag">Questions presented</span>' : ''}${merits ? `<span class="tag">${merits} merits brief${merits === 1 ? '' : 's'}</span>` : ''}${e.amici.length ? `<span class="tag">${e.amici.length} amicus brief${e.amici.length === 1 ? '' : 's'}</span>` : ''}</div>
+        </article>`; }).join('') || '<div class="empty"><h3>No cases in this group</h3></div>'}</div>
+      </section>
+    </div>`;
+  }
+
+  /* ---- precedents: cases named in the Oyez summary, Oyez's related cases, and textual similarity */
+  let simIndex = null;
+  const SIM_STOP = new Set('whether under does that this with from have which court state states united federal case cases their there were been when what into than only also more such other made because after before against would could should them they same within upon held holds holding question questions decided decide district appeals circuit petitioner respondent petitioners respondents government statute section claim claims rule ruled reversed affirmed lower federal'.split(' '));
+  const simTokens = c => new Set(((c.q || '') + ' ' + (c.ds || '') + ' ' + (c.h || '')).toLowerCase().match(/[a-z][a-z-]{3,}/g)?.filter(w => !SIM_STOP.has(w)) || []);
+  function similarCases(S, c, n = 6) {
+    if (!simIndex) {
+      const docs = S.cases.map(simTokens), df = new Map();
+      docs.forEach(s => s.forEach(w => df.set(w, (df.get(w) || 0) + 1)));
+      simIndex = { docs, df, N: docs.length };
+    }
+    const toks = simTokens(c), tg = new Set(c.tg || guessTags((c.q || '') + ' ' + (c.ds || '')));
+    if (!toks.size) return [];
+    const { docs, df, N } = simIndex;
+    const scored = [];
+    S.cases.forEach((x, i) => {
+      if (x.id === c.id || !x.dec) return;
+      let s = 0; for (const w of docs[i]) if (toks.has(w)) s += Math.log(N / (df.get(w) + 1));
+      if (!s) return;
+      s = s / Math.sqrt(docs[i].size + 8);
+      const shared = (x.tg || []).filter(t => tg.has(t)).length;
+      s += 0.6 * shared;
+      if (tg.size && x.tg && x.tg.length && !shared) s *= 0.5;   // different area of law
+      if (x.con) s += 0.3;
+      scored.push([s, x]);
+    });
+    return scored.sort((a, b) => b[0] - a[0]).slice(0, n).map(x => x[1]);
+  }
+  // same area tags as the build step (scripts/build_extras.pl), for cases not yet decided
+  const CASE_TAGS = [
+    ['speech', /first amendment|free speech|freedom of speech|freedom of the press|expressive|speech/i], ['religion', /establishment clause|free exercise|religio/i],
+    ['guns', /second amendment|firearm|bear arms|\bguns?\b/i], ['equality', /equal protection|discriminat|\brace\b|racial|segregat|affirmative action|sex-based|gender/i],
+    ['dueprocess', /due process|privacy|abortion|marriage|liberty interest|parental/i], ['crimpro', /fourth amendment|fifth amendment|sixth amendment|eighth amendment|\bsearch|seizure|miranda|counsel|\bjury\b|cruel and unusual|death penalty|self-incrimination|confrontation|double jeopardy/i],
+    ['federalism', /tenth amendment|sovereign immunity|eleventh amendment|commerce clause|preempt|federalism|state sovereignty/i], ['seppowers', /separation of powers|appointments clause|removal|executive power|president|nondelegation|delegat/i],
+    ['admin', /\bagency|administrative|chevron|regulation/i], ['article3', /standing|article iii|jurisdiction|\bmoot|justiciab/i], ['voting', /voting|election|ballot|redistricting|gerrymander|apportion|campaign/i],
+    ['takings', /taking|just compensation|eminent domain/i], ['citizenship', /immigra|citizenship|deport|\balien|asylum|tribal|\bindian/i], ['security', /war powers|military|detain|guantanamo|national security|habeas/i]];
+  const guessTags = text => CASE_TAGS.filter(([, rx]) => rx.test(text)).map(([t]) => t);
+  let caseByShort = null;
+  function citedCases(S, text, selfId) {
+    if (!caseByShort) {
+      caseByShort = new Map();
+      for (const x of S.cases) {
+        const m = x.n.match(/^(?:The )?([A-Z][\w'.&-]*)[^v]*? v\. (?:The )?([A-Z][\w'.&-]*)/);
+        if (!m) continue;
+        const k = (m[1] + '|' + m[2]).toLowerCase();
+        const prev = caseByShort.get(k);
+        if (!prev || (!prev.con && x.con) || (!prev.dec && x.dec)) caseByShort.set(k, x);
+      }
+    }
+    const out = new Map();
+    for (const m of text.matchAll(/(?:^|[^A-Za-z])([A-Z][\w'.&-]*)(?: [A-Z][\w'.&-]*){0,4} v\. (?:The )?([A-Z][\w'.&-]*)/g)) {
+      const x = caseByShort.get((m[1] + '|' + m[2]).toLowerCase());
+      if (x && x.id !== selfId) out.set(x.id, x);
+    }
+    return [...out.values()];
+  }
+  function precedentItem(x) {
+    return `<li><a class="t" href="#/case/${esc(x.id)}">${esc(x.n)}</a><div class="m">${x.cit ? esc(x.cit) + ' · ' : ''}${x.y || x.t || ''}</div></li>`;
+  }
+
+  function viewCase(id) { withData([['scotus', 'SCOTUS'], ['docket', 'DOCKET']], (S, K) => renderCase(S, id, K)); }
+  function renderCase(S, id, K) {
     if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
-    const c = caseById.get(id);
+    const dk = (K && K.cases.find(e => e.id === id || id.endsWith('/' + e.d))) || null;
+    let c = caseById.get(id);
+    if (!c && dk) c = { id: dk.id, n: dk.n, t: dk.t, d: dk.d, q: dk.q, ds: dk.ds, pending: true };
     if (!c) return viewNotFound();
+    const pend = dk && !c.dec ? dk : null;
     const caseName = c.n.toLowerCase().replace(/\s*\(\d\)$/, '');
     const relatedArticles = caseName.length < 10 ? [] : articles.filter(a => a._t.includes(caseName) || a._ab.includes(caseName))
       .sort((x, y) => (y.c ?? -1) - (x.c ?? -1)).slice(0, 6);
     app.innerHTML = `<div class="fade-in"><div class="article">
       <div>
-        <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a>${c.y ? `<span>/</span><a href="${hashFor('scotus', { era: (ERAS.find(e => c.y >= e.from && c.y < e.to) || {}).id })}">${c.y}</a>` : ''}</div>
+        <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a>${pend ? '<span>/</span><a href="#/docket">Current docket</a>' : c.y ? `<span>/</span><a href="${hashFor('scotus', { era: (ERAS.find(e => c.y >= e.from && c.y < e.to) || {}).id })}">${c.y}</a>` : ''}</div>
         <h1>${esc(c.n)}</h1>
-        <div class="publine">${c.cit ? esc(c.cit) + ' · ' : ''}${c.dec ? 'Decided ' + esc(fmtDate(c.dec)) : 'Term ' + esc(c.t)}${c.d ? ' · No. ' + esc(c.d) : ''}</div>
+        <div class="publine">${c.cit ? esc(c.cit) + ' · ' : ''}${c.dec ? 'Decided ' + esc(fmtDate(c.dec)) : 'October Term ' + esc(c.t)}${c.d ? ' · No. ' + esc(c.d) : ''}${pend && pend.lower ? ' · from the ' + esc(pend.lower) : ''}</div>
+        ${pend ? `<div class="pending-banner status-${docketStatus(pend).k}"><b>Pending</b><span>${esc(docketStatus(pend).label)}</span></div>` : ''}
         ${c.ds ? `<div class="abstract plain">${esc(c.ds)}</div>` : ''}
+        ${pend ? `<h2>Briefs & filings</h2>
+          <div class="briefs">
+            ${pend.qp ? `<a class="brief brief-qp" href="${esc(pend.qp)}" target="_blank" rel="noopener"><b>Questions presented</b><span>The legal questions the Court agreed to decide</span><em>PDF ↗</em></a>` : ''}
+            ${(() => {
+              // merits briefs (after cert was granted) first, in filing order; then the cert-stage filings
+              const g = pend.granted || '';
+              const certStage = b => ['petition', 'opposition'].includes(b.k) || (b.k === 'reply' && g && b.date && b.date < g);
+              const ORDER = { petitioner: 1, appendix: 2, 'united-states': 3, respondent: 4, reply: 5 };
+              const merits = pend.briefs.filter(b => !certStage(b)).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (ORDER[a.k] || 9) - (ORDER[b.k] || 9));
+              const cert = pend.briefs.filter(certStage);
+              const tile = (b, label) => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(label || BRIEF_LABEL[b.k] || b.k)}</b><span>${esc(b.label)}</span><em>${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}PDF ↗</em></a>`;
+              return merits.map(b => tile(b)).join('') + (cert.length ? `</div><div class="brief-sub">Certiorari stage</div><div class="briefs">${cert.map(b => tile(b, b.k === 'reply' ? 'Reply to brief in opposition' : null)).join('')}` : '');
+            })()}
+          </div>
+          ${pend.amici.length ? `<details class="amici"><summary>${pend.amici.length} amicus brief${pend.amici.length === 1 ? '' : 's'}</summary><ul>${pend.amici.map(a => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.who)}</a>${a.side ? ` <span>supporting ${esc(a.side)}</span>` : ''}${a.date ? ` <em>${esc(fmtDate(a.date))}</em>` : ''}</li>`).join('')}</ul></details>` : ''}
+          <p class="attrib">Filings from the <a href="${esc(pend.docket)}" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court docket for No. ${esc(pend.d)}</a>.</p>` : ''}
         <div class="actions">
           ${c.pdf ? `<a class="btn btn-primary" href="${esc(c.pdf)}" target="_blank" rel="noopener">Opinion PDF ↗</a>` : ''}
           ${c.tr ? `<a class="btn btn-ghost" href="${esc(c.tr)}" target="_blank" rel="noopener">Argument transcript PDF ↗</a>` : ''}
+          ${!c.tr && pend && pend.tr ? `<a class="btn btn-primary" href="${esc(pend.tr)}" target="_blank" rel="noopener">Argument transcript PDF ↗</a>` : ''}
+          ${pend ? `<a class="btn btn-ghost" href="${esc(pend.docket)}" target="_blank" rel="noopener">Docket ↗</a>` : ''}
           ${c.ju ? `<a class="btn btn-ghost" href="${esc(c.ju)}" target="_blank" rel="noopener">Full text on Justia ↗</a>` : ''}
           <a class="btn btn-ghost" href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez ↗</a>
         </div>
@@ -805,6 +950,10 @@
         </dl><div id="case-vote"></div></div>
         <div class="panel" id="case-opinions" hidden><h4>Opinions</h4><ul class="mini-list"></ul></div>
         <div class="panel"><h4>Find articles</h4><a class="link-arrow" href="${hashFor('search', { q: '"' + c.n.replace(/\s*\(\d\)$/, '') + '"' })}">Search the index for this case →</a></div>
+        <div class="panel" id="case-precedents"><h4>Precedents</h4>
+          <div id="prec-cited"></div>
+          ${(() => { const sim = similarCases(S, c); return sim.length ? `<div class="prec-group"><div class="prec-h">Related decisions</div><ul class="mini-list">${sim.map(precedentItem).join('')}</ul></div>` : '<p class="muted-line" style="font-size:13px">No closely related decisions found.</p>'; })()}
+        </div>
       </aside>
     </div></div>`;
 
@@ -818,6 +967,11 @@
         d.conclusion ? `<h2>Conclusion</h2><div class="prose-sm">${htmlParas(d.conclusion)}</div>` : ''
       ].join('') || '<p class="muted-line">Oyez has no written summary for this case.</p>';
       live.insertAdjacentHTML('beforeend', '<p class="attrib">Summary text © Oyez (oyez.org), used under CC BY-NC.</p>');
+      // precedents named in Oyez's summary, plus Oyez's own related-case links
+      const plain = [d.facts_of_the_case, d.question, d.conclusion].map(h => h ? new DOMParser().parseFromString(h, 'text/html').body.textContent : '').join(' ');
+      const cited = citedCases(S, plain, c.id);
+      for (const r of d.related_cases || []) { const rid = ((r && r.href) || '').match(/\/cases\/(.+)$/); const x = rid && caseById.get(rid[1]); if (x && x.id !== c.id && !cited.includes(x)) cited.push(x); }
+      if (cited.length) document.getElementById('prec-cited').innerHTML = `<div class="prec-group"><div class="prec-h">Discussed in this case</div><ul class="mini-list">${cited.slice(0, 8).map(precedentItem).join('')}</ul></div>`;
       const dec = (d.decisions || [])[0];
       if (dec && dec.majority_vote != null) document.getElementById('case-vote').innerHTML = `<div class="vote"><b>${dec.majority_vote}–${dec.minority_vote}</b><span>${dec.winning_party ? 'for ' + esc(dec.winning_party) : 'decision'}</span></div>`;
       const ops = (d.written_opinion || []).filter(o => o && o.type);
@@ -827,10 +981,17 @@
       }
       const media = [...(d.oral_argument_audio || []).map(m => ({ ...m, kind: 'Oral argument' })), ...(d.opinion_announcement || []).map(m => ({ ...m, kind: 'Opinion announcement' }))].filter(m => m && m.href && !m.unavailable);
       if (media.length) mountAudio(document.getElementById('case-audio'), media, c);
+      else courtAudioFallback();
     }).catch(() => {
       if (token !== routeToken) return;
-      document.getElementById('case-live').innerHTML = `${c.q ? `<h2>Question</h2><div class="prose-sm"><p>${esc(c.q)}</p></div>` : ''}<p class="muted-line">Live details from Oyez are unavailable right now. <a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Open on Oyez ↗</a></p>`;
+      document.getElementById('case-live').innerHTML = `${c.q ? `<h2>Question</h2><div class="prose-sm"><p>${esc(c.q)}</p></div>` : ''}<p class="muted-line">${pend ? 'Oyez has not published a summary of this case yet.' : 'Live details from Oyez are unavailable right now.'} <a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Open on Oyez ↗</a></p>`;
+      courtAudioFallback();
     });
+    // the Court posts argument audio within days; Oyez's synced versions follow later
+    function courtAudioFallback() {
+      if (!pend || !pend.argued || pend.argued > todayIso()) return;
+      mountAudio(document.getElementById('case-audio'), [{ kind: 'Oral argument', title: fmtDate(pend.argued) + ' (supremecourt.gov)', direct: `https://www.supremecourt.gov/media/audio/mp3files/${pend.d}.mp3`, trPdf: pend.tr }], c);
+    }
   }
   function mountAudio(el, media, c) {
     el.innerHTML = `<h2>Listen</h2>
@@ -845,7 +1006,7 @@
       const body = document.getElementById('player-body');
       const old = body.querySelector('audio'); if (old) old.pause();
       body.innerHTML = '<p class="muted-line" style="padding:18px"><span class="spinner sm"></span> Loading audio and transcript…</p>';
-      fetch(m.href).then(r => r.json()).then(x => {
+      (m.direct ? Promise.resolve({ media_file: [{ mime: 'audio/mpeg', href: m.direct }] }) : fetch(m.href).then(r => r.json())).then(x => {
         const file = (x.media_file || []).find(f => f && f.mime === 'audio/mpeg') || (x.media_file || []).find(f => f && f.href);
         const turns = [];
         for (const sec of (x.transcript && x.transcript.sections) || []) for (const t of sec.turns || []) {
@@ -863,7 +1024,7 @@
               <a class="link-arrow" href="${esc(file.href)}" target="_blank" rel="noopener">Download MP3</a>
             </div>
           </div>
-          ${turns.length ? `<div class="transcript" id="transcript">${turns.map((t, i) => `<div class="turn ${t.j ? 'justice' : ''}" data-i="${i}" data-s="${t.s}"><div class="turn-h"><b>${esc(t.sp)}</b><span>${fmtTime(t.s)}</span></div><p>${esc(t.tx)}</p></div>`).join('')}</div>` : '<p class="muted-line" style="padding:0 18px 18px">No synchronized transcript for this recording.</p>'}`;
+          ${turns.length ? `<div class="transcript" id="transcript">${turns.map((t, i) => `<div class="turn ${t.j ? 'justice' : ''}" data-i="${i}" data-s="${t.s}"><div class="turn-h"><b>${esc(t.sp)}</b><span>${fmtTime(t.s)}</span></div><p>${esc(t.tx)}</p></div>`).join('')}</div>` : `<p class="muted-line" style="padding:0 18px 18px">${m.direct ? 'Audio from supremecourt.gov. A synchronized transcript will appear once Oyez publishes this argument.' : 'No synchronized transcript for this recording.'}${m.trPdf ? ` <a href="${esc(m.trPdf)}" target="_blank" rel="noopener">Read the official transcript (PDF) ↗</a>` : ''}</p>`}`;
         const audio = body.querySelector('audio');
         body.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => { audio.playbackRate = +b.dataset.speed; body.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('on', x === b)); }));
         if (!turns.length) return;
@@ -937,15 +1098,50 @@
   }
 
   /* ------------------------------------------------------------ beginner's guide */
-  function viewGuide() { withData([['guide', 'GUIDE']], G => renderGuide(G)); }
-  function renderGuide(G) {
+  // Beginner topics -> Originalist's Corner topics and advanced doctrine sections
+  const GUIDE_LINKS = {
+    'judicial-review': [['judicial-review'], ['supremacy-review', 'political-question']],
+    'interpretation': [['common-law', 'natural-rights'], ['interpretation']],
+    'incorporation': [['due-process', 'privileges'], ['incorporation', 'p-or-i']],
+    'separation-of-powers': [['separation'], ['separation-of-powers', 'youngstown']],
+    'executive-power': [['executive', 'removal-appointments'], ['article-two', 'immunity-privilege']],
+    'federalism': [['federalism', 'supremacy'], ['commerce', 'sovereign-immunity', 'preemption']],
+    'commerce-clause': [['commerce', 'necessary-proper'], ['enumerated', 'commerce', 'dormant-commerce']],
+    'standing': [['judicial-review'], ['standing', 'ripeness', 'mootness']],
+    'administrative-state': [['separation', 'executive'], ['separation-of-powers']],
+    'free-speech': [['speech-press'], ['content', 'forums', 'categories', 'special-contexts']],
+    'religion': [['religion'], ['free-exercise', 'establishment', 'religion-interaction']],
+    'second-amendment': [['arms', 'war'], ['other-fundamental']],
+    'equal-protection': [['slavery', 'citizenship'], ['ep-framework', 'strict', 'intermediate', 'race-remedies']],
+    'due-process': [['due-process', 'life-unborn', 'marriage-family'], ['identifying', 'privacy-family', 'pdp-interests', 'mathews']],
+    'fourth-amendment': [['search'], ['incorporation']],
+    'trial-rights': [['jury', 'criminal-process'], ['incorporation', 'mathews']],
+    'punishment': [['punishment'], ['incorporation']],
+    'takings': [['property'], ['takings', 'economic-sdp']],
+    'voting': [['elections'], ['other-fundamental', 'political-question']],
+    'war-powers': [['war', 'treaties'], ['article-two', 'youngstown']],
+  };
+  const CORNER_NAMES = {
+    'judicial-review': 'Judicial Review & the Judiciary', separation: 'Separation of Powers', executive: 'Executive Power', 'removal-appointments': 'Appointments & Removal',
+    war: 'War, Militia & Standing Armies', treaties: 'Treaties & Foreign Affairs', commerce: 'Commerce & Trade', taxing: 'Taxation & Spending', 'necessary-proper': 'Necessary & Proper',
+    federalism: 'Federalism & State Sovereignty', supremacy: 'Supremacy of Federal Law', religion: 'Religion & Conscience', 'speech-press': 'Speech & Press', arms: 'Right to Bear Arms',
+    search: 'Searches & Warrants', jury: 'Trial by Jury', habeas: 'Habeas Corpus', punishment: 'Punishment, Bail & Fines', 'criminal-process': 'Rights of the Accused',
+    'due-process': 'Due Process & Law of the Land', property: 'Property & Takings', contracts: 'Contracts & Ex Post Facto', 'life-unborn': 'Life, the Unborn & Homicide',
+    'marriage-family': 'Marriage & Family', citizenship: 'Citizenship & Naturalization', slavery: 'Slavery', elections: 'Elections & Representation', impeachment: 'Impeachment',
+    amendment: 'Amendment', 'natural-rights': 'Natural Rights', 'common-law': 'Common Law & Precedent', privileges: 'Privileges & Immunities', 'bankruptcy-ip': 'Bankruptcy & IP',
+    money: 'Money & Banking', indians: 'Indian Tribes', territories: 'Territories', guarantee: 'Republican Government'
+  };
+  function viewGuide() { withData([['guide', 'GUIDE'], ['advanced', 'ADVANCED']], (G, A) => renderGuide(G, A)); }
+  function renderGuide(G, A) {
     const groups = [...new Set(G.topics.map(t => t.group))];
     app.innerHTML = `<div class="fade-in">
       <section class="hero guide-hero"><div class="hero-inner" style="padding:64px 24px 54px">
-        <span class="eyebrow">Start here</span>
+        <span class="eyebrow">Beginner's Guide</span>
         <h1 style="max-width:18ch">The essential guide to <em>constitutional law.</em></h1>
-        <p class="lede">${G.topics.length} core topics, each with a plain-English overview, short explainer videos, the landmark Supreme Court cases, and a handful of readable law review articles to go deeper.</p>
+        <p class="lede">Start with ${G.topics.length} core topics, each with a plain-English overview, short explainer videos, the landmark cases, and readable articles. Then go deeper in the <a href="#/guide" data-jump="advanced" style="color:var(--accent)">advanced doctrine</a> below: every major doctrine, test and case, with excerpts from the opinions themselves.</p>
+        <div class="suggest" style="margin-top:22px"><a class="chip on" href="#/guide" data-jump="beginner">Beginner topics</a><a class="chip" href="#/guide" data-jump="advanced">Advanced doctrine</a><a class="chip" href="#/corner">Originalist's Corner</a></div>
       </div></section>
+      <div id="beginner"></div>
       ${groups.map(g => `<section class="section" style="padding-top:44px">
         <div class="section-head"><div><h2>${esc(g)}</h2></div></div>
         <div class="guide-grid">${G.topics.filter(t => t.group === g).map((t, i) => `<a class="guide-card" href="#/guide/${t.id}">
@@ -954,10 +1150,74 @@
           <span class="guide-meta">${t.videos.length} videos · ${t.cases.length} cases · ${(t.books || []).length} book${(t.books || []).length === 1 ? '' : 's'} · ${t.articles.length} readings</span></span>
         </a>`).join('')}</div>
       </section>`).join('')}
+      <section class="section advanced-intro" id="advanced" style="padding-top:70px">
+        <div class="adv-banner">
+          <span class="eyebrow">Advanced</span>
+          <h2>Constitutional law in depth</h2>
+          <p>A doctrine-by-doctrine treatment of American constitutional law in ${A.parts.length} parts, organized after the chapter structure of Chemerinsky's <em>Constitutional Law: Principles and Policies</em>. Each section explains the doctrine and sets out the black-letter tests. It links the controlling cases, quotes key passages from the opinions, and points to related scholarship and founding-era sources.</p>
+        </div>
+        <div class="adv-grid">${A.parts.map((p, i) => `<a class="adv-card" href="#/doctrine/${p.id}">
+          <span class="adv-num">${esc(p.title.split('.')[0])}</span>
+          <span class="adv-body"><b>${esc(p.title.replace(/^[IVXL]+\.\s*/, ''))}</b><span>${esc(p.summary || '')}</span>
+          <em>${p.sections.length} section${p.sections.length === 1 ? '' : 's'} · ${p.sections.reduce((n, s) => n + s.cases.length, 0)} cases</em></span>
+        </a>`).join('')}</div>
+      </section>
     </div>`;
+    app.querySelectorAll('[data-jump]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.getElementById(a.dataset.jump).scrollIntoView({ behavior: 'smooth' }); }));
   }
-  function viewGuideTopic(id) { withData([['guide', 'GUIDE'], ['scotus', 'SCOTUS'], ['books', 'BOOKS']], (G, S, B) => renderGuideTopic(G, S, id, B)); }
-  function renderGuideTopic(G, S, id, B) {
+
+  /* ------------------------------------------------------------ advanced doctrine */
+  function viewDoctrine(partId, secId) { withData([['advanced', 'ADVANCED'], ['quizzes', 'QUIZZES']], (A, Q) => renderDoctrine(A, partId, secId, Q)); }
+  function renderDoctrine(A, partId, secId, Q) {
+    const pi = A.parts.findIndex(p => p.id === partId);
+    const p = A.parts[pi];
+    if (!p) return viewNotFound();
+    const prev = A.parts[pi - 1], next = A.parts[pi + 1];
+    const excerpt = e => `<figure class="excerpt">
+      <blockquote>${esc(e.t)}</blockquote>
+      <figcaption>${e.id ? `<a href="#/case/${esc(e.id)}"><i>${esc(e.n)}</i></a>` : `<i>${esc(e.n)}</i>`}${e.cit ? `, ${esc(e.cit)}` : ''} (${e.y}) · <span>${esc(e.src || '')}</span>${e.pdf ? ` · <a href="${esc(e.pdf)}" target="_blank" rel="noopener">PDF ↗</a>` : ''}</figcaption>
+    </figure>`;
+    app.innerHTML = `<div class="fade-in"><div class="doctrine">
+      <aside class="doc-toc">
+        <a class="doc-back" href="#/guide">← Beginner's Guide</a>
+        <h4>Advanced doctrine</h4>
+        <ol>${A.parts.map(x => `<li class="${x.id === p.id ? 'cur' : ''}"><a href="#/doctrine/${x.id}">${esc(x.title)}</a>
+          ${x.id === p.id ? `<ul>${x.sections.map(s => `<li><a href="#/doctrine/${x.id}/${s.id}" data-sec="${s.id}">${esc(s.title)}</a></li>`).join('')}</ul>` : ''}</li>`).join('')}</ol>
+      </aside>
+      <article class="doc-main">
+        <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/guide">Beginner's Guide</a><span>/</span><a href="#/guide" data-adv>Advanced doctrine</a></div>
+        <h1>${esc(p.title)}</h1>
+        ${p.summary ? `<p class="guide-tagline">${esc(p.summary)}</p>` : ''}
+        ${p.sections.map(s => `<section class="doc-sec" id="sec-${s.id}">
+          <h2 class="doc-h">${esc(s.title)}</h2>
+          <div class="doc-body">${s.html}</div>
+          ${s.cases.length ? `<div class="doc-block"><h3>Key cases</h3><ul class="case-list">${s.cases.map(c => `<li>${c.id ? `<a href="#/case/${esc(c.id)}"><i>${esc(c.n)}</i></a>` : `<i>${esc(c.n)}</i>`}${c.cit ? ` <span class="cit">${esc(c.cit)}</span>` : ''} <span class="yr">(${c.y})</span><div>${esc(c.note || '')}</div></li>`).join('')}</ul></div>` : ''}
+          ${s.excerpts.length ? `<div class="doc-block"><h3>From the opinions</h3>${s.excerpts.map(excerpt).join('')}</div>` : ''}
+          ${(s.corner.length || s.articles.length) ? `<div class="doc-block doc-more">
+            ${s.corner.length ? `<div><h3>Originalist's Corner</h3><div class="tags">${s.corner.map(c => `<a class="tag corner-tag" href="#/corner/${esc(c)}">${esc(CORNER_NAMES[c] || c)}</a>`).join('')}</div></div>` : ''}
+            ${s.articles.length ? `<div><h3>Scholarship</h3><ul class="mini-list">${s.articles.map(id => byId.get(id)).filter(Boolean).map(a => `<li><a class="t" href="${articleHref(a)}">${esc(a.t)}</a><div class="m">${esc(a.a.slice(0, 2).join(', '))}${a.a.length > 2 ? ' et al.' : ''} · ${esc(journalById[a.j]?.name || '')}${a.y ? ' · ' + a.y : ''}${a.c != null ? ' · ' + fmt(a.c) + ' citations' : ''}</div></li>`).join('')}</ul></div>` : ''}
+          </div>` : ''}
+        </section>`).join('')}
+        ${quizHtml('doctrine:' + p.id, Q && Q.doctrine[p.id], 'Socratic review: ' + p.title.replace(/^[IVXL]+\.\s*/, ''), 'Questions in the style of a law school cold call: the facts, holdings and reasoning of the key cases, and how the rules apply to new hypotheticals.')}
+        <p class="attrib" style="margin-top:28px">Doctrinal summaries written for Lex Constitutio, following the organization of Erwin Chemerinsky, <i>Constitutional Law: Principles and Policies</i> (7th ed. 2023). They are a study aid, not legal advice, and doctrine changes; check the current Term. Opinion excerpts are public-domain text from the <i>United States Reports</i> (Library of Congress), supremecourt.gov slip opinions, and Wikisource transcriptions. Open casebooks for edited cases and notes: <i>Constitutional Structures</i> (N. Gomez-Velez), <i>Constitutional Law II</i>, and other H2O casebooks at opencasebook.org (CC BY-NC-SA).</p>
+        <div class="guide-nav">
+          ${prev ? `<a href="#/doctrine/${prev.id}"><small>← Previous</small>${esc(prev.title)}</a>` : '<span></span>'}
+          ${next ? `<a href="#/doctrine/${next.id}" style="text-align:right"><small>Next →</small>${esc(next.title)}</a>` : '<span></span>'}
+        </div>
+      </article>
+    </div></div>`;
+    const go = id => { const el = document.getElementById('sec-' + id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    app.querySelectorAll('[data-sec]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', `#/doctrine/${p.id}/${a.dataset.sec}`); go(a.dataset.sec); }));
+    app.querySelector('[data-adv]').addEventListener('click', e => { e.preventDefault(); location.hash = '#/guide'; setTimeout(() => document.getElementById('advanced')?.scrollIntoView(), 300); });
+    if (Q) mountQuiz(app, 'doctrine:' + p.id, Q.doctrine[p.id] || []);
+    if (secId) setTimeout(() => go(secId), 60);
+  }
+  function doctrineHref(A, secId) {
+    for (const p of A.parts) if (p.sections.some(s => s.id === secId)) return { href: `#/doctrine/${p.id}/${secId}`, title: p.sections.find(s => s.id === secId).title, part: p.title };
+    return null;
+  }
+  function viewGuideTopic(id) { withData([['guide', 'GUIDE'], ['scotus', 'SCOTUS'], ['books', 'BOOKS'], ['advanced', 'ADVANCED'], ['quizzes', 'QUIZZES']], (G, S, B, A, Q) => renderGuideTopic(G, S, id, B, A, Q)); }
+  function renderGuideTopic(G, S, id, B, A, Q) {
     if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
     const i = G.topics.findIndex(t => t.id === id);
     const t = G.topics[i];
@@ -967,7 +1227,7 @@
     const [main, ...more] = t.videos;
     app.innerHTML = `<div class="fade-in"><div class="article guide-page">
       <div>
-        <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/guide">Guide</a><span>/</span><span>${esc(t.group)}</span></div>
+        <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/guide">Beginner's Guide</a><span>/</span><span>${esc(t.group)}</span></div>
         <h1>${esc(t.title)}</h1>
         <p class="guide-tagline">${esc(t.tagline)}</p>
         ${t.wiki ? `<div class="explainer">
@@ -993,6 +1253,19 @@
         <h2>Start reading</h2>
         <p class="muted-line" style="margin-top:-4px">Widely cited, accessible articles from the index on this topic.</p>
         <div class="cards">${arts.map(a => card(a)).join('')}</div>
+        ${(() => {
+          const [cornerIds, secIds] = GUIDE_LINKS[t.id] || [[], []];
+          const secs = secIds.map(s => doctrineHref(A, s)).filter(Boolean);
+          if (!cornerIds.length && !secs.length) return '';
+          return `<h2>Go deeper</h2>
+          <div class="deeper">
+            ${cornerIds.length ? `<div class="deeper-col"><div class="deeper-h"><span class="f-icon">❦</span><div><b>Originalist's Corner</b><span>What Blackstone, The Federalist, Story, the Convention debates and early statutes said.</span></div></div>
+              <ul class="mini-list">${cornerIds.map(c => `<li><a class="t" href="#/corner/${c}">${esc(CORNER_NAMES[c] || c)}</a><div class="m">Founding-era sources →</div></li>`).join('')}</ul></div>` : ''}
+            ${secs.length ? `<div class="deeper-col"><div class="deeper-h"><span class="f-icon">§</span><div><b>Advanced doctrine</b><span>The black-letter tests, the full case law, and excerpts from the opinions.</span></div></div>
+              <ul class="mini-list">${secs.map(s => `<li><a class="t" href="${s.href}">${esc(s.title)}</a><div class="m">${esc(s.part)}</div></li>`).join('')}</ul></div>` : ''}
+          </div>`;
+        })()}
+        ${quizHtml('guide:' + t.id, Q && Q.guide[t.id], 'Quiz: ' + t.title, 'Five questions on this page: the overview, the key ideas, and the landmark cases.')}
         <div class="guide-nav">
           ${prev ? `<a href="#/guide/${prev.id}"><small>← Previous</small>${esc(prev.title)}</a>` : '<span></span>'}
           ${next ? `<a href="#/guide/${next.id}" style="text-align:right"><small>Next →</small>${esc(next.title)}</a>` : '<span></span>'}
@@ -1004,9 +1277,10 @@
           <li><a class="t" href="${hashFor('impact', { topic: t.topics[0] })}">Most cited in this area</a><div class="m">Ranked by citations</div></li>
           ${t.wex ? `<li><a class="t" href="${esc(t.wex)}" target="_blank" rel="noopener">Cornell LII Wex entry ↗</a><div class="m">Legal encyclopedia</div></li>` : ''}
         </ul></div>
-        <div class="panel"><h4>All guide topics</h4><ul class="mini-list toc">${G.topics.map(x => `<li><a class="t ${x.id === id ? 'cur' : ''}" href="#/guide/${x.id}">${esc(x.title)}</a></li>`).join('')}</ul></div>
+        <div class="panel"><h4>All beginner topics</h4><ul class="mini-list toc">${G.topics.map(x => `<li><a class="t ${x.id === id ? 'cur' : ''}" href="#/guide/${x.id}">${esc(x.title)}</a></li>`).join('')}</ul></div>
       </aside>
     </div></div>`;
+    if (Q) mountQuiz(app, 'guide:' + t.id, Q.guide[t.id] || []);
   }
 
   /* ------------------------------------------------------------ books */
@@ -1024,6 +1298,7 @@
       <span class="bt">${esc(b.title.split(':')[0])}</span>
       <span class="ba">${esc(b.authors.join(', '))} · ${b.year}</span>
       <span class="bm">${b.gr ? `${stars(b.gr.rating)} <b>${b.gr.rating.toFixed(2)}</b>` : ''}${b.reviews.length ? `<span class="brev">${b.reviews.length} review${b.reviews.length === 1 ? '' : 's'}</span>` : ''}</span>
+      ${b.cites ? `<span class="bcite" title="Scholarly citations (${esc(b.cites.src)})">${citeIcon}${fmt(b.cites.n)} citations</span>` : ''}
     </a>`;
   }
   function viewBooks(params) { withData([['books', 'BOOKS']], B => renderBooks(B, params)); }
@@ -1035,6 +1310,7 @@
       (!pq.terms.length || pq.terms.every(t => (b.title + ' ' + b.authors.join(' ') + ' ' + b.note).toLowerCase().includes(t))));
     if (st.sort === 'rating') list = list.slice().sort((a, b) => (b.gr?.rating ?? 0) - (a.gr?.rating ?? 0));
     else if (st.sort === 'popular') list = list.slice().sort((a, b) => (b.gr?.count ?? 0) - (a.gr?.count ?? 0));
+    else if (st.sort === 'cited') list = list.slice().sort((a, b) => (b.cites?.n ?? -1) - (a.cites?.n ?? -1));
     else if (st.sort === 'year') list = list.slice().sort((a, b) => a.year - b.year);
     const grouped = !st.sort && !st.q && !st.cat;
     app.innerHTML = `<div class="fade-in">
@@ -1047,6 +1323,7 @@
           <div class="seg" role="group" aria-label="Sort">
             <button data-sort="" class="${!st.sort ? 'on' : ''}">By topic</button>
             <button data-sort="rating" class="${st.sort === 'rating' ? 'on' : ''}">Top rated</button>
+            <button data-sort="cited" class="${st.sort === 'cited' ? 'on' : ''}">Most cited</button>
             <button data-sort="popular" class="${st.sort === 'popular' ? 'on' : ''}">Most read</button>
             <button data-sort="year" class="${st.sort === 'year' ? 'on' : ''}">Chronological</button>
           </div>
@@ -1080,6 +1357,7 @@
             <div class="byline">${authorLinks}</div>
             <div class="publine">${esc(b.publisher)} · ${b.year}${b.pages ? ` · ${b.pages} pages` : ''}${b.isbn ? ` · ISBN ${esc(b.isbn)}` : ''}</div>
             ${b.gr ? `<a class="gr-box" href="${esc(b.gr.url)}" target="_blank" rel="noopener">${stars(b.gr.rating)}<b>${b.gr.rating.toFixed(2)}</b><span>${fmt(b.gr.count)} Goodreads ratings · read reviews ↗</span></a>` : ''}
+            ${b.cites ? `<a class="gr-box cite-box-b" href="${esc(b.cites.url)}" target="_blank" rel="noopener"><span class="cites">${citeIcon}</span><b>${fmt(b.cites.n)}</b><span>scholarly citations · #${b.cites.rank} of ${B.citedBooks} books here · ${esc(b.cites.src)} ↗</span></a>` : ''}
             <div class="actions" style="margin-top:18px">
               <a class="btn btn-primary" href="${esc(b.amazon)}" target="_blank" rel="noopener">Amazon ↗</a>
               ${b.pubUrl ? `<a class="btn btn-ghost" href="${esc(b.pubUrl)}" target="_blank" rel="noopener">${b.id === 'federalist' ? 'Free full text (Library of Congress)' : esc(b.publisher)} ↗</a>` : ''}
@@ -1115,6 +1393,185 @@
     </div></div>`;
   }
 
+  /* ------------------------------------------------------------ originalist's corner */
+  const SOURCE_ORDER = ['documents', 'madison', 'federalist', 'statutes', 'blackstone', 'tucker', 'story', 'kent', 'vattel', 'locke'];
+  function viewCorner() { withData([['corner', 'CORNER']], C => renderCorner(C)); }
+  function renderCorner(C) {
+    const srcs = SOURCE_ORDER.map(id => C.sources.find(s => s.id === id)).filter(Boolean);
+    app.innerHTML = `<div class="fade-in">
+      <section class="hero corner-hero"><div class="hero-inner" style="padding:64px 24px 54px">
+        <span class="eyebrow">Originalist's Corner</span>
+        <h1 style="max-width:16ch">What the founding generation <em>actually said.</em></h1>
+        <p class="lede">Choose a topic and read what Blackstone, the Convention debates, <i>The Federalist</i>, the acts of the first Congresses, Tucker, Story, Kent, Vattel and Locke said about it, side by side. The ${fmt(Object.keys(C.passages).length)} passages are drawn from the full texts of ${srcs.length} bodies of founding-era material.</p>
+        <div class="suggest" style="margin-top:22px"><a class="chip" href="#/library">Browse the library →</a></div>
+      </div></section>
+      <section class="section" style="padding-top:44px">
+        <div class="section-head"><div><h2>Topics</h2><p>Each topic gathers the most relevant passages from every source.</p></div></div>
+        <div class="corner-grid">${C.topics.filter(t => t.n).map(t => `<a class="corner-card" href="#/corner/${t.id}">
+          <b>${esc(t.name)}</b><span>${esc(t.desc)}</span><em>${t.n} passages · ${Object.keys(C.index[t.id] || {}).length} sources</em></a>`).join('')}</div>
+      </section>
+      <section class="section">
+        <div class="section-head"><div><h2>The sources</h2><p>Public-domain texts, quoted from the original editions.</p></div><a class="link-arrow" href="#/library">Full-text library →</a></div>
+        <div class="jgrid">${srcs.map(s => `<div class="jcard src-card">
+          <div class="abbr">${esc(s.author)} · ${esc(s.year)}</div>
+          <h3>${esc(s.name)}</h3>
+          <p class="src-desc">${esc(s.desc)}</p>
+          <div class="foot"><span>${fmt(s.n)} paragraphs indexed</span>${libraryLink(s.id)}</div>
+        </div>`).join('')}</div>
+      </section>
+    </div>`;
+  }
+  function libraryLink(sid) {
+    return { federalist: '<a class="link-arrow" href="#/library/federalist">Read →</a>', documents: '<a class="link-arrow" href="#/library/documents">Read →</a>', statutes: '<a class="link-arrow" href="#/library/statutes">Read →</a>' }[sid] || '';
+  }
+  function viewCornerTopic(id, params) { withData([['corner', 'CORNER']], C => renderCornerTopic(C, id, params)); }
+  function renderCornerTopic(C, id, params) {
+    const t = C.topics.find(x => x.id === id);
+    if (!t) return viewNotFound();
+    const only = params.get('s') || '';
+    const idx = C.index[id] || {};
+    const srcs = ((C.order && C.order[id]) || SOURCE_ORDER).map(sid => C.sources.find(s => s.id === sid)).filter(s => s && idx[s.id]);
+    const shown = only ? srcs.filter(s => s.id === only) : srcs;
+    const readLink = p => p.fed ? `<a href="#/library/federalist/${p.fed}">Read Federalist No. ${p.fed} →</a>`
+      : p.doc ? `<a href="#/library/doc/${esc(p.doc)}">Read the full document →</a>`
+      : p.st ? `<a href="#/library/statute/${esc(p.st)}">Read the full act →</a>`
+      : p.u ? `<a href="${esc(p.u)}" target="_blank" rel="noopener">Source text ↗</a>` : '';
+    app.innerHTML = `<div class="fade-in">
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>${esc(t.name)}</span></div>
+        <h1>${esc(t.name)}</h1><p>${esc(t.desc)} ${t.n} passages from ${srcs.length} sources.</p>
+        <div class="suggest" style="margin-top:16px"><a class="chip ${!only ? 'on' : ''}" href="#/corner/${id}">All sources</a>${srcs.map(s => `<a class="chip ${only === s.id ? 'on' : ''}" href="${hashFor('corner/' + id, { s: s.id })}">${esc(s.name.split(',')[0].replace(/^Acts of the First Congresses.*/, 'Early statutes').replace(/Founding Documents.*/, 'Founding documents').replace(/Madison's Notes.*/, "Madison's Notes"))} · ${idx[s.id].length}</a>`).join('')}</div>
+      </div>
+      <div class="layout">
+        <aside class="sidebar"><div class="side-block"><h4>Topics</h4><ul class="tree">${C.topics.filter(x => x.n).map(x => `<li><a href="#/corner/${x.id}" class="${x.id === id ? 'on' : ''}"><span>${esc(x.name)}</span><span class="n">${x.n}</span></a></li>`).join('')}</ul></div></aside>
+        <div>
+          ${shown.map(s => `<section class="src-sec">
+            <div class="src-h"><div><h2>${esc(s.name)}</h2><span>${esc(s.author)} · ${esc(s.year)}</span></div>${libraryLink(s.id)}</div>
+            ${idx[s.id].map(pid => C.passages[pid]).filter(Boolean).map(p => `<figure class="passage">
+              <figcaption>${esc(p.loc)}</figcaption>
+              <blockquote>${esc(p.t)}</blockquote>
+              <div class="passage-f">${readLink(p)}</div>
+            </figure>`).join('')}
+          </section>`).join('') || '<div class="empty"><h3>No passages for this topic</h3></div>'}
+          <p class="attrib">Passages are selected automatically by matching each topic's vocabulary against the full texts, so read them in context. Sources: Lonang Institute (Blackstone, Tucker, Story, Kent, Vattel, Locke), Project Gutenberg (<i>The Federalist</i>), the Avalon Project at Yale Law School (Madison's Notes and founding documents), and Wikisource (<i>U.S. Statutes at Large</i>, vol. 1). All texts are in the public domain.</p>
+        </div>
+      </div></div>`;
+  }
+
+  /* ------------------------------------------------------------ library */
+  function viewLibrary(seg, params) {
+    const kind = seg[1] || '';
+    if (!kind) return renderLibraryHome();
+    if (kind === 'federalist') return withData([['library-federalist', 'LIB_FEDERALIST']], F => seg[2] ? renderFederalist(F, +seg[2]) : renderLibraryList('federalist', F, params));
+    if (kind === 'documents' || kind === 'doc') return withData([['library-documents', 'LIB_DOCUMENTS']], D => seg[2] ? renderLibDoc(D, seg[2]) : renderLibraryList('documents', D, params));
+    if (kind === 'statutes' || kind === 'statute') return withData([['library-statutes', 'LIB_STATUTES']], S => seg[2] ? renderStatute(S, seg[2]) : renderLibraryList('statutes', S, params));
+    viewNotFound();
+  }
+  function renderLibraryHome() {
+    app.innerHTML = `<div class="fade-in">
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>Library</span></div>
+        <h1>The founding-era library</h1><p>Full texts you can read here: every number of <i>The Federalist</i>, the founding documents and early state constitutions, and every act of the first five Congresses.</p></div>
+      <section class="section" style="padding-top:28px"><div class="jgrid">
+        <a class="jcard" href="#/library/federalist"><div class="abbr">Hamilton, Madison & Jay · 1787–88</div><h3>The Federalist</h3><div class="foot"><span>85 essays</span><b>Read →</b></div></a>
+        <a class="jcard" href="#/library/documents"><div class="abbr">1215–1802</div><h3>Founding documents & state constitutions</h3><div class="foot"><span>Magna Carta to the Danbury letter</span><b>Read →</b></div></a>
+        <a class="jcard" href="#/library/statutes"><div class="abbr">1789–1799</div><h3>Acts of the First Congresses</h3><div class="foot"><span><i>Statutes at Large</i>, vol. 1</span><b>Read →</b></div></a>
+      </div></section></div>`;
+  }
+  function renderLibraryList(kind, items, params) {
+    const q = (params.get('q') || '').toLowerCase();
+    const label = { federalist: 'The Federalist', documents: 'Founding documents', statutes: 'Acts of the First Congresses' }[kind];
+    const rows = kind === 'federalist' ? items.map(f => ({ href: `#/library/federalist/${f.n}`, t: `No. ${f.n}. ${f.title}`, m: f.author, s: f.title + ' ' + f.author + ' ' + f.n }))
+      : kind === 'documents' ? items.map(d => ({ href: `#/library/doc/${d.id}`, t: d.title, m: String(d.year), s: d.title }))
+      : items.map(s => ({ href: `#/library/statute/${s.id}`, t: s.title, m: `${ordinal(s.cong)} Congress, ${ordinal(s.sess)} Session, ${s.chap}${s.date ? ' · ' + s.date : ''}`, s: s.title + ' ' + (s.date || '') }));
+    const list = q ? rows.filter(r => r.s.toLowerCase().includes(q)) : rows;
+    app.innerHTML = `<div class="fade-in">
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a><span>/</span><span>${esc(label)}</span></div>
+        <h1>${esc(label)}</h1></div>
+      <div class="wrap" style="padding-top:20px">
+        <form class="lec-search" id="lib-form" style="max-width:520px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="lib-q" type="search" placeholder="Filter by title…" value="${esc(q)}"></form>
+        <div class="toolbar" style="margin-top:14px"><div class="count"><b>${fmt(list.length)}</b> items</div></div>
+        <ul class="lib-list">${list.map(r => `<li><a href="${r.href}"><b>${esc(r.t)}</b><span>${esc(r.m)}</span></a></li>`).join('')}</ul>
+      </div></div>`;
+    document.getElementById('lib-form').addEventListener('submit', e => { e.preventDefault(); location.hash = hashFor('library/' + kind, { q: document.getElementById('lib-q').value.trim() }); });
+  }
+  const ordinal = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
+  function readerPage(crumb, title, meta, paras, nav, extra) {
+    app.innerHTML = `<div class="fade-in"><div class="reader">
+      <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a><span>/</span>${crumb}</div>
+      <h1>${esc(title)}</h1>
+      <div class="publine">${meta}</div>
+      <div class="reader-body">${paras.map(p => `<p>${esc(p)}</p>`).join('')}</div>
+      ${extra || ''}
+      ${nav || ''}
+    </div></div>`;
+  }
+  function renderFederalist(F, n) {
+    const i = F.findIndex(f => f.n === n); const f = F[i];
+    if (!f) return viewNotFound();
+    const prev = F[i - 1], next = F[i + 1];
+    readerPage('<a href="#/library/federalist">The Federalist</a>', `The Federalist No. ${f.n}`, `${esc(f.title)}${f.author ? ' · ' + esc(f.author) : ''}`, f.paras,
+      `<div class="guide-nav">${prev ? `<a href="#/library/federalist/${prev.n}"><small>← No. ${prev.n}</small>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a href="#/library/federalist/${next.n}" style="text-align:right"><small>No. ${next.n} →</small>${esc(next.title)}</a>` : '<span></span>'}</div>`,
+      '<p class="attrib">Text: Project Gutenberg eBook #1404 (public domain).</p>');
+  }
+  function renderLibDoc(D, id) {
+    const d = D.find(x => x.id === id);
+    if (!d) return viewNotFound();
+    readerPage('<a href="#/library/documents">Founding documents</a>', d.title, String(d.year), d.paras, '', '<p class="attrib">Text: the Avalon Project at Yale Law School and Wikisource (public domain).</p>');
+  }
+  function renderStatute(S, id) {
+    const s = S.find(x => x.id === id);
+    if (!s) return viewNotFound();
+    readerPage('<a href="#/library/statutes">Acts of the First Congresses</a>', s.title, `${ordinal(s.cong)} Congress, ${ordinal(s.sess)} Session, ${esc(s.chap)}${s.date ? ' · ' + esc(s.date) : ''} · 1 Stat.`, s.paras, '',
+      `<p class="attrib">Text: <i>United States Statutes at Large</i>, vol. 1, transcribed on Wikisource (public domain).</p>`);
+  }
+
+  /* ------------------------------------------------------------ quizzes */
+  // Multiple-choice quiz: answer each question to see whether you're right and why; best score kept locally.
+  function quizHtml(key, qs, title, blurb) {
+    if (!qs || !qs.length) return '';
+    const best = localStorage.getItem('cl-quiz-' + key);
+    return `<section class="quiz" data-quiz="${esc(key)}">
+      <div class="quiz-h"><div><span class="eyebrow">Check your understanding</span><h2>${esc(title)}</h2><p>${esc(blurb)}</p></div>
+        <div class="quiz-score" aria-live="polite">${best != null ? `Best: ${best}/${qs.length}` : `${qs.length} questions`}</div></div>
+      <ol class="quiz-list"></ol>
+      <div class="quiz-result" hidden></div>
+    </section>`;
+  }
+  function mountQuiz(root, key, qs) {
+    const el = root.querySelector(`[data-quiz="${CSS.escape(key)}"]`);
+    if (!el) return;
+    const list = el.querySelector('.quiz-list'), result = el.querySelector('.quiz-result'), scoreEl = el.querySelector('.quiz-score');
+    const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+    let answered = 0, correct = 0;
+    const render = () => {
+      answered = 0; correct = 0; result.hidden = true;
+      list.innerHTML = qs.map((q, qi) => `<li class="quiz-q" data-q="${qi}">
+        <p class="quiz-text">${esc(q.q)}</p>
+        <div class="quiz-opts">${shuffle(q.o.map((o, i) => [o, i])).map(([o, i]) => `<button class="quiz-opt" data-i="${i}"><span class="quiz-mark"></span>${esc(o)}</button>`).join('')}</div>
+        <div class="quiz-exp" hidden></div>
+      </li>`).join('');
+    };
+    render();
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('.quiz-opt'); if (!btn) return;
+      const li = btn.closest('.quiz-q'); if (li.classList.contains('done')) return;
+      const q = qs[+li.dataset.q], pick = +btn.dataset.i, ok = pick === q.a;
+      li.classList.add('done', ok ? 'right' : 'wrong');
+      li.querySelectorAll('.quiz-opt').forEach(b => { b.disabled = true; const i = +b.dataset.i; if (i === q.a) b.classList.add('is-correct'); else if (i === pick) b.classList.add('is-wrong'); });
+      const exp = li.querySelector('.quiz-exp'); exp.hidden = false;
+      exp.innerHTML = `<b>${ok ? 'Correct.' : 'Not quite.'}</b> ${esc(q.e || '')}`;
+      answered++; if (ok) correct++;
+      scoreEl.textContent = `${correct}/${answered} correct`;
+      if (answered === qs.length) {
+        const prev = +(localStorage.getItem('cl-quiz-' + key) ?? -1);
+        if (correct > prev) localStorage.setItem('cl-quiz-' + key, correct);
+        const pct = Math.round(100 * correct / qs.length);
+        result.hidden = false;
+        result.innerHTML = `<div><b>${correct} of ${qs.length}</b> · ${pct}%</div><span>${pct === 100 ? 'Perfect score.' : pct >= 70 ? 'Solid. Review the explanations for the ones you missed.' : 'Worth another read of the section above, then try again.'}</span><button class="btn btn-ghost btn-sm" data-retake>Retake quiz</button>`;
+        result.querySelector('[data-retake]').addEventListener('click', () => { render(); scoreEl.textContent = `${qs.length} questions`; el.scrollIntoView({ behavior: 'smooth' }); });
+      }
+    });
+  }
+
   function viewNotFound() {
     app.innerHTML = `<div class="prose fade-in"><h1>Not found</h1><p>That page doesn't exist in the index. <a href="#/">Return home</a>.</p></div>`;
   }
@@ -1130,7 +1587,7 @@
     const params = new URLSearchParams(qs || '');
     const seg = path.split('/');
     routeToken++;
-    const navKey = { case: 'scotus', article: 'search', author: 'search', topics: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
+    const navKey = { docket: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
     document.querySelectorAll('.topnav a[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === navKey));
     document.querySelectorAll('audio').forEach(a => a.pause());
     const top = document.getElementById('topsearch-input');
@@ -1145,11 +1602,15 @@
       case 'saved': viewSaved(); break;
       case 'impact': viewImpact(params); break;
       case 'scotus': viewScotus(params); break;
+      case 'docket': viewDocket(params); break;
       case 'case': viewCase(decodeURIComponent(seg.slice(1).join('/'))); break;
       case 'lectures': viewLectures(params); break;
       case 'books': viewBooks(params); break;
       case 'book': viewBook(decodeURIComponent(seg[1] || '')); break;
       case 'guide': seg[1] ? viewGuideTopic(seg[1]) : viewGuide(); break;
+      case 'doctrine': viewDoctrine(seg[1], seg[2]); break;
+      case 'corner': seg[1] ? viewCornerTopic(seg[1], params) : viewCorner(); break;
+      case 'library': viewLibrary(seg, params); break;
       case 'about': viewAbout(); break;
       default: viewNotFound();
     }

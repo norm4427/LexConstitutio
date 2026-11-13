@@ -3,3 +3,5 @@ data/raw/
 data/wp_needed.txt
 *.log
 .claude/settings.local.json
+data/articles.orig.js
+data/*.log

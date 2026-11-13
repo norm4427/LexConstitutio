@@ -1,0 +1,604 @@
+# Advanced doctrine quizzes: Socratic-style questions on the cases (facts, holding, reasoning, and
+# how the rule applies to new facts). Same format as beginner.txt; headers are ## doctrine:<part-id>
+
+## doctrine:foundations
+Q: In Marbury, Marshall held that Marbury had a right to his commission and a legal remedy, yet the Court ruled against him. Why?
+- The commission had never been signed
+* Section 13 of the Judiciary Act, read as authorizing original-jurisdiction mandamus, unconstitutionally expanded the Court's original jurisdiction
+- The Court lacked power to issue writs to executive officers under any circumstances
+- Madison had already delivered the commission
+E: The jurisdictional holding is the key. Marshall read the statute to add to the original jurisdiction fixed by Article III, held that addition void, and so dismissed. That let him assert judicial review while avoiding a confrontation with Jefferson.
+
+Q: A professor asks: "Marshall said it is 'emphatically the province and duty of the judicial department to say what the law is.' Does that sentence establish judicial supremacy?" The best answer is:
+- Yes, Marbury expressly held that the Court's interpretations bind the President and Congress in all matters
+* Not by itself. Marbury justifies judicial review as an incident of deciding cases; the broader supremacy claim was made later, most prominently in Cooper v. Aaron
+- No, because Marbury held judicial review applies only to state statutes
+- Yes, because the Supremacy Clause names the Supreme Court as final interpreter
+E: Distinguishing review (deciding a case under the Constitution) from supremacy (binding all other actors) is a classic Socratic move. Cooper (1958) is the strong supremacy statement.
+
+Q: McCulloch's line "we must never forget that it is a constitution we are expounding" is used to support which interpretive move?
+* Reading grants of power broadly, as a framework meant to endure, rather than as a detailed legal code
+- Strict construction of every enumerated power
+- Refusing to consider the Constitution's structure
+- Deferring entirely to state courts
+E: Marshall contrasted a constitution with "the prolixity of a legal code": its great outlines are marked, and the means are left to Congress.
+
+Q: Under the Court's stare decisis framework (as applied in Dobbs and Janus), which factor would a defender of a challenged precedent most likely emphasize?
+- That the precedent was decided by a narrow majority
+* Concrete reliance interests, such as property and contract arrangements built on the precedent
+- That the precedent is unpopular
+- That later Justices have criticized it
+E: The Dobbs majority discounted "intangible" reliance and stressed concrete, traditional reliance interests, which is why defenders of a precedent emphasize them.
+
+Q: Hypothetical: Congress passes a statute declaring that the Equal Protection Clause permits racial quotas, and directs federal courts to follow that interpretation. Under City of Boerne and Cooper, the strongest objection is:
+- Congress lacks any power under the Fourteenth Amendment
+* Congress may enforce, but not authoritatively redefine, the substantive meaning of constitutional rights as interpreted by the Court
+- The statute violates the Tenth Amendment
+- Only states may interpret the Equal Protection Clause
+E: Boerne: "Congress does not enforce a constitutional right by changing what the right is."
+
+Q: Which modality of argument does an advocate use by pointing out that the Constitution creates a federal system, so a federal law commandeering state officers would destroy the states' separate accountability?
+- Textual
+- Historical
+* Structural
+- Prudential
+E: Printz relied heavily on structural inference from the Constitution's design of dual sovereignty. No clause expressly forbids commandeering.
+
+## doctrine:judicial
+Q: In Lujan v. Defenders of Wildlife, members of an environmental group said they had visited the habitats of endangered species abroad and intended to return "some day." Why did the Court find no standing?
+* "Some day" intentions, without concrete plans, do not show an actual or imminent injury
+- Environmental groups can never have standing
+- The injury was not traceable because the species were foreign
+- Congress had not authorized citizen suits
+E: Lujan required concrete plans to return. It also rejected Congress's attempt to confer standing for a bare "procedural injury" divorced from any concrete harm.
+
+Q: City of Los Angeles v. Lyons involved a man placed in a chokehold during a traffic stop. He had standing to seek damages but not an injunction. Why the difference?
+- Injunctions are never available against police
+* An injunction requires a real and immediate threat that he would again be stopped and choked; past injury supports only retrospective relief
+- He waited too long to file
+- Damages claims do not require standing
+E: Standing is assessed separately for each form of relief. This plaintiff-by-plaintiff, remedy-by-remedy analysis is frequently cold-called.
+
+Q: Hypothetical: A state repeals a challenged law the day before the Supreme Court argument but says it may re-enact it. The state moves to dismiss as moot. The best response is:
+- The case is automatically moot once the law is repealed
+* Under the voluntary cessation doctrine, the case is not moot unless it is absolutely clear the conduct could not reasonably be expected to recur
+- Mootness never applies to constitutional cases
+- The case is unripe instead of moot
+E: Friends of the Earth v. Laidlaw. Courts are skeptical of strategic cessation, especially paired with a stated intent to resume.
+
+Q: In Nixon v. United States (1993), a federal judge challenged the Senate's use of a committee to hear evidence at his impeachment trial. The Court held the claim nonjusticiable chiefly because:
+* The Constitution gives the Senate the "sole Power to try" impeachments, a textual commitment, and "try" lacks judicially manageable standards
+- Judges cannot sue in federal court
+- The judge had already been removed
+- Impeachment is a purely criminal matter
+E: This is the first two Baker v. Carr factors working together. Note the Court also worried about the finality of impeachment and about judicial review of the impeachment of judges.
+
+Q: Rucho v. Common Cause held partisan gerrymandering claims nonjusticiable. How does the Court distinguish racial gerrymandering and one-person-one-vote claims, which remain justiciable?
+- Racial claims arise under statutes only
+* Those claims have judicially manageable standards (strict scrutiny for race; numerical equality for population), whereas "fairness" among parties has no administrable baseline
+- Partisan claims involve only state legislatures
+- One-person-one-vote applies only to Congress
+E: The Court said partisanship in districting is inevitable and permissible to some degree, and courts cannot say how much is too much.
+
+Q: Ex parte McCardle upheld Congress's repeal of the Court's appellate jurisdiction over a pending habeas case. What later case limits how far that holding reaches?
+- Marbury v. Madison
+* United States v. Klein, which bars Congress from prescribing a rule of decision in a pending case
+- Plessy v. Ferguson
+- Baker v. Carr
+E: Klein (1872) struck a statute that used jurisdictional language to dictate outcomes. McCardle also noted that alternative routes to review (Ex parte Yerger) remained open.
+
+Q: Hypothetical: A state employee sues a state agency in federal court for back pay under the federal Fair Labor Standards Act. Under Seminole Tribe and Alden, the state's best defense is:
+* Sovereign immunity, because Congress cannot abrogate state immunity using its Article I commerce power
+- The FLSA does not apply to states
+- The employee lacks standing
+- The case is a political question
+E: The plaintiff's workaround: sue the responsible state officer under Ex parte Young for prospective relief, or ask the United States to sue.
+
+## doctrine:legislative
+Q: In Wickard v. Filburn, Filburn's excess wheat was grown for consumption on his own farm and never sold. How did the Court justify federal regulation?
+- Wheat is an instrumentality of interstate commerce
+* Under the aggregation principle: his activity, taken together with that of many similarly situated farmers, substantially affected the national wheat market
+- Filburn had once sold wheat across state lines
+- The Necessary and Proper Clause allows Congress to regulate anything
+E: Home-grown wheat displaced purchases. This aggregate effect on supply and price brought it within the commerce power.
+
+Q: Lopez distinguished Wickard. What is the key distinction?
+* Wickard involved economic activity (producing a commodity); gun possession near a school is not economic activity, so aggregation is not available
+- Wickard was decided under the taxing power
+- Lopez involved interstate travel
+- Wickard involved a state law
+E: Raich (2005) then applied Wickard to home-grown marijuana as economic activity within a comprehensive regulatory scheme.
+
+Q: Hypothetical: Congress makes it a federal crime to commit gender-motivated violence, citing extensive findings of its aggregate economic effects. Under United States v. Morrison:
+- Upheld, because congressional findings are conclusive
+* Struck down, because the regulated conduct is noneconomic, criminal, and traditionally local; findings cannot substitute for that analysis
+- Upheld under the Spending Clause
+- Upheld because violence always affects commerce
+E: Morrison also held § 5 of the Fourteenth Amendment could not support the law, because it reached private actors rather than state action.
+
+Q: In NFIB v. Sebelius, Chief Justice Roberts concluded the individual mandate exceeded the Commerce Clause. What was the core reasoning?
+- Health insurance is not commerce
+* The clause allows regulating existing commercial activity, not compelling individuals to become active in commerce by purchasing a product
+- Congress made no findings
+- Health care is a state-only matter
+E: The activity/inactivity distinction. The mandate was nonetheless upheld as a tax, because it was modest, had no scienter requirement and was collected by the IRS.
+
+Q: South Dakota v. Dole upheld conditioning 5% of highway funds on a drinking age of 21. Why did the Medicaid expansion in NFIB come out differently?
+- The Medicaid condition was ambiguous
+* The threatened loss of all existing Medicaid funding, over 10% of a state's budget, was so coercive it amounted to "a gun to the head"
+- Medicaid is not related to the general welfare
+- Drinking ages are a federal concern
+E: The distinction is the degree of pressure. Dole's "mild encouragement" contrasts with leveraging an existing, independent program to compel a new one.
+
+Q: Printz and New York v. United States bar commandeering. Hypothetical: Congress requires state DMVs not to disclose drivers' personal information. Under Reno v. Condon:
+* Valid, because Congress is regulating states as owners of data in a generally applicable way, not commanding them to regulate private parties
+- Invalid commandeering of state executive officers
+- Invalid under the Tenth Amendment because DMVs are state agencies
+- Valid only if Congress provides funding
+E: Anti-commandeering bars directing states to govern their citizens. Regulating state activities directly, as market or data actors, is different.
+
+Q: City of Boerne v. Flores held RFRA unconstitutional as applied to states. What made RFRA fail congruence and proportionality?
+- RFRA protected religion, which is not in the Fourteenth Amendment
+* Its sweeping strict-scrutiny requirement for all laws was out of proportion to any record of states' intentional religious discrimination
+- Congress passed it too quickly
+- It applied only to federal law
+E: After Smith, neutral laws do not violate free exercise. RFRA attempted to change the right rather than remedy actual violations.
+
+## doctrine:executive
+Q: In Youngstown, Justice Black's majority opinion and Justice Jackson's concurrence both rejected the steel seizure. How do their approaches differ?
+* Black reasoned formally (the order was lawmaking, which belongs to Congress); Jackson assessed presidential power relative to Congress's will in three categories
+- Black upheld the seizure; Jackson rejected it
+- Jackson relied only on the commander-in-chief power
+- They agreed entirely
+E: Jackson's framework became the governing test. He placed Truman in category three because Congress had considered and rejected seizure authority in the Taft-Hartley Act.
+
+Q: Hypothetical: Congress is silent, and the President, citing national security, orders the seizure of a foreign-owned port terminal during a crisis. Which Jackson category applies, and what decides the case?
+- Category one; the President wins automatically
+* Category two, the "zone of twilight"; the outcome turns on the "imperatives of events," historical practice, and congressional acquiescence
+- Category three; the President loses automatically
+- No category; it is a political question
+E: Dames & Moore v. Regan relied on long-standing practice and congressional acquiescence to sustain executive claims settlements.
+
+Q: Humphrey's Executor upheld removal protection for FTC commissioners. How did Seila Law distinguish the CFPB?
+- The CFPB is part of Congress
+* The CFPB had a single director wielding significant executive power, unlike a multimember, balanced, "quasi-legislative" expert body
+- The FTC no longer exists
+- Removal protections are always unconstitutional
+E: Seila treated Humphrey's as a limited exception for multimember expert agencies. The scope of that exception is actively contested.
+
+Q: In INS v. Chadha, why did it matter that the House's veto of Chadha's suspension of deportation was "legislative" in character?
+- Only courts can review deportation
+* Action that alters the legal rights of persons outside the legislative branch must satisfy bicameralism and presentment
+- The House had no jurisdiction over immigration
+- Legislative acts are unreviewable
+E: Chief Justice Burger's formalism: the Framers' "single, finely wrought" procedure cannot be bypassed. Justice White's dissent defended the legislative veto as a pragmatic check on delegation.
+
+Q: Hypothetical: An agency claims authority under a decades-old, general statute to impose a nationwide eviction moratorium. A court applying West Virginia v. EPA would most likely ask:
+- Whether the agency's reading is reasonable (Chevron)
+* Whether Congress clearly authorized an action of such vast economic and political significance
+- Whether the moratorium is popular
+- Whether the President approved it
+E: Compare Alabama Ass'n of Realtors v. HHS (2021) and Biden v. Nebraska (2023). Chevron was later overruled in Loper Bright.
+
+Q: United States v. Nixon held executive privilege was qualified. What specifically outweighed the President's generalized interest in confidentiality?
+* The demonstrated, specific need for evidence in a pending criminal trial
+- Congress's impeachment inquiry
+- Public curiosity
+- The press's First Amendment rights
+E: The Court contrasted a generalized interest in confidentiality with more specific claims involving military or diplomatic secrets, which might deserve greater deference.
+
+Q: Under Trump v. United States (2024), which of the following official acts receives absolute immunity from criminal prosecution?
+- Any communication with state officials
+* Exercises of core constitutional powers such as the removal of executive officers and the pardon power
+- All acts taken while in office
+- Only acts approved by the Attorney General
+E: The decision sets three tiers: absolute immunity for core powers, presumptive immunity for other official acts, and none for unofficial conduct.
+
+## doctrine:state-limits
+Q: In City of Philadelphia v. New Jersey, New Jersey banned the importation of out-of-state waste. New Jersey argued the ban protected its environment. Why did the Court strike it down?
+* Whatever the purpose, the state discriminated on the basis of origin; it could not isolate itself from a national problem by burdening out-of-state commerce
+- Waste is not commerce
+- Congress had preempted the field
+- The law burdened commerce only incidentally
+E: Facial discrimination triggers a virtually per se rule of invalidity. Compare Maine v. Taylor, where Maine proved a legitimate interest no nondiscriminatory alternative could serve.
+
+Q: Hypothetical: A state requires all apples sold in-state to bear a USDA grade only, barring superior state grades used by out-of-state growers. The law is facially neutral. What should a challenger argue?
+- It is a tax requiring Complete Auto analysis
+* Discriminatory effect: the law strips competitive advantages from out-of-state growers, as in Hunt v. Washington Apple
+- It violates the Article IV Privileges and Immunities Clause
+- It is preempted by the Constitution directly
+E: Discrimination can be shown by effect as well as by face or purpose. Hunt (1977) is the classic case.
+
+Q: Under Pike v. Bruce Church, Arizona required cantaloupes grown in Arizona to be packed in Arizona. The requirement failed because:
+- It was facially discriminatory
+* Requiring a $200,000 packing plant to advance a minor interest in the state's reputation imposed a burden clearly excessive relative to the local benefit
+- Cantaloupes are not interstate commerce
+- Congress had authorized it
+E: Pike balancing is the rule for evenhanded laws. National Pork Producers v. Ross (2023) shows the Court's division over how to apply it.
+
+Q: Why can't a corporation invoke the Article IV Privileges and Immunities Clause, though it can invoke the dormant Commerce Clause?
+* The Privileges and Immunities Clause protects "Citizens," and corporations are not citizens for its purposes
+- Corporations cannot sue in federal court
+- The clause applies only to voting
+- Corporations are always local
+E: That textual limit, along with the absence of a market-participant exception, distinguishes the two doctrines.
+
+Q: In Arizona v. United States (2012), the Court held that most of Arizona's S.B. 1070 was preempted. Making it a state crime to fail to carry federal alien registration papers was preempted under which theory?
+- Express preemption
+* Field preemption, because Congress occupied the field of alien registration
+- Impossibility preemption
+- No preemption; the provision was upheld
+E: The "show me your papers" provision (§ 2(B)) survived facial challenge. The registration offense was field-preempted, following Hines v. Davidowitz.
+
+Q: South Dakota v. Wayfair overruled Quill's physical-presence rule. What was the main criticism of Quill?
+- It was too favorable to states
+* It was an artificial, anachronistic rule that gave remote sellers a competitive advantage in the internet economy
+- It conflicted with the Due Process Clause
+- It was never followed
+E: The Court found economic and virtual contacts can provide "substantial nexus" under Complete Auto.
+
+## doctrine:gateway
+Q: In the Civil Rights Cases (1883), why did the Court strike down the public accommodations provisions of the Civil Rights Act of 1875?
+* The Fourteenth Amendment reaches state action, and Congress's § 5 power cannot regulate purely private discrimination
+- Public accommodations are not commerce
+- The Act violated the Thirteenth Amendment
+- Congress had not held hearings
+E: Justice Harlan dissented. The Civil Rights Act of 1964 was later sustained under the Commerce Clause instead (Heart of Atlanta).
+
+Q: Shelley v. Kraemer found state action in the judicial enforcement of racially restrictive covenants. Why is Shelley rarely extended?
+- It was overruled
+* Taken literally, it would turn nearly all private conduct enforced by courts (contracts, trespass) into state action, erasing the public-private line
+- It applies only to Missouri
+- Covenants are no longer enforceable
+E: A classic Socratic question: what limiting principle keeps Shelley from swallowing the state action doctrine?
+
+Q: Hypothetical: A privately owned company town runs the streets, sewers and police of a community and bars a Jehovah's Witness from distributing leaflets. Under Marsh v. Alabama:
+- No state action; the town is private property
+* State action exists because the company performs the full range of municipal functions traditionally and exclusively governmental
+- State action exists only if the state funds the company
+- The First Amendment never applies to leafleting
+E: Contrast Hudgens v. NLRB (shopping malls are not public forums) and Halleck (public-access channels are not a traditional exclusive public function).
+
+Q: Under Lindke v. Freed (2024), a city manager blocked a critic on his Facebook page. When is the official's conduct state action?
+* When he had actual authority to speak on the state's behalf on the matter and purported to exercise that authority in the posts
+- Whenever he is a public employee
+- Never, because Facebook is private
+- Only if the city paid for the account
+E: The test asks about authority and its exercise, not appearance alone.
+
+Q: Ramos v. Louisiana required unanimous jury verdicts in state trials. How does Ramos reflect the "jot-for-jot" incorporation principle?
+- It applied a diluted version of the Sixth Amendment to states
+* It rejected the idea that incorporated rights apply differently to states than to the federal government
+- It held the jury right is not incorporated
+- It applied only to federal courts
+E: Apodaca's fractured result (a unanimity requirement for federal but not state trials) was an anomaly that Ramos corrected.
+
+Q: Justice Thomas's McDonald concurrence argued for incorporating the Second Amendment through which clause, and why?
+* The Privileges or Immunities Clause, which he argued was originally understood to protect fundamental rights of citizenship, including the Bill of Rights
+- The Supremacy Clause, because it makes federal law supreme
+- The Ninth Amendment, because it protects unenumerated rights
+- The Commerce Clause
+E: He argued that "substantive due process" is an oxymoron and that the Slaughter-House Cases misread the Privileges or Immunities Clause.
+
+## doctrine:procedural-dp
+Q: In Board of Regents v. Roth, an untenured professor was not rehired and received no hearing. Why did he lose?
+* He had no property interest, only a unilateral expectation of re-employment, because no rule or contract created an entitlement to renewal
+- Professors never have due process rights
+- He had waived his rights
+- Procedural due process applies only to criminal cases
+E: Property interests come from independent sources like state law. Compare Perry v. Sindermann, where an informal tenure system could create an entitlement.
+
+Q: Goldberg v. Kelly required an evidentiary hearing before welfare benefits are terminated. How did Mathews v. Eldridge distinguish disability benefits?
+- Disability benefits are not property
+* Disability benefits are not based on financial need, and medical determinations rest on documentary evidence, reducing both the private harm and the value of an oral hearing
+- Congress had expressly authorized termination
+- Disability recipients have other income by law
+E: The Mathews three-factor balance: the private interest, the risk of error and value of additional safeguards, and the government's interest.
+
+Q: Hypothetical: A state agency revokes a nurse's license for alleged misconduct based on written complaints, without letting her respond. Applying Mathews, the strongest argument for her is:
+* Her interest in her livelihood is weighty, the risk of error from one-sided written complaints is high, and an opportunity to respond costs the state little
+- Licenses are privileges, not rights
+- She has a right to a jury trial
+- The state must prove misconduct beyond a reasonable doubt
+E: Courts no longer use the right/privilege distinction. Licenses are protected property once granted.
+
+Q: Under Parratt v. Taylor, a prison guard negligently lost an inmate's hobby kit. Why did a post-deprivation tort remedy satisfy due process?
+- Inmates have no property rights
+* The loss was random and unauthorized, so the state could not provide a hearing beforehand; an adequate after-the-fact remedy is all the process that is feasible
+- Hobby kits are worth too little
+- The guard was not a state actor
+E: Daniels v. Williams later held that mere negligence is not a "deprivation" at all. Logan v. Zimmerman Brush limits Parratt where the deprivation follows established state procedures.
+
+Q: Caperton v. A.T. Massey held that a state supreme court justice had to recuse himself. What was the constitutional problem?
+- He had once worked for a party
+* A litigant's extraordinary campaign spending to elect the justice while the case was pending created a serious, objective risk of actual bias
+- Judges cannot be elected
+- The case involved coal mining
+E: Due process requires a neutral decisionmaker. Caperton turned on the probability of bias, not proof of actual bias.
+
+## doctrine:economic
+Q: Lochner v. New York struck down a 60-hour weekly limit for bakers. Which argument from Justice Holmes's dissent has become most influential?
+* "The Fourteenth Amendment does not enact Mr. Herbert Spencer's Social Statics": courts should not impose an economic theory on legislatures
+- Bakers' hours are a federal matter
+- The law was preempted
+- Liberty of contract applies only to employers
+E: Justice Harlan's separate dissent argued the law was a reasonable health measure. The modern rational-basis approach follows Holmes's deference.
+
+Q: In Williamson v. Lee Optical, Oklahoma barred opticians from fitting lenses without an optometrist's prescription. Why was it upheld even if the law was unwise?
+- Opticians are a suspect class
+* Under rational basis review, the legislature might have had a rational reason, and courts may hypothesize one
+- The law served a compelling interest
+- Congress had approved it
+E: The day is gone, the Court said, when it uses due process to strike down business regulation "because they may be unwise, improvident, or out of harmony with a particular school of thought."
+
+Q: Hypothetical: A city denies a building permit unless the owner deeds over a public beach easement unrelated to the permit's impact. Which precedent controls, and what result?
+- Penn Central; no taking
+* Nollan v. California Coastal Commission; there is no essential nexus between the condition and the project's impact, so it is an unconstitutional exaction
+- Kelo; a valid public use
+- Lucas; a per se taking
+E: Nollan requires an essential nexus. Dolan adds rough proportionality, and Koontz and Sheetz extend the tests to monetary and legislative exactions.
+
+Q: Lucas v. South Carolina Coastal Council created a categorical rule for total takings. What is the "background principles" exception?
+* No compensation is owed if the prohibited use was never part of the owner's title, because nuisance or property law already forbade it
+- Takings of beachfront property are always exempt
+- States may avoid compensation by declaring an emergency
+- Federal law trumps state property law
+E: The government cannot newly declare a use a nuisance to avoid paying. The restriction must inhere in pre-existing law.
+
+Q: Cedar Point Nursery v. Hassid held a regulation allowing union organizers onto farms three hours a day, 120 days a year, was a per se taking. Why not Penn Central balancing?
+- The regulation had a large economic impact
+* The regulation appropriated a right to physically invade property, the right to exclude, which is treated as a physical taking regardless of duration
+- Unions are state actors
+- Farms receive special protection
+E: The Court distinguished temporary trespasses and access conditions tied to government benefits or inspections.
+
+Q: In the Slaughter-House Cases, butchers challenged a Louisiana slaughterhouse monopoly under the Fourteenth Amendment's Privileges or Immunities Clause. Why did they lose?
+- The monopoly served public health
+* The Court confined the clause to rights of national citizenship (like access to seaports), leaving civil rights generally to the states
+- Butchers are not citizens
+- The case was moot
+E: The dissents of Justices Field and Bradley foreshadowed later economic liberty and incorporation debates.
+
+## doctrine:equal-protection
+Q: Washington v. Davis upheld a police verbal-skills test that Black applicants failed at higher rates. What principle does the case stand for?
+* A facially neutral law does not trigger strict scrutiny on disparate impact alone; discriminatory purpose must be shown
+- Disparate impact always violates equal protection
+- Employment tests are exempt from equal protection
+- Title VII and the Constitution have identical standards
+E: Feeney later defined purpose as acting "because of, not merely in spite of" adverse effects. Arlington Heights lists the evidence courts look at.
+
+Q: Hypothetical: A school district reassigns students to achieve racial balance across schools, without any finding of prior de jure segregation. Under Parents Involved:
+- Valid, because diversity is compelling
+* Invalid, because racial balancing for its own sake is not a compelling interest and the plan was not narrowly tailored
+- Valid, because the plan is benign
+- A political question
+E: Chief Justice Roberts: "The way to stop discrimination on the basis of race is to stop discriminating on the basis of race." Justice Kennedy's concurrence allowed race-conscious but non-individualized measures.
+
+Q: United States v. Virginia (VMI) applied intermediate scrutiny to VMI's male-only admissions. Why didn't the parallel women's program at Mary Baldwin College cure the violation?
+* It was not substantially equal: it lacked VMI's adversative method, prestige, resources and alumni network, and rested on generalizations about women
+- Women cannot attend military colleges
+- Separate programs are always constitutional for sex
+- Virginia had abolished the program
+E: Justice Ginsburg demanded an "exceedingly persuasive justification" and rejected "overbroad generalizations about the different talents, capacities, or preferences of males and females."
+
+Q: City of Cleburne v. Cleburne Living Center refused to make intellectual disability a quasi-suspect class but still struck down the permit denial. How?
+- By applying strict scrutiny
+* By finding the denial rested on irrational prejudice and fears, which are not legitimate interests even under rational basis
+- By holding the Fair Housing Act preempted it
+- By finding a fundamental right to housing
+E: "Rational basis with bite": Moreno, Cleburne and Romer show that animus can fail even deferential review.
+
+Q: In SFFA v. Harvard, the Court found that race-conscious admissions failed strict scrutiny. Which defect did the majority NOT rely on?
+- Interests too amorphous to be measured
+- Race used as a negative for some applicants
+- No logical end point
+* The admissions program was administered by a state actor
+E: Harvard is private. The Court applied Title VI, which it read coextensively with equal protection. The other three were central to the holding.
+
+Q: Hypothetical: A state law gives in-state tuition only to residents who have lived there for 10 years. Equal protection aside, which right would challengers invoke?
+* The right to travel, specifically the Saenz component protecting new residents' right to equal treatment
+- The Commerce Clause
+- The Second Amendment
+- The Contracts Clause
+E: Compare Vlandis v. Kline and Sosna v. Iowa. Courts treat durational requirements for basic necessities skeptically.
+
+## doctrine:fundamental-rights
+Q: In Washington v. Glucksberg, how did the Court's "careful description" of the asserted right shape the outcome?
+* Framing the right as a "right to commit suicide which itself includes a right to assistance" rather than a right to die with dignity made it easy to find no deep historical root
+- The Court declined to describe the right at all
+- It described the right broadly as personal autonomy and still rejected it
+- The description did not matter
+E: The level of generality question recurs in Obergefell and Dobbs, and it is a favorite Socratic pressure point.
+
+Q: Dobbs distinguished abortion from the rights recognized in Griswold, Lawrence and Obergefell. What was the stated distinction?
+- Those rights are in the constitutional text
+* Abortion uniquely involves what Roe called "potential life" and what the Mississippi law called an "unborn human being"
+- Those cases were decided more recently
+- Those rights are protected by equal protection only
+E: The majority said nothing in its opinion casts doubt on other precedents. Justice Thomas's concurrence and the dissent disputed whether the reasoning could be so limited.
+
+Q: Hypothetical: A state bans the sale of contraceptives to married couples. After Dobbs, what is the strongest precedent-based argument against the ban?
+- Roe v. Wade
+* Griswold v. Connecticut remains binding precedent, and Dobbs expressly disclaimed casting doubt on it
+- The Commerce Clause
+- The ban is a political question
+E: A lawyer would rely on Griswold and Eisenstadt, emphasize reliance interests, and note Dobbs's limiting language.
+
+Q: In Bruen, New York required applicants for a public-carry license to show "proper cause." Why did the Court reject the two-step test lower courts had used?
+- Lower courts had applied strict scrutiny
+* Heller and McDonald, the Court said, do not support means-end interest balancing; the government must instead show consistency with historical tradition
+- The test was too deferential to gun owners
+- The Second Amendment does not apply outside the home
+E: Justice Breyer's dissent defended means-end scrutiny and catalogued gun violence data the majority deemed beside the point.
+
+Q: Rahimi upheld 18 U.S.C. § 922(g)(8). How did the Court refine Bruen's analogical method?
+* A modern law need not have a "historical twin"; it must be consistent with the principles underlying the tradition, such as disarming individuals who pose a credible threat of violence
+- Bruen was overruled
+- Only 1868 history matters
+- Courts must find an identical founding-era statute
+E: The Court relied on surety laws and "going armed" laws as analogues. Justice Thomas dissented.
+
+Q: San Antonio Independent School District v. Rodriguez rejected a challenge to Texas's property-tax-based school funding. Which TWO holdings were essential?
+- Education is a fundamental right, and wealth is a suspect class
+* Education is not a fundamental right under the federal Constitution, and wealth (especially relative wealth) is not a suspect class
+- Texas lacked any rational basis
+- The case was nonjusticiable
+E: Plyler v. Doe later struck the exclusion of undocumented children from schools with heightened rationality, while not disturbing Rodriguez.
+
+Q: Reynolds v. Sims invalidated Alabama's apportionment. A state responds: "Our state senate is modeled on the U.S. Senate, with one senator per county." The Court's answer was:
+* The federal analogy fails, because counties are not sovereign entities like the states; state legislative districts must be apportioned by population
+- The federal analogy controls
+- Only the lower house needs equal population
+- Counties may choose their own representation
+E: "Legislators represent people, not trees or acres." Compare Evenwel on the population base.
+
+## doctrine:speech
+Q: In Brandenburg v. Ohio, a Klan leader was convicted under a criminal syndicalism law for a rally speech. What did Brandenburg overrule, and why?
+* Whitney v. California, because merely advocating violence as abstract doctrine cannot be punished absent incitement to imminent lawless action likely to occur
+- Schenck v. United States, because it was decided during wartime
+- New York Times v. Sullivan
+- Tinker v. Des Moines
+E: Brandenburg absorbed Holmes's and Brandeis's "clear and present danger" dissents into an imminence-and-likelihood test.
+
+Q: Hypothetical: A town ordinance bans all signs except "ideological" signs (unlimited), "political" signs (election periods only), and "directional" signs for events (strict size limits). Under Reed v. Town of Gilbert:
+- Content-neutral, because the town did not intend to suppress ideas
+* Content-based on its face, because restrictions depend on the communicative content of the sign, triggering strict scrutiny
+- Valid commercial speech regulation
+- A prior restraint
+E: Reed rejected looking for benign motive when a law is facially content-based. City of Austin (2022) clarified that location-based rules are not automatically content-based.
+
+Q: New York Times v. Sullivan involved an advertisement with minor factual errors about Montgomery police. Why didn't the errors defeat First Amendment protection?
+- The advertisement was commercial speech
+* Debate on public issues must be "uninhibited, robust, and wide-open"; requiring proof of truth would chill speech, so officials must prove actual malice
+- Sullivan was not named
+- Alabama's courts lacked jurisdiction
+E: Erroneous statement is inevitable in free debate. The Court also noted the historical rejection of the Sedition Act of 1798.
+
+Q: In Texas v. Johnson, Texas defended its flag-burning conviction by citing an interest in preserving the flag as a symbol of national unity. Why couldn't the O'Brien test save the law?
+* The state's interest was related to the suppression of expression, because it targeted the message flag burning conveys, so strict scrutiny applied
+- O'Brien applies only to draft cards
+- Flag burning is not expressive conduct
+- Texas lacked an interest in public order
+E: When a government interest is tied to the message, O'Brien's intermediate test is unavailable.
+
+Q: Hypothetical: A public high school suspends a student for a vulgar Snapchat post made off campus on a weekend, criticizing the cheer team. Under Mahanoy:
+- Tinker gives the school full authority over all student speech
+* The school's interest is diminished off campus; the speech was not substantially disruptive and must be protected
+- Students have no First Amendment rights
+- Fraser allows punishing all vulgar speech anywhere
+E: Mahanoy identified three features of off-campus speech that weaken the school's interest, while leaving room to regulate bullying and threats.
+
+Q: In 303 Creative v. Elenis, a web designer refused to create wedding websites for same-sex couples. What was the dispositive framing?
+* The websites were the designer's own expressive speech, so applying the public accommodations law would compel her to create messages she disagreed with
+- Public accommodations laws do not apply to websites
+- The designer had a free exercise exemption
+- Colorado's law was facially discriminatory against religion
+E: The dissent argued the case concerned a business's refusal to serve customers, not compelled speech. That clash of framings is the Socratic heart of the case.
+
+Q: Counterman v. Colorado required a mental state for true-threats prosecutions. What is the minimum required?
+- Specific intent to threaten
+* Recklessness: the speaker consciously disregarded a substantial risk that the communications would be viewed as threatening violence
+- Negligence
+- Strict liability
+E: The Court chose recklessness to give "breathing room" for protected speech while not demanding proof of purpose.
+
+## doctrine:religion
+Q: In Employment Division v. Smith, members of the Native American Church were denied unemployment benefits after being fired for sacramental peyote use. Why did Justice Scalia reject the Sherbert test?
+* Applying strict scrutiny to every neutral, generally applicable law would make each conscience "a law unto itself" and courts would weigh the centrality of beliefs
+- Peyote is a controlled substance
+- Unemployment benefits are not protected
+- The Native American Church was not a religion
+E: Justice O'Connor concurred in the judgment but would have kept strict scrutiny. Congress responded with RFRA.
+
+Q: Church of the Lukumi Babalu Aye v. Hialeah struck down ordinances banning animal sacrifice. What made the ordinances non-neutral?
+- They mentioned religion by name
+* They were drafted ("gerrymandered") to reach Santería sacrifice while exempting kosher slaughter, hunting, pest control and other killings
+- They applied only on Sundays
+- They had no penalties
+E: Laws targeting religion, or underinclusive in ways that burden only religious conduct, get strict scrutiny.
+
+Q: Hypothetical: A state's COVID rules cap at-home religious gatherings at three households but allow larger gatherings at hair salons and retail stores. Under Tandon v. Newsom:
+* The rules trigger strict scrutiny, because comparable secular activity is treated more favorably; comparability is judged by the risk posed, not the reason for gathering
+- Smith controls, and the rules are valid
+- Religious gatherings at home are not protected
+- Public health measures are exempt from the First Amendment
+E: Tandon's "most favored nation" principle significantly narrowed Smith's practical reach.
+
+Q: Kennedy v. Bremerton involved a football coach praying at the 50-yard line. How did the majority answer the school's Establishment Clause concern?
+- The prayer was government speech
+* Lemon and the endorsement test are abandoned; the Establishment Clause is read by historical practices, and the coach's private, quiet prayer involved no coercion
+- Schools may lead students in prayer
+- The coach was not a public employee
+E: The dissent disputed the facts, arguing that players felt pressure to join. Factual framing is a key Socratic issue in the case.
+
+Q: Zelman v. Simmons-Harris upheld Cleveland's school voucher program even though most participating schools were religious. Why?
+* The program was neutral toward religion, and aid reached religious schools only through the genuine and independent private choice of parents
+- Religious schools received no money
+- Ohio had no public schools
+- The Establishment Clause does not apply to states
+E: Carson v. Makin (2022) later held a state that funds private schools cannot exclude religious ones.
+
+Q: Hosanna-Tabor recognized the ministerial exception. A teacher at a religious school who teaches religion classes is fired and sues for disability discrimination. Under Our Lady of Guadalupe:
+- The suit proceeds because she lacks the title of minister
+* The suit is barred, because what counts is the function she performs in conveying the faith, not her title
+- The suit proceeds under the ADA
+- The ministerial exception applies only to clergy
+E: The Court emphasized the importance of religious education to a church's mission.
+
+## doctrine:method
+Q: A fact pattern involves a city ordinance restricting adult bookstores. Before choosing a level of scrutiny, what threshold question should you address?
+* Whether there is state action, standing, and a ripe controversy, and which provision applies to a city (incorporated First Amendment)
+- Whether the Commerce Clause applies
+- Whether Congress has consented
+- Whether the ordinance is popular
+E: Step 3 of the method: clear the thresholds before reaching the merits.
+
+Q: Under heightened scrutiny, a state defends a law with a justification first offered in litigation. Why might the court reject it?
+- Courts never consider litigation arguments
+* Under intermediate and strict scrutiny, the justification must be genuine, not invented post hoc in response to litigation
+- The state waived it
+- Only Congress can offer justifications
+E: United States v. Virginia. By contrast, rational basis review accepts any conceivable rationale.
+
+Q: A law is clearly unconstitutional as applied to the plaintiff but valid in most of its applications. What remedy should a court ordinarily prefer?
+* An as-applied ruling, or severing the invalid application, rather than facial invalidation
+- Striking the entire statute
+- Sending the case to Congress
+- Declaring the case moot
+E: Facial challenges are disfavored outside overbreadth. Courts aim to limit the solution to the problem (Ayotte; Salerno).
+
+Q: When analyzing a case, why should you consider how an originalist and a living constitutionalist would each approach it?
+- Because the Court must announce its method in every case
+* Because interpretive method often determines the outcome, and anticipating both lets you make and rebut the strongest arguments
+- Because only originalism is legitimate
+- Because method is irrelevant to doctrine
+E: In a Socratic class, expect to argue both sides. Method is frequently where the disagreement lies.
+
+## doctrine:cross-cutting
+Q: In Bond v. United States (2011), a private individual raised a Tenth Amendment challenge to her criminal conviction. The Court held she could. What principle does that reflect?
+* Federalism protects individual liberty, not just state sovereignty, so individuals may invoke it
+- Only states may raise federalism claims
+- The Tenth Amendment is unenforceable
+- Criminal defendants have no standing
+E: Structure exists to protect people, which is a recurring theme of modern separation-of-powers and federalism cases.
+
+Q: Hypothetical: A statute is susceptible to two readings, one of which raises a serious First Amendment question. What should a court do under the constitutional avoidance canon?
+- Strike the statute
+* Adopt the reading that avoids the constitutional question, if it is fairly possible
+- Certify the question to Congress
+- Apply the reading that raises the question in order to resolve it
+E: Avoidance often leaves the constitutional question undecided, a point Socratic questioning frequently presses.
+
+Q: Why might a court decide a case on statutory grounds (like RFRA or Title VII) instead of constitutional ones?
+* Statutes can provide more protection than the constitutional baseline, and deciding on statutory grounds avoids unnecessary constitutional rulings
+- Constitutional claims are always weaker
+- Statutory claims do not require standing
+- Congress forbids constitutional rulings
+E: Always distinguish the constitutional rule, the statutory overlay, and policy arguments.
+
+Q: Trump v. CASA (2025) addressed universal injunctions. What is the practical significance for constitutional litigation?
+- Plaintiffs can no longer sue the federal government
+* Relief is generally limited to the parties, so broad protection must come through class actions, associational standing, or other recognized vehicles
+- Only the Supreme Court may enjoin federal policies
+- Injunctions are abolished
+E: Remedies are distinct from rights. Winning on the merits does not determine who benefits from the judgment.

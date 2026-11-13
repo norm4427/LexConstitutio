@@ -224,6 +224,15 @@ foreach ($g in $byTitle) {
     }
   }
 }
+# reviews confirmed against Open Library by scripts/flag_reviews.pl (journal|normalized title)
+if (Test-Path data/review_flags.tsv) {
+  $confirmed = @{}
+  foreach ($line in [IO.File]::ReadAllLines((Join-Path $root 'data/review_flags.tsv'), [Text.Encoding]::UTF8)) { $k = ($line -split "`t")[0]; if ($k) { $confirmed[$k] = $true } }
+  foreach ($a in $articles) {
+    $k = "$($a.j)|" + ((Clean $a.t).ToLower() -replace '^(the|a|an)\s+', '' -replace '[^a-z0-9]', '')
+    if ($confirmed.ContainsKey($k) -and -not $a.rv) { $a.PSObject.Properties.Remove('c'); $a | Add-Member -NotePropertyName rv -NotePropertyValue 1; $reviews++ }
+  }
+}
 Write-Host "Flagged $reviews probable book reviews"
 
 # ---------------------------------------------------------------- output
