@@ -32,6 +32,55 @@ def year_words(y):
     return two(hi) + ' ' + two(lo)
 
 
+def decade_words(y):
+    w = year_words(y)       # "1790s" -> "seventeen nineties", "1800s" -> "eighteen hundreds"
+    return w[:-1] + 'ies' if w.endswith('y') else w + 's'
+
+
+ROMAN = {'I': 1, 'V': 5, 'X': 10, 'L': 50}
+
+
+def roman(r):
+    n = 0
+    for a, b in zip(r, r[1:] + ' '):
+        n += -ROMAN[a] if b != ' ' and ROMAN[a] < ROMAN[b] else ROMAN[a]
+    return two(n) if n < 100 else str(n)
+
+
+# "present" is read as the noun (PREH-zent) by the voice engine unless a modal or "to" precedes it. "presents" is always
+# the verb in this text, and so is "present" with an object after it ("States present the question"), except in the
+# fixed adjective and noun uses ("the present case", "for present purposes", "clear and present danger").
+PRESENT_OBJ = (r'(?:a|an|the|their|his|her|its|this|these|those|such|no|any|some|different|real|heightened|political|'
+               r'constitutional|nonjusticiable|government|issues|questions|claims|serious|substantial|difficult|novel|important)')
+
+
+# Acronyms are spelled out letter by letter ("FDIC" -> F D I C; the engine guesses words like "f-dick", "fek", "eppa"),
+# except the ones said as words; words merely set in capitals (case names, titles) are read as words.
+SAID_AS_WORDS = set('''NASA NATO OSHA COVID FISA DACA SORNA DOMA VAWA RLUIPA RFRA RFRAs HUAC SCOTUS SEATO HAVA NIFLA PASPA
+EPCRA CIPA COPA BCRA FECA NIRA FELA ERISA CERCLA ISKCON PAC PACs NAAQS PLIVA LIVA CENTRO PERC BLAG WHYY NORML UNESCO'''.split())
+CAPS_WORDS = set('THE WILL FORCE JESUS BONG SLANTS SCRAP SAVE ACT MITE CASA AT JEB HAP ALA'.split())
+
+
+def acronyms(t):
+    def say(m):
+        w = m.group(0)
+        if w in SAID_AS_WORDS:
+            return w
+        if w in CAPS_WORDS:
+            return w.capitalize()
+        if re.fullmatch(r'(?=[IVXL]{2,})M*(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})', w):
+            return roman(w)                                         # "World War II", "Carhart II"
+        if w.endswith('s') and w[:-1].isupper():
+            return ' '.join(w[:-1]) + "'s"                         # "ALJs" -> A L J's
+        return ' '.join(w)
+    return re.sub(r'\b(?!PRESENTS?VERB\b)[A-Z]{2,7}s?\b', say, t)
+
+
+def verb_present(t):
+    t = re.sub(r'\bpresents\b', 'PRESENTSVERB', t)
+    return re.sub(r'(?<!\bthe )(?<!\bThe )(?<!\bat )(?<!\bfor )(?<!\bFor )(?<!\bof )(?<!\band )\bpresent(?= ' + PRESENT_OBJ + r'\b)', 'PRESENTVERB', t)
+
+
 def paren(m):
     """Citation parentheticals: drop bare years, read case lists as 'as in A and B'."""
     inner = m.group(1).strip()
@@ -56,6 +105,10 @@ def speakable(text):
     t = re.sub(r'\be\.g\.,?', 'for example,', t)
     t = re.sub(r'\bi\.e\.,?', 'that is,', t)
     t = re.sub(r'\bArt\.\s', 'Article ', t)
+    # Roman numerals after Article, Amendment, Title...: "Article II" -> "Article two" (the engine says "eye", "roman two")
+    t = re.sub(r'\b(Articles?|Amendments?|Titles?|Section|Clause|Part|Chapter)\s+([IVXL]+)\b(?!\.\w)',
+               lambda m: m.group(1) + ' ' + roman(m.group(2)), t)
+    t = re.sub(r'\b(Articles|Amendments|Titles) (\w+),? (and|or) ([IVXL]+)\b', lambda m: f'{m.group(1)} {m.group(2)} {m.group(3)} {roman(m.group(4))}', t)
     t = re.sub(r'\bcl\.\s', 'clause ', t)
     t = re.sub(r'\bAmend\.\s', 'Amendment ', t)
     t = re.sub(r'\bNo\.\s(?=\d)', 'Number ', t)
@@ -70,7 +123,11 @@ def speakable(text):
     # periods inside abbreviations become pauses in the voice engine: U.S. -> US, N.A.A.C.P. -> NAACP, Susan B. Anthony -> Susan B Anthony
     t = re.sub(r'\b((?:[A-Z]\.\s?){2,})', lambda m: m.group(1).replace('.', '').replace(' ', '') + ' ', t)
     t = re.sub(r'\b([A-Z])\.\s(?=[A-Z])', r'\1 ', t)
-    t = re.sub(r'(?<![\d,])\b(1[6-9]\d\d|20\d\d)\b(?![\d,])', lambda m: year_words(m.group(1)), t)
+    # years ("1793", "In 1793, Congress", "the 1790s"), but not numbers like "1,793" or "17,930"
+    t = re.sub(r'(?<!\d)(?<!\d,)\b(1[6-9]\d\d|20\d\d)s\b', lambda m: decade_words(m.group(1)), t)
+    t = re.sub(r'(?<!\d)(?<!\d,)\b(1[6-9]\d\d|20\d\d)\b(?!,\d|\d)', lambda m: year_words(m.group(1)), t)
+    t = acronyms(t)
+    t = verb_present(t)
     t = t.replace('—', ', ').replace('–', ' to ').replace('“', '"').replace('”', '"').replace('’', "'")
     t = re.sub(r'\s+([,.;:])', r'\1', t)
     t = re.sub(r',\s*,', ',', t)
@@ -115,6 +172,7 @@ class Narrator:
                 if line.strip() and not line.startswith('#'):
                     term, ph = line.rstrip('\n').split('\t')[:2]
                     self.lex[term if term[0].isupper() else term.lower()] = ph
+        self.lex.update({'PRESENTVERB': 'pɹɪzˈɛnt', 'PRESENTSVERB': 'pɹɪzˈɛnts'})     # see verb_present()
         names = sorted((t for t in self.lex if t[0].isupper()), key=len, reverse=True)
         terms = sorted((t for t in self.lex if not t[0].isupper()), key=len, reverse=True)
         alts = [re.escape(t) for t in names] + ['(?i:' + re.escape(t) + ')' for t in terms]

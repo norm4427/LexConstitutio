@@ -7,6 +7,7 @@ run can be stopped and resumed; pass --force to regenerate.
   python scripts/narrate_all.py guide doctrine      # the parts stored in the repo (docs/audio/)
   python scripts/narrate_all.py conan               # Constitution Annotated essays, written to ../audio-r2/ for Cloudflare R2
   python scripts/narrate_all.py --manifest          # only rebuild docs/data/narration.js from what exists
+  python scripts/narrate_all.py --only=ids.txt      # regenerate just the sections listed (one id per line)
 """
 import json, os, sys, time
 
@@ -39,7 +40,10 @@ def main():
     if '--manifest' in sys.argv:
         return manifest()
     force = '--force' in sys.argv
-    todo = [s for s in sections(args or ('guide', 'doctrine', 'conan')) if force or not os.path.exists(s['out'] + '.json')]
+    only = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--only=')), None)   # a file of section ids to redo
+    only = set(open(only, encoding='utf-8').read().split()) if only else None
+    todo = [s for s in sections(args or ('guide', 'doctrine', 'conan'))
+            if (s['id'] in only if only is not None else force or not os.path.exists(s['out'] + '.json'))]
     from narrate import Narrator
     n = Narrator()
     t0, done_audio = time.time(), 0.0

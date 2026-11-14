@@ -54,6 +54,11 @@ sub wikisource_text {
   my $list = `curl -s -m 60 -A "ConLawIndex/1.0 (educational project)" "https://en.wikisource.org/w/api.php?action=query&list=prefixsearch&pssearch=$q&pslimit=20&format=json"`;
   my @titles = ($list =~ /"title":"([^"]+)"/g);
   my ($page) = (grep { /Opinion of the Court$/ } @titles), (grep { !/\// } @titles);
+  # Wikisource titles abbreviate ("New York Times Co. v. Sullivan"); try that spelling before giving up
+  if (!$page && $name =~ /\b(?:Company|Corporation|Incorporated)\b/) {
+    (my $alt = $name) =~ s/\bCompany\b/Co./; $alt =~ s/\bCorporation\b/Corp./; $alt =~ s/\bIncorporated\b/Inc./;
+    my $t = wikisource_text($alt); return $t;
+  }
   return '' unless $page;
   $page =~ s/\\u(\w{4})/chr(hex $1)/ge;
   my $p = $page; utf8::encode($p); $p =~ s/([^A-Za-z0-9])/sprintf('%%%02X', ord $1)/ge;
@@ -105,8 +110,20 @@ sub clean_text {
   $t =~ s/\n\s*\d{1,4}\s*\n/\n/g;                       # bare page numbers
   $t =~ s/\n[^\n]{0,60}(OCTOBER TERM|Opinion of the Court|Cite as:|U\. ?S\.)[^\n]{0,60}\n/\n/g;   # running heads
   $t =~ s/[ \t]*\n[ \t]*/ /g; $t =~ s/\s+/ /g;
+  $t =~ s/\s*Page Proof Pending Publication\s*\d*\s*/ /g;              # slip-opinion page footer
+  $t =~ s/\s*\[p\d+\]\s*/ /g;                                          # Wikisource page markers ("[p495]")
+  $t =~ s/\b([A-Za-z]{2,})- ([a-z]{2,})\b/$1$2/g;                      # a word hyphenated at a line end: "Pro- tection"
+  $t =~ s/(?<=[a-z)][,.;"])\d{1,2}(?=\s)//g;                            # footnote numbers: "Carolina,3 quoted", "J.).4 In"
+  # a running head ("MATHEWS v. ELDRIDGE") that landed inside a word hyphenated across pages: "de- MATHEWS v. ELDRIDGE cisions"
+  $t =~ s/\b([a-z]+)- (?:[A-Z][A-Z.,'&]+ )+v\. (?:[A-Z][A-Z.,'&]+ )*?([a-z]+)/$1$2/g;
   $t =~ s/[\x{2018}\x{2019}]/'/g; $t =~ s/[\x{201C}\x{201D}]/"/g;
   $t
+}
+sub junk_score {
+  my $t = shift; my $n = 0;
+  $n++ while $t =~ /°|\boniy\b|\.\s+[a-z]|\b[A-Za-z]+\.\s*§|[a-z][,.;"]\d{1,2}\s|\bv\.\s*$/g;
+  $n += 2 if $t =~ /^(?:See\b|[A-Z][\w.']+, (?:\d|On )|[a-z])/;
+  $n
 }
 sub find_excerpt {
   my ($text, $anchor) = @_;
@@ -127,7 +144,8 @@ sub find_excerpt {
   my $start = $s - $back;
   # run forward to the end of the sentence, plus one more if short
   my $post = substr($text, $e, 900);
-  my @ends; push @ends, $+[0] while $post =~ /[.!?]["')\]]?(?=\s+["'(]?[A-Z]|\s*$)/g;
+  # (the same abbreviation guards as above, so an excerpt never stops at "Palko v." or "458 U.")
+  my @ends; push @ends, $+[0] while $post =~ /(?<!\bv)(?<!\b[A-Z])(?<!\bMr)(?<!\bNo)(?<!\bId)(?<!\bid)(?<!\bSt)(?<!\bCo)(?<!\bJr)(?<!\bUniv)(?<!\bDist)(?<!\bSch)(?<!\bDept)(?<!\bU\.S)[.!?]["')\]]?(?=\s+["'(]?[A-Z]|\s*$)/g;
   my $fwd = @ends ? $ends[0] : length($post);
   $fwd = $ends[1] if @ends > 1 && ($e - $start + $fwd) < 350;
   my $out = substr($text, $start, $e - $start + $fwd);
@@ -136,6 +154,17 @@ sub find_excerpt {
   $out =~ s/^(?:[^.]{0,60}?\d[^.]{0,40}?\(\d{4}\)\.\s+)+(?=[A-Z])//;
   $out =~ s/^(?:S\.|U\. ?S\.|Id\.|id\.)\s*[\d, ]*(?:\(\d{4}\))?\.?\s*(?=[A-Z])//;
   $out =~ s/^(?:Id\.|id\.|Ibid\.)\s*,?\s*(?:at\s*)?[\d\x{2013}\-, ]*\.?\s*(?=[A-Z])//;
+  # the tail of an earlier sentence's citation string ("Arnett v. Kennedy, supra, at 167-168 (...); Goldberg ..., at 263.")
+  # an excerpt that opens inside a citation string or a page head ("Brief for Respondents 50.", "See, e. g., Allen v.
+  # Wright, 468 U. S. 737 (1984).", "UNITED STATES v. VIRGINIA the closest guide.") starts at the first prose sentence
+  $out =~ s/^[A-Z][A-Z.,'& ]+ v\. [A-Z][A-Z.,'& ]+?\s+\d*\s*(?:[A-Z]\s+)?(?=[A-Z][a-z])//;   # a page head: "PERRY ED. ASSN. v. PERRY LOCAL EDUCATORS' ASSN. 45 A"
+  for my $pass (1 .. 4) {
+    last unless $out =~ /^(?:See\b|see\b|Brief\b|[A-Z][A-Z .]+ v\. [A-Z]|.{0,80}?\b(?:supra|U\. ?S\.,? (?:at )?\d|at \d)|[A-Z][\w'.]+, (?:\d|On )|Loving\b|Mill\b)/;
+    last unless $out =~ /^(.{0,600}?(?:\d[^.]{0,40}|\)|\d\)))\.["')]?\s+(?=(?:[A-Z][a-z]+)(?:,| [a-z]))/s;
+    $out = substr($out, length $1); $out =~ s/^[."')]*\s+//;
+  }
+  $out =~ s/\.\s+[IVX]{1,4}\s+(?=[A-Z][a-z])/. /g;                      # a section numeral between sentences ("itself. III Like")
+  $out =~ s/\s*" `\[T\]he line' "\s*/ /;                                 # an unclosed quotation fragment in the slip opinion
   $out =~ s/\s*\b\d{1,3}\s*(?=[A-Z])//g if length $out > 0 && 0;
   return length($out) > 1400 ? substr($out, 0, 1400) . "\x{2026}" : $out;
 }
@@ -202,6 +231,13 @@ for my $f (sort glob 'scripts/advanced/*.md') {
       my $fromWs = sub { my $t = wikisource_text($n); return unless $t; $text = find_excerpt(clean_text($t), $anchor); $src = 'Wikisource (public-domain transcription)' if $text };
       # older scans have noisy OCR, so prefer Wikisource's proofread transcriptions for them
       if ($y < 1950) { $fromWs->(); $fromPdf->() unless $text } else { $fromPdf->(); $fromWs->() unless $text }
+      # an OCR'd excerpt with footnote debris, a lowercase sentence start or an opening citation string: take the
+      # Wikisource transcription of the same passage if it is cleaner
+      if ($text && junk_score($text) > 0) {
+        my ($t1, $s1) = ($text, $src);
+        $text = undef; ($y < 1950 ? $fromPdf : $fromWs)->();
+        ($text, $src) = ($t1, $s1) unless $text && junk_score($text) < junk_score($t1);
+      }
       if ($text) { push @{ $sec->{excerpts} }, { n => $c ? $c->{n} : $n, y => $y + 0, id => $c ? $c->{id} : undef, cit => $c ? $c->{cit} : undef, pdf => $c ? $c->{pdf} : undef, t => $text, src => $src }; $stats{excerpts}++ }
       else { $stats{excerptsMissing}++; push @missing, "excerpt: $n ($y): $anchor" }
       next;

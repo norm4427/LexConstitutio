@@ -104,3 +104,17 @@ a.stat-ref:hover { color: var(--accent); }
 .narr.started .narr-len { display: none; }
 .narr-on { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: -8px 0 0 color-mix(in srgb, var(--accent) 12%, transparent), 8px 0 0 color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 4px; transition: background .2s; }
 .narr-on.found-clause { outline: 2px solid var(--accent); }
+
+/* source lines in the clause panel look like source lines everywhere else: small, muted, set apart from the quoted text */
+.ac-sec p.attrib { font: 400 12.5px/1.5 var(--sans); color: var(--ink-3); margin: 12px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.ac-sec p.ac-intro { font: 400 13px/1.5 var(--sans); color: var(--ink-3); margin: -2px 0 10px; }
+.ac-all { margin-top: 10px; }
+/* the attestation and signatures after Article VII */
+.ac-closing .ac-note { font: 400 15px/1.7 var(--serif); color: var(--ink-2); margin: 0 0 12px; }
+.ac-signers { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px 24px; margin-top: 18px; }
+.ac-signer h4 { font: 600 11px/1.4 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 6px; }
+.ac-signer span { display: block; font: italic 400 15px/1.6 var(--serif); color: var(--ink); }
+.ac-signer em { display: block; font: 400 13px/1.5 var(--sans); font-style: normal; color: var(--ink-3); }
+.ac-signer.pres { grid-column: 1 / -1; }
+.ac-signer.pres span { font-size: 17px; }
+.ac-signer span small { display: block; font: 400 12px/1.4 var(--sans); font-style: normal; color: var(--ink-3); margin-bottom: 4px; }

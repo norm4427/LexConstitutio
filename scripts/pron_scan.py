@@ -70,7 +70,7 @@ CONS_DROP = re.compile(r'[ˈˌːəɚɐᵻɪiɛæʌʊuɑɔɜaeoɒ ]')
 def consonants(p):
     p = p.replace('ɾ', 't').replace('ʔ', 't').replace('n̩', 'n').replace('l̩', 'l')
     p = re.sub(r'j(?=ə|ɚ|ʊ|u)', '', p)          # "-nia" written n-jə vs n-iə
-    p = re.sub(r'([ɚɜ]ː?)ɹ', r'', p).replace('ɹɹ', 'ɹ')   # the engine writes an r-coloured vowel plus an extra r
+    p = re.sub(r'([ɚɜ]ː?)ɹ', r'\1', p).replace('ɹɹ', 'ɹ')   # the engine writes an r-coloured vowel plus an extra r
     p = p.replace('z', 's').replace('x', 'k')   # s/z voicing and final ch are not worth overriding
     return CONS_DROP.sub('', p)
 

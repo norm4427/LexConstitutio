@@ -172,9 +172,11 @@
     const jset = st.j.length ? new Set(st.j) : null;
     const isParent = st.topic && !topicById[st.topic]?.parent;
     const tset = st.topic ? new Set(isParent ? [st.topic, ...childrenOf(st.topic).map(c => c.id)] : [st.topic]) : null;
+    const cset = st.clause && window.CLAUSE_ARTS ? new Set(window.CLAUSE_ARTS.ids[st.clause] || []) : null;
     const out = [];
     for (const a of articles) {
       if (jset && !jset.has(a.j)) continue;
+      if (cset && !cset.has(a.id)) continue;
       if (tset && !a.tp.some(t => tset.has(t))) continue;
       if (st.from && (!a.y || a.y < st.from)) continue;
       if (st.to && (!a.y || a.y > st.to)) continue;
@@ -306,6 +308,7 @@
     return {
       q: params.get('q') || '',
       topic: params.get('topic') || '',
+      clause: params.get('clause') || '',
       j: (params.get('j') || '').split(',').filter(Boolean),
       from: +params.get('from') || 0,
       to: +params.get('to') || 0,
@@ -315,6 +318,9 @@
   }
   function viewSearch(params) {
     const st = readSearchState(params);
+    // filtering by a constitutional clause needs the clause tags (loaded on first use)
+    if (st.clause && !window.CLAUSE_ARTS) return loadData('clause-articles', 'CLAUSE_ARTS').then(() => viewSearch(params)).catch(() => toast('The clause filter could not be loaded.'));
+    const clauseName = st.clause && window.CLAUSE_ARTS ? window.CLAUSE_ARTS.names[st.clause] : '';
     const { results, pq, sort } = runSearch(st);
     const page = Math.min(st.page, Math.max(1, Math.ceil(results.length / PAGE_SIZE)));
     const slice = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -323,7 +329,10 @@
     const hasQ = pq.terms.length || pq.phrases.length;
 
     let title = 'Browse the index', sub = `${fmt(articles.length)} articles across ${journals.length} law reviews.`, crumbs = '';
-    if (t) {
+    if (clauseName && !t && !hasQ) {
+      title = clauseName; sub = 'Articles about this clause: their title or subject keywords concern it, or their abstract names it.';
+      crumbs = `<a href="#/corner/constitution">The Annotated Constitution</a><span>/</span><a href="${hashFor('corner/constitution', { c: st.clause })}">${esc(clauseName)}</a><span>/</span><span>Articles</span>`;
+    } else if (t) {
       const par = t.parent ? topicById[t.parent] : null;
       title = t.name;
       sub = t.parent ? `A subtopic of ${par.name}.` : (t.desc || '');
@@ -349,6 +358,7 @@
 
     const chips = [];
     if (hasQ) chips.push(`<button class="chip on" data-clear="q">“${esc(st.q)}” <span class="x">✕</span></button>`);
+    if (clauseName) chips.push(`<button class="chip on" data-clear="clause">${esc(clauseName)} <span class="x">✕</span></button>`);
     if (t) chips.push(`<button class="chip on" data-clear="topic">${esc(t.name)} <span class="x">✕</span></button>`);
     for (const j of st.j) chips.push(`<button class="chip on" data-clear-j="${esc(j)}">${esc(journalById[j]?.name || j)} <span class="x">✕</span></button>`);
     if (st.from || st.to) chips.push(`<button class="chip on" data-clear="years">${st.from || '…'}–${st.to || '…'} <span class="x">✕</span></button>`);
@@ -671,7 +681,7 @@
       <h2>Originalist's Corner</h2>
       <p>The Corner indexes the full texts of Blackstone's <em>Commentaries</em>, St. George Tucker's annotated Blackstone, Joseph Story's <em>Commentaries on the Constitution</em>, James Kent's <em>Commentaries</em>, Vattel's <em>Law of Nations</em> and Locke's <em>Two Treatises</em> (via the Lonang Institute). It also covers <em>The Federalist</em> (Project Gutenberg), Madison's Notes of the Convention debates and founding documents (the Avalon Project at Yale Law School), and the acts of the first five Congresses (<em>Statutes at Large</em>, vol. 1, via Wikisource). Passages are matched to topics automatically and should be read in context. The full texts of <em>The Federalist</em>, the founding documents and the statutes can be read in the site's library.</p>
       <h2>Supreme Court, lectures and guide</h2>
-      <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (text licensed <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>; flashcard and summary text is excerpted or adapted). Oyez is a registered trademark of Oyez, Inc. Vote splits and each justice’s vote come from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Harold J. Spaeth et al., Version 2026 Release 01 and Legacy 07), and for later decisions from the lineup in the Court’s own opinion. Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
+      <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (text licensed <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>; flashcard and summary text is excerpted or adapted). Oyez is a registered trademark of Oyez, Inc. Vote splits and each justice’s vote come from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Harold J. Spaeth et al., Version 2026 Release 01 and Legacy 07), and for later decisions from the lineup in the Court’s own opinion. The same database supplies the pre-1955 cases that Oyez does not cover, and the justice ratings, Statistics tables and vote models are this site’s calculations from it (ideal-point scores from <a href="https://mqscores.quantitative.emory.edu/" target="_blank" rel="noopener">Martin and Quinn</a>; table format after the <em>Harvard Law Review</em>’s annual “The Statistics”). Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
     </div></div>`;
   }
 
@@ -681,10 +691,35 @@
     if (window[globalName]) return Promise.resolve(window[globalName]);
     if (!loading[name]) loading[name] = new Promise((res, rej) => {
       const s = document.createElement('script'); s.src = `data/${name}.js?v=${window.LC_VER || ""}`;
-      s.onload = () => res(window[globalName]); s.onerror = () => { delete loading[name]; rej(new Error(`Couldn't load data/${name}.js`)); };
+      s.onload = () => res(globalName === 'SCOTUS' ? scdbLinks(window[globalName]) : window[globalName]); s.onerror = () => { delete loading[name]; rej(new Error(`Couldn't load data/${name}.js`)); };
       document.body.appendChild(s);
     });
     return loading[name];
+  }
+  /* Cases added from the Supreme Court Database (s: 1, scripts/add_scdb_cases.py) carry only the citation; the
+     Library of Congress U.S. Reports PDF (vols. 1-576) and Justia links follow from it, as in build_extras.pl. */
+  function scdbLinks(S) {
+    for (const c of (S && S.cases) || []) {
+      if (c.s !== 1 || !c.cit) continue;
+      const m = c.cit.match(/^(\d+) U\.S\. (\d+)$/);
+      if (!m) continue;
+      const v = +m[1], p = +m[2], k = `usrep${String(v).padStart(3, '0')}${String(p).padStart(3, '0')}`;
+      if (v <= 576) c.pdf = `https://tile.loc.gov/storage-services/service/ll/usrep/usrep${String(v).padStart(3, '0')}/${k}/${k}.pdf`;
+      c.ju = `https://supreme.justia.com/cases/federal/us/${v}/${p}/`;
+    }
+    return S;
+  }
+  /* Ratings, vote models and the Statistics tab live in app-stats.js, loaded on first use. */
+  let extLoading = null;
+  function ext() {
+    window.LC_API = window.LC_API || { esc, fmt, hashFor, withData, loadData, scotusTabs };
+    if (window.LCX) return Promise.resolve(window.LCX);
+    if (!extLoading) extLoading = new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = `app-stats.js?v=${window.LC_VER || ''}`;
+      s.onload = () => res(window.LCX); s.onerror = () => { extLoading = null; rej(new Error("Couldn't load app-stats.js")); };
+      document.body.appendChild(s);
+    });
+    return extLoading;
   }
   let routeToken = 0;
   function withData(specs, fn) {
@@ -772,7 +807,11 @@
     { id: 'rehnquist', name: 'Rehnquist Court', from: 1986, to: 2005 },
     { id: 'burger', name: 'Burger Court', from: 1969, to: 1986 },
     { id: 'warren', name: 'Warren Court', from: 1953, to: 1969 },
-    { id: 'early', name: 'Before 1953', from: 0, to: 1953 }
+    { id: 'hughes', name: 'Hughes, Stone & Vinson Courts', from: 1930, to: 1953 },
+    { id: 'fuller', name: 'Fuller, White & Taft Courts', from: 1888, to: 1930 },
+    { id: 'taney', name: 'Taney, Chase & Waite Courts', from: 1836, to: 1888 },
+    { id: 'marshall', name: 'Jay through Marshall Courts', from: 0, to: 1836 },
+    { id: 'early', name: 'Before 1953', from: 0, to: 1953, hide: true }   // kept for older links
   ];
   let caseById = null;
   function viewScotus(params) { withData([['scotus', 'SCOTUS'], ['case_impact', 'CASE_IMPACT']], (S, I) => renderScotus(S, params, I)); }
@@ -803,7 +842,7 @@
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Supreme Court</span></div>
         <h1>Supreme Court decisions</h1>
-        <p>${fmt(S.cases.length)} cases with summaries, opinion PDFs, and oral argument audio you can play here, with a transcript that follows along. Summaries and audio come from <a href="https://www.oyez.org" target="_blank" rel="noopener" style="color:var(--accent)">Oyez</a>. Opinions come from supremecourt.gov and the Library of Congress.</p>${scotusTabs('decided')}</div>
+        <p>${fmt(S.cases.length)} cases. About ${fmt(Math.round(S.cases.filter(c => c.s !== 1).length / 100) * 100)} have summaries, opinion PDFs, and oral argument audio you can play here, with a transcript that follows along; the rest, mostly from before 1955, are listed from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court Database</a> with their citation, date, votes and opinion. Summaries and audio come from <a href="https://www.oyez.org" target="_blank" rel="noopener" style="color:var(--accent)">Oyez</a>. Opinions come from supremecourt.gov and the Library of Congress.</p>${scotusTabs('decided')}</div>
       <div class="layout">
         <aside class="sidebar" id="sidebar">
           <div class="side-block"><h4>Search cases</h4><form id="sc-form"><input class="input" id="sc-q" type="search" value="${esc(st.q)}" placeholder="Case name, issue, docket…"></form></div>
@@ -813,7 +852,7 @@
           </div>
           <div class="side-block"><h4>Court</h4><ul class="tree">
             <li><a href="#" data-era="" class="${!st.era ? 'on' : ''}"><span>All eras</span></a></li>
-            ${ERAS.map(e => `<li><a href="#" data-era="${e.id}" class="${st.era === e.id ? 'on' : ''}"><span>${e.name}</span><span class="n">${e.to === 9999 ? e.from + '–' : e.from ? e.from + '–' + e.to : ''}</span></a></li>`).join('')}
+            ${ERAS.filter(e => !e.hide).map(e => `<li><a href="#" data-era="${e.id}" class="${st.era === e.id ? 'on' : ''}"><span>${e.name}</span><span class="n">${e.to === 9999 ? e.from + '–' : e.from ? e.from + '–' + e.to : ''}</span></a></li>`).join('')}
           </ul></div>
           <div class="side-block"><h4>Area</h4><ul class="tree">
             <li><a href="#" data-tag="" class="${!st.tag ? 'on' : ''}"><span>All areas</span></a></li>
@@ -854,7 +893,7 @@
   }
   /* ---- current docket */
   function scotusTabs(active) {
-    return `<div class="subtabs"><a href="#/docket" class="${active === 'docket' ? 'on' : ''}">Current docket</a><a href="#/scotus" class="${active === 'decided' ? 'on' : ''}">Decided cases</a><a href="#/justices" class="${active === 'justices' ? 'on' : ''}">Justices</a><a href="#/statutes" class="${active === 'statutes' ? 'on' : ''}">Statutes</a></div>`;
+    return `<div class="subtabs"><a href="#/docket" class="${active === 'docket' ? 'on' : ''}">Current docket</a><a href="#/scotus" class="${active === 'decided' ? 'on' : ''}">Decided cases</a><a href="#/justices" class="${active === 'justices' ? 'on' : ''}">Justices</a><a href="#/statutes" class="${active === 'statutes' ? 'on' : ''}">Statutes</a><a href="#/stats" class="${active === 'stats' ? 'on' : ''}">Statistics</a></div>`;
   }
   const todayIso = () => new Date().toISOString().slice(0, 10);
   function docketStatus(e) {
@@ -981,7 +1020,7 @@
     const former = J.justices.filter(j => !isSitting(j)).reverse();
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a><span>/</span><span>Justices</span></div>
-        <h1>The Justices</h1><p>All ${J.justices.length} people who have served on the Supreme Court. Select a justice for a short biography and the most-cited opinions they wrote.</p>
+        <h1>The Justices</h1><p>All ${J.justices.length} people who have served on the Supreme Court. Select a justice for a short biography, the most-cited opinions they wrote, and liberal–conservative and institutionalism ratings computed from their votes.</p>
         ${scotusTabs('justices')}</div>
       <div class="wrap" style="padding-bottom:48px">
       <h2 class="section-h">The current Court</h2><div class="justice-grid">${sitting.map(justiceTile).join('')}</div>
@@ -1025,7 +1064,12 @@
         <div class="panel"><h4>Most-cited dissents</h4>${dis.length ? `<ol class="mini-list ranked">${dis.slice(0, 8).map(item).join('')}</ol>` : '<p class="muted-line">No written dissents among the cases indexed here.</p>'}</div>
       </div>
       <p class="attrib">Authorship from the Supreme Court Database (Spaeth et al.) and the Court's opinions. Ranked by later Supreme Court citations from the Caselaw Access Project (Harvard Law School Library), whose data runs to about 2020.</p>
+      <div id="justice-ratings"><p class="muted-line"><span class="spinner sm"></span> Loading ratings…</p></div>
     </div></div>`;
+    const tk = routeToken;
+    Promise.all([ext(), loadData('ratings', 'RATINGS'), isSitting(j) ? loadData('models', 'MODELS').catch(() => null) : Promise.resolve(null)])
+      .then(([X, R, M]) => { const el = document.getElementById('justice-ratings'); if (tk === routeToken && el) X.justiceRatings(el, j, J, R, M); })
+      .catch(() => { const el = document.getElementById('justice-ratings'); if (el) el.innerHTML = ''; });
   }
 
   /* ---- vote split: the number, a dot per justice, and a hover/focus panel naming each side ---- */
@@ -1094,7 +1138,7 @@
           ${!c.tr && pend && pend.tr ? `<a class="btn btn-primary" href="${esc(pend.tr)}" target="_blank" rel="noopener">Argument transcript PDF ↗</a>` : ''}
           ${pend ? `<a class="btn btn-ghost" href="${esc(pend.docket)}" target="_blank" rel="noopener">Docket ↗</a>` : ''}
           ${c.ju ? `<a class="btn btn-ghost" href="${esc(c.ju)}" target="_blank" rel="noopener">Full text on Justia ↗</a>` : ''}
-          <a class="btn btn-ghost" href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez ↗</a>
+          ${c.s === 1 ? '' : `<a class="btn btn-ghost" href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez ↗</a>`}
         </div>
         ${c.h ? `<h2>Holding <small>(supremecourt.gov)</small></h2><div class="callout">${esc(c.h)}</div>` : ''}
         <div id="case-live"><h2>Case summary</h2><p class="muted-line"><span class="spinner sm"></span> Loading facts, question and conclusion from Oyez…</p></div>
@@ -1127,6 +1171,11 @@
       ve.innerHTML = voteHtml({ m: r[0], n: r[1], maj: r[2].map(([i, f]) => [V.j[i], f]), min: r[3].map(([i, f]) => [V.j[i], f]), eq: r[5] ? r[5].map(i => V.j[i]) : null },
         r[4] === 2 ? `<a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez</a>` : r[4] ? `the Court's opinion${c.pdf ? ` (<a href="${esc(c.pdf)}" target="_blank" rel="noopener">PDF</a>)` : ''}` : '<a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a>');
     }).catch(() => {});
+    if (c.s === 1) {   // listed from the Supreme Court Database only; Oyez has no record of it
+      document.getElementById('case-live').innerHTML = `<p class="muted-line">This case is listed from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Spaeth et al.), which records its name, citation, date and votes. No summary is available; read the opinion ${c.pdf ? 'in the <i>United States Reports</i> (Library of Congress) or ' : ''}on Justia.</p>`;
+      if (c.arg && !hasArgAudio(c)) document.getElementById('case-audio').innerHTML = '<p class="muted-line">No argument recording exists: the Court began recording oral arguments in October 1955.</p>';
+      return;
+    }
     fetch(`https://api.oyez.org/cases/${c.id}`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
       if (token !== routeToken) return;
       const live = document.getElementById('case-live');
@@ -1414,7 +1463,7 @@
         <div class="guide-grid">${G.topics.filter(t => t.group === g).map((t, i) => `<a class="guide-card" href="#/guide/${t.id}">
           ${guideIcon(t.id)}
           <span class="guide-body"><b>${esc(t.title)}</b><span>${esc(t.tagline)}</span>
-          <span class="guide-meta">${t.videos.length} videos · ${t.cases.length} cases · ${(t.books || []).length} book${(t.books || []).length === 1 ? '' : 's'} · ${t.articles.length} readings</span></span>
+          <span class="guide-meta">${t.videos.length + (t.lectures || []).length} videos · ${t.cases.length} cases · ${(t.books || []).length} book${(t.books || []).length === 1 ? '' : 's'} · ${t.articles.length} readings</span></span>
         </a>`).join('')}</div>
       </section>`).join('')}
       <section class="section advanced-intro" id="advanced" style="padding-top:70px">
@@ -1495,7 +1544,7 @@
     const go = id => { const el = document.getElementById('sec-' + id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
     app.querySelectorAll('[data-sec]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', `#/doctrine/${p.id}/${a.dataset.sec}`); go(a.dataset.sec); }));
     app.querySelector('[data-adv]').addEventListener('click', e => { e.preventDefault(); location.hash = '#/guide'; setTimeout(() => document.getElementById('advanced')?.scrollIntoView(), 300); });
-    if (Q) mountQuiz(app, 'doctrine:' + p.id, Q.doctrine[p.id] || []);
+    if (Q) mountQuiz(app, 'doctrine:' + p.id, Q.doctrine[p.id] || [], [...p.sections.flatMap(s => [...s.cases.map(c => c.n), ...s.excerpts.map(e => e.n)])]);
     mountDoctrineNarration();
     app.querySelectorAll('[data-expand-all]').forEach(b => b.addEventListener('click', () => {
       const ds = b.closest('.commentary').querySelectorAll('details.essay');
@@ -1547,6 +1596,9 @@
             ${t.videos.length > 1 ? `<button class="vc-nav vc-prev" aria-label="Previous video">‹</button><button class="vc-nav vc-next" aria-label="Next video">›</button>` : ''}
           </div>
           <div class="vc-foot"><div class="embed-cap vc-cap"></div>${t.videos.length > 1 ? `<div class="vc-dots">${t.videos.map((_, i) => `<button data-vi="${i}" aria-label="Video ${i + 1}"></button>`).join('')}</div>` : ''}</div>` : ''}
+        ${(t.lectures || []).length ? `<h2>Lectures and debates</h2>
+          <p class="muted-line" style="margin-top:-4px">Longer talks, debates and panels on this topic from law schools, universities and civic institutions.</p>
+          <div class="vgrid guide-lectures">${t.lectures.map(v => videoTile(v, t.id)).join('')}</div>` : ''}
         ${(t.books || []).length ? `<h2>Start with a book</h2>
         <div class="guide-books">${t.books.map(bid => B.books.find(x => x.id === bid)).filter(Boolean).map(b => `<a class="guide-book" href="#/book/${esc(b.id)}">
           ${bookCover(b, 'sm')}
@@ -1588,7 +1640,7 @@
         <div class="panel"><h4>All beginner topics</h4><ul class="mini-list toc">${G.topics.map(x => `<li><a class="t ${x.id === id ? 'cur' : ''}" href="#/guide/${x.id}">${esc(x.title)}</a></li>`).join('')}</ul></div>
       </aside>
     </div></div>`;
-    if (Q) mountQuiz(app, 'guide:' + t.id, Q.guide[t.id] || []);
+    if (Q) mountQuiz(app, 'guide:' + t.id, Q.guide[t.id] || [], t.cases.map(c => c.n));
     mountCarousel(t.videos, t.id);
     glossify(app.querySelectorAll('.glossable p, .guide-tagline'));
     mountGuideNarration(id);
@@ -1827,7 +1879,10 @@
       play.addEventListener('click', () => {
         if (!audio.paused) return audio.pause();
         track.hidden = false; bar.classList.add('started');
-        loadSegs().catch(() => {}).finally(() => audio.play().catch(() => toast('The audio could not be played.')));
+        // play inside the click itself (browsers refuse play() once the gesture has passed); the timing file for the
+        // highlighting loads alongside, and its absence only turns the highlighting off
+        audio.play().catch(() => toast('The audio could not be played.'));
+        loadSegs().catch(() => {});
       });
       bar.querySelector('.narr-bar').addEventListener('click', e => {
         const r = e.currentTarget.getBoundingClientRect();
@@ -1922,7 +1977,7 @@
           const items = list.filter(b => b.cat === c);
           return items.length ? `<section class="book-sec"><div class="section-head"><div><h2 style="font-size:26px">${esc(c)}</h2></div><a class="link-arrow" data-scroll-top href="${hashFor('books', { cat: c, set: st.set })}">View all ${items.length} →</a></div><div class="bgrid one-row">${items.slice(0, 12).map(bookTile).join('')}</div></section>` : '';
         }).join('') : (list.length ? `<div class="bgrid">${list.map(bookTile).join('')}</div>` : '<div class="empty"><h3>No books match</h3></div>')}
-        <p class="attrib" style="margin-top:30px">Covers and metadata from Open Library. Ratings from Goodreads, which has no public API, so ratings are refreshed when the index is rebuilt.</p>
+        <p class="attrib" style="margin-top:30px">Covers and metadata from Open Library. Ratings from Goodreads.</p>
       </div></div>`;
     document.getElementById('bk-form').addEventListener('submit', e => { e.preventDefault(); go({ q: document.getElementById('bk-q').value.trim() }); });
     app.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click', () => go({ set: b.dataset.set })));
@@ -2003,7 +2058,7 @@
     // a unit's text with its clauses marked (or, in dictionary mode, every word clickable)
     const unitHtml = u => {
       const t = u.text;
-      if (mode === 'dict') return esc(t).replace(/[A-Za-z]+(?:'[a-z]+)?/g, w => `<span class="ac-w">${w}</span>`);
+      if (mode === 'dict') return t.split(/([A-Za-z]+(?:['’][a-z]+)?)/).map((w, i) => i % 2 ? `<span class="ac-w">${w}</span>` : esc(w)).join('');
       const marks = [];
       for (const c of byUnit[u.id] || []) {
         const at = t.indexOf(c.hl);
@@ -2019,10 +2074,21 @@
     };
     const groups = [];
     for (const u of K.units) { const g = groups[groups.length - 1]; if (!g || g.name !== u.group) groups.push({ name: u.group, units: [u] }); else g.units.push(u); }
-    const shortLabel = u => u.label.replace(/^(Article [IVX]+|Amendment [IVX]+), ?/, '').replace(/^Preamble$/, '');
+    // "Article I, Section 2, Clause 3" -> "Section 2, Clause 3"; "Amendment XIV, Section 1" -> "Section 1"; a lone clause
+    // ("Article VII, Clause 1") or a whole amendment ("Amendment I") needs no small label under its heading
+    // (u.alias marks a section or article with a single paragraph, which has no clause numbers)
+    const shortLabel = u => u.label.replace(/^(Article [IVX]+|Amendment [IVX]+)(?:, ?|$)/, '').replace(/^Preamble$/, '').replace(u.alias ? /(?:, )?Clause 1$/ : /$^/, '');
+    const closingHtml = () => {
+      const C = K.closing;
+      if (!C) return '';
+      return `<section class="ac-group ac-closing"><h2>Attestation and signatures</h2>
+        ${C.notes.map(n => `<p class="ac-note">${unitHtml({ id: '', text: n })}</p>`).join('')}
+        <div class="ac-signers">${C.signers.map(s => `<div class="ac-signer${s.state ? '' : ' pres'}">${s.state ? `<h4>${esc(s.state)}</h4>` : ''}${s.names.map(n => typeof n === 'string' ? `<span>${esc(n)}</span>` : n.full ? `<span>${esc(n.full)}<small>signed “${esc(n.sig)}”</small></span>` : `<span>${esc(n.sig)}</span>`).join('')}${s.role ? `<em>${esc(s.role)}</em>` : ''}</div>`).join('')}</div>
+      </section>`;
+    };
     const textHtml = groups.map(g => `<section class="ac-group"><h2>${esc(g.name)}</h2>${g.units.map(u => `<div class="ac-unit" id="u-${u.id}">
-        ${/^Amendment/.test(u.label) && !/Section/.test(u.label) || /Section 1$/.test(u.label) && /^Amendment/.test(u.label) ? `<h3>${esc(u.label.replace(/, Section \d+$/, ''))}</h3>` : ''}
-        ${shortLabel(u) ? `<span class="ac-loc">${esc(shortLabel(u))}</span>` : ''}<p>${unitHtml(u)}</p></div>`).join('')}</section>`).join('');
+        ${/^Amendment/.test(u.label) && g.name !== u.label && (!/Section/.test(u.label) || /Section 1$/.test(u.label)) ? `<h3>${esc(u.label.replace(/, Section \d+$/, ''))}</h3>` : ''}
+        ${shortLabel(u) ? `<span class="ac-loc">${esc(shortLabel(u))}</span>` : ''}<p>${unitHtml(u)}</p></div>`).join('')}</section>${g.name === 'Article VII' ? closingHtml() : ''}`).join('');
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>The Annotated Constitution</span></div>
         <h1>The Annotated Constitution</h1>
@@ -2032,7 +2098,7 @@
           ${mode === 'clauses' ? `<select id="ac-jump" class="input" aria-label="Jump to a clause"><option value="">Jump to a clause…</option>${K.clauses.map(c => `<option value="${esc(c.id)}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}
         </div></div>
       <div class="ac-layout ${clause ? 'open' : ''}">
-        <div class="ac-text ${mode === 'dict' ? 'dict' : ''}">${textHtml}<p class="attrib">Text: National Archives transcription, with original spelling and punctuation.</p></div>
+        <div class="ac-text ${mode === 'dict' ? 'dict' : ''}">${textHtml}<p class="attrib">Text: National Archives transcription, with original spelling and punctuation, checked word for word against Cornell LII and Wikisource's transcription of the 1787 printing. Passages in [brackets] were changed by later amendments. Signatures appear as written on the parchment, with full names from the National Archives' Founding Fathers pages.</p></div>
         ${clause ? `<aside class="ac-panel" id="ac-panel">${clausePanel(clause, I)}</aside>` : ''}
       </div>
       <div class="ac-pop" id="ac-pop" hidden></div>
@@ -2057,9 +2123,10 @@
     if (c.conan && c.conan.overview) secs.push(['commentary', 'Commentary', `<h5>${esc(c.conan.overview.title)}</h5>${c.conan.overview.paras.map(p => `<p>${p}</p>`).join('')}
       ${c.conan.dev.length ? `<h5 style="margin-top:18px">How interpretation has developed</h5><div class="ac-dev">${c.conan.dev.map(d => `<details><summary>${esc(d.title)}</summary><p>${d.p}</p></details>`).join('')}</div>` : ''}
       <p class="attrib">From the <i>Constitution Annotated</i> (Congressional Research Service, 2022 ed.), essays ${esc(c.conan.overview.id)}${c.conan.dev.length ? ' and following' : ''}; public domain.</p>`]);
-    if (c.cases.length) secs.push(['cases', `Leading cases <small>${c.nCases > c.cases.length ? `top ${c.cases.length} of ${fmt(c.nCases)}` : ''}</small>`, `<ol class="mini-list ranked">${c.cases.map(id => { const k = caseById.get(id); if (!k) return ''; const m = I.c[id]; return `<li><a class="t" href="#/case/${esc(id)}">${esc(k.n)}</a><div class="m">${esc(k.cit || '')}${k.y ? ' · ' + k.y : ''}${m ? ` · ${fmt(m[2])} later Supreme Court citations` : ''}</div></li>`; }).join('')}</ol>
-      <p class="attrib">Cases the Supreme Court Database classifies under this provision, ranked by how often later Supreme Court opinions cite them.</p>`]);
-    if (c.articles.length) secs.push(['scholarship', `Scholarship <small>${c.nArticles > c.articles.length ? `most cited ${c.articles.length} of ${fmt(c.nArticles)}` : ''}</small>`, `<ol class="mini-list ranked">${c.articles.map(id => { const a = artById.get(id); if (!a) return ''; return `<li><a class="t" href="${articleHref(a)}">${esc(a.t)}</a><div class="m">${esc((a.a || []).slice(0, 2).join(', '))}${a.a && a.a.length > 2 ? ' et al.' : ''} · ${esc(jname(a.j))}${a.y ? ' ' + a.y : ''}${a.c != null ? ` · ${fmt(a.c)} citations` : ''}</div></li>`; }).join('')}</ol>`]);
+    if (c.cases.length) secs.push(['cases', `Leading cases <small>${c.nCases > c.cases.length ? `top ${c.cases.length} of ${fmt(c.nCases)}` : ''}</small>`, `<p class="ac-intro">Cases the Supreme Court Database classifies under this provision, ranked by how often later Supreme Court opinions cite them.</p>
+      <ol class="mini-list ranked">${c.cases.map(id => { const k = caseById.get(id); if (!k) return ''; const m = I.c[id]; return `<li><a class="t" href="#/case/${esc(id)}">${esc(k.n)}</a><div class="m">${esc(k.cit || '')}${k.y ? ' · ' + k.y : ''}${m ? ` · ${fmt(m[2])} later Supreme Court citations` : ''}</div></li>`; }).join('')}</ol>`]);
+    if (c.articles.length) secs.push(['scholarship', `Scholarship <small>${c.nArticles > c.articles.length ? `most cited ${c.articles.length} of ${fmt(c.nArticles)}` : ''}</small>`, `<ol class="mini-list ranked">${c.articles.map(id => { const a = artById.get(id); if (!a) return ''; return `<li><a class="t" href="${articleHref(a)}">${esc(a.t)}</a><div class="m">${esc((a.a || []).slice(0, 2).join(', '))}${a.a && a.a.length > 2 ? ' et al.' : ''} · ${esc(jname(a.j))}${a.y ? ' ' + a.y : ''}${a.c != null ? ` · ${fmt(a.c)} citations` : ''}</div></li>`; }).join('')}</ol>
+      ${c.nArticles > c.articles.length ? `<a class="btn btn-ghost btn-sm ac-all" href="${hashFor('search', { clause: c.id, sort: 'cited' })}">See all ${fmt(c.nArticles)} articles →</a>` : ''}`]);
     if (c.founding.length) secs.push(['founding', 'Founding-era commentary', c.founding.map(p => `<blockquote class="ac-q"><p>${esc(p.t)}</p><footer>${esc(SRC_LABEL[p.s] || p.s)}${p.loc ? ', ' + esc(p.loc) : ''}</footer></blockquote>`).join('')]);
     if (c.statutes.length) secs.push(['statutes', 'Early statutes', `<p class="muted-line" style="margin:0 0 10px">Acts of the first Congresses that put the clause into practice or bear on its early meaning.</p>${c.statutes.map(p => `<blockquote class="ac-q"><p>${esc(p.t)}</p><footer>${esc(p.loc || 'Statutes at Large, vol. 1')}</footer></blockquote>`).join('')}<a class="link-arrow" href="#/library/statutes">All early statutes →</a>`]);
     return `<div class="ac-panel-head"><div><span class="eyebrow">${esc(c.loc)}</span><h2>${esc(c.name)}</h2></div><button class="icon-btn" id="ac-close" aria-label="Close" title="Close">✕</button></div>
@@ -2236,17 +2303,39 @@
       <div class="quiz-result" hidden></div>
     </section>`;
   }
-  function mountQuiz(root, key, qs) {
+  // case names in quiz text are italicized: full names ("Marbury v. Madison") and the short names of the cases the page
+  // discusses ("Marbury", "Lopez"), taken from its case list (first party, or the second when the first is a government)
+  const GOV_PARTY = /^(?:United States|State|People|Commonwealth|City|County|Board|Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New \w+|North \w+|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South \w+|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming)\b/;
+  const caseShortNames = names => [...new Set(names.map(n => {
+    const [a, b] = String(n || '').split(/\s+v\.\s+/);
+    const pick = b && GOV_PARTY.test(a) ? b : a;
+    return (pick || '').replace(/,.*$/, '').replace(/^(?:The|In re)\s+/, '').split(/\s+/).slice(0, 2).join(' ').replace(/\s+(?:of|the|and|for)$/i, '');
+  }).filter(x => x && x.length > 3 && !GOV_PARTY.test(x)))];
+  const italicCases = (html, shorts) => {
+    // "Board of Regents v. Roth", "City of Los Angeles v. Lyons"; a sentence-opening word ("In", "Under") stays upright
+    let t = html.replace(/\b[A-Z][\w.'’&-]+(?: (?:of |the |for |and |&amp; )?[A-Z][\w.'’&-]+)* v\. [A-Z][\w.'’&-]+(?: (?:of |the |for |and )?[A-Z][\w.'’&-]+)*/g, m => {
+      const lead = (m.match(/^(?:(?:In|Under|After|Before|Unlike|Like|Compare|See|As|Applying|Following|Both|Why|How|When|Does|Did|The|A|An) )+/) || [''])[0];
+      return lead + `<i>${m.slice(lead.length)}</i>`;
+    });
+    if (shorts && shorts.length) {
+      const alt = shorts.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      const rx = new RegExp('(<i>.*?</i>)|\\b(' + alt + ")(?:'s|’s)?\\b", 'g');
+      t = t.replace(rx, (m, inI) => inI ? m : `<i>${m}</i>`);
+    }
+    return t;
+  };
+  function mountQuiz(root, key, qs, caseNames) {
     const el = root.querySelector(`[data-quiz="${CSS.escape(key)}"]`);
     if (!el) return;
+    const shorts = [...new Set([...caseShortNames(caseNames || []), ...((window.QUIZZES || {}).cases || [])])], I = s => italicCases(esc(s), shorts);
     const list = el.querySelector('.quiz-list'), result = el.querySelector('.quiz-result'), scoreEl = el.querySelector('.quiz-score');
     const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
     let answered = 0, correct = 0;
     const render = () => {
       answered = 0; correct = 0; result.hidden = true;
       list.innerHTML = qs.map((q, qi) => `<li class="quiz-q" data-q="${qi}">
-        <p class="quiz-text">${esc(q.q)}</p>
-        <div class="quiz-opts">${shuffle(q.o.map((o, i) => [o, i])).map(([o, i]) => `<button class="quiz-opt" data-i="${i}"><span class="quiz-mark"></span>${esc(o)}</button>`).join('')}</div>
+        <p class="quiz-text">${I(q.q)}</p>
+        <div class="quiz-opts">${shuffle(q.o.map((o, i) => [o, i])).map(([o, i]) => `<button class="quiz-opt" data-i="${i}"><span class="quiz-mark"></span>${I(o)}</button>`).join('')}</div>
         <div class="quiz-exp" hidden></div>
       </li>`).join('');
     };
@@ -2258,7 +2347,7 @@
       li.classList.add('done', ok ? 'right' : 'wrong');
       li.querySelectorAll('.quiz-opt').forEach(b => { b.disabled = true; const i = +b.dataset.i; if (i === q.a) b.classList.add('is-correct'); else if (i === pick) b.classList.add('is-wrong'); });
       const exp = li.querySelector('.quiz-exp'); exp.hidden = false;
-      exp.innerHTML = `<b>${ok ? 'Correct.' : 'Not quite.'}</b> ${esc(q.e || '')}`;
+      exp.innerHTML = `<b>${ok ? 'Correct.' : 'Not quite.'}</b> ${I(q.e || '')}`;
       answered++; if (ok) correct++;
       scoreEl.textContent = `${correct}/${answered} correct`;
       if (answered === qs.length) {
@@ -2562,9 +2651,9 @@
       const decoys = shuffle(newer.filter(x => x !== o.new && (caseById.get(x).y || 0) > (old.y || 0))).slice(0, 3);
       while (decoys.length < 3) { const x = shuffle(Object.keys(F.cases)).find(id => id !== o.new && !decoys.includes(id) && (caseById.get(id) || {}).y > old.y); if (!x) break; decoys.push(x); }
       return {
-        prompt: `<p class="game-case">${caseLabel(o.old)}</p><p class="game-q">${esc(caseHolding(old) || 'The Court decided this case on the question presented.')}</p><p class="muted-line">Which later case overruled it?</p>`,
+        prompt: `<p class="game-case">${caseLabel(o.old)}</p><p class="game-q">${(h => /^The Court\b/.test(h) ? esc(h) : `<b>Held:</b> ${esc(h)}`)(o.h || caseHolding(old))}</p><p class="muted-line">Which later case overruled it?</p>`,
         options: [{ html: caseLabel(o.new), ok: true }, ...decoys.map(d => ({ html: caseLabel(d), ok: false }))],
-        after: `<p>${caseLabel(o.new)} overruled ${caseLabel(o.old)}.</p>${caseLink(o.new)}`,
+        after: `<p>${caseLabel(o.new)} overruled ${caseLabel(o.old)}.</p>${caseLink(o.new)}${o.src ? `<p class="attrib">Holding of ${caseLabel(o.old)} from <a href="${esc(o.src)}" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA 4.0).</p>` : ''}`,
       };
     });
     mcGame('overruled', 'Overruled', rounds, 'Name the case that overruled the precedent.');
@@ -2866,7 +2955,7 @@
     keepScrollOnce = false; lastRoute = { path, params };
     const seg = path.split('/');
     routeToken++;
-    const navKey = { docket: 'scotus', justices: 'scotus', justice: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
+    const navKey = { docket: 'scotus', justices: 'scotus', justice: 'scotus', stats: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
     document.querySelectorAll('.topnav a[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === navKey));
     document.querySelectorAll('audio').forEach(a => a.pause());
     const top = document.getElementById('topsearch-input');
@@ -2885,6 +2974,7 @@
       case 'justices': viewJustices(); break;
       case 'justice': viewJustice(decodeURIComponent(seg[1] || '')); break;
       case 'statutes': viewStatutes(seg[1], params); break;
+      case 'stats': { const tk = routeToken; ext().then(X => { if (tk === routeToken) X.viewStats(params); }).catch(e => { app.innerHTML = `<div class="prose"><h1>Couldn't load this section</h1><p>${esc(e.message)}</p></div>`; }); break; }
       case 'case': viewCase(decodeURIComponent(seg.slice(1).join('/'))); break;
       case 'lectures': viewLectures(params); break;
       case 'books': viewBooks(params); break;

@@ -72,6 +72,75 @@ def parse_webster():
     return out
 
 
+# Webster OCR repair. The scans' OCR garbles letters ("macliine", "himian", "Ivlongs") and mangles the Greek and other
+# scripts in the etymologies. The repairs are mechanical: the bracketed etymology that opens an entry is dropped; a word
+# not found in the clean Johnson and Bouvier transcriptions is replaced only when one standard OCR confusion turns it
+# into a word that is found there; and a sentence still holding unreadable words is cut.
+OCR_SWAPS = [('cli', 'ch'), ('li', 'h'), ('rn', 'm'), ('ii', 'u'), ('iu', 'm'), ('ni', 'm'), ('in', 'm'), ('vv', 'w'), ('tl', 'th'),
+             ('mi', 'u'), ('m', 'rn'), ('h', 'li'), ('c', 'e'), ('e', 'c'), ('l', 'i'), ('i', 'l'), ('u', 'n'), ('n', 'u'), ('b', 'h'),
+             ('h', 'b'), ('f', 't'), ('t', 'f'), ('o', 'e'), ('e', 'o'), ('a', 'o'), ('s', 'a'), ('1', 'l'), ('0', 'o'), ('3', 's'),
+             ('5', 's'), ('Iv', 'be'), ('I', 'l'), ('l', 'I'), ('j', 'y'), ('j', ''), ('])', 'p'), (')', 'p'), ('/', 'f'), ('tt', 'to'), ('A', 'h')]
+
+
+def vocabulary(J, B):
+    v = collections.Counter()
+    for src in (J, B):
+        for ents in src.values():
+            for e in ents:
+                v.update(w.lower() for w in re.findall(r'[A-Za-z]+', e['t']))
+    return {w for w, n in v.items() if n >= 2}
+
+
+def fix_word(w, V):
+    """w itself if it is a known word; else the known word reached by one or two OCR swaps; else w."""
+    core = w.strip("])(|/!'")
+    lw = core.lower()
+    if not re.search(r'[a-z]', lw) or lw in V or len(core) < 3:
+        return w
+    def swaps(x):
+        for a, b in OCR_SWAPS:
+            i = x.find(a)
+            while i >= 0:
+                yield x[:i] + b + x[i + len(a):]
+                i = x.find(a, i + 1)
+    for c1 in swaps(core):
+        if c1.lower() in V:
+            return c1
+    for c1 in swaps(core):
+        for c2 in swaps(c1):
+            if c2.lower() in V:
+                return c2
+    return w
+
+
+def clean_webster(t, V):
+    t = t.replace('�', ' ')
+    end = t.find(']')
+    if 0 <= end < 900 and (t.startswith('[') or '[' not in t[:end]):
+        t = t[end + 1:]                 # the opening etymology (sometimes its "[" fell on the headword line)
+    t = re.sub(r"[A-Za-z0-9^\])(|/!']+", lambda m: fix_word(m.group(0), V), t)
+    t = re.sub(r'\s+([;,:])', r'\1', t)
+    t = re.split(r"\s[A-Z]{3,}['A-Z]*\b(?!\.)", t)[0]          # the next headword ("HIMS", "NINTH, n.") ran into this one
+    keep = []
+    for s in re.split(r'(?<=[.;?!])\s+(?=[A-Z0-9])', t.strip()):
+        toks = re.findall(r"[A-Za-z0-9^\])(|/!']+", s)
+        words = [x.strip("'") for x in toks]
+        junk = [x for x in words if re.search(r'[\^\]\[|/!]|[a-z][A-Z]|[a-z]j$|^[a-z]+[0-9]|[0-9][a-z]', x)]
+        unknown = [x for x in words if re.fullmatch(r'[A-Za-z]{3,}', x) and x.lower() not in V and not x.isupper()]
+        if words and not junk and not unknown and not re.search(r'[^\x00-\x7f’‘“”—–]|[<>\\*]|&;|\s1 [a-z]', s):
+            keep.append(s)
+        else:
+            break                       # keep only the clean run from the start of the definition
+    out = re.sub(r'\s+', ' ', ' '.join(keep)).strip()
+    out = re.sub(r'\s+[^A-Za-z\s]*\d+\.$', '', out)                           # a dangling sense number
+    if not re.search(r'[.;:)]$', out):
+        out = out[:out.rfind('.') + 1] if '.' in out else out               # a sentence cut off by the next headword
+    # it must open as a definition: "1. ...", or a capitalized word that is not a citation, cross-reference or stray headword
+    if not re.match(r'(?:1\. )?[A-Z][a-z]', out) or re.match(r'(?:Hence|Lev|Matt|Gen|Ex|Rut|See|It|Fr|Sax|L|Gr|Sp|D)\b', out):
+        return ''
+    return out if len(out) >= 30 else ''
+
+
 def parse_bouvier():
     out = collections.defaultdict(list)
     for f in sorted(glob.glob(f'{D}/bouvier/*.htm')):
@@ -90,6 +159,13 @@ def main():
     words = sorted({w.lower() for w in re.findall(r"[A-Za-z]+(?:'[a-z]+)?", text)} - STOP)
     J, W, B = parse_johnson(), parse_webster(), parse_bouvier()
     print(f'parsed: Johnson {len(J)} headwords, Webster {len(W)}, Bouvier {len(B)} terms')
+    V = vocabulary(J, B)
+    for k in list(W):
+        ents = [dict(e, t=tidy(c)) for e in W[k] for c in [clean_webster(e['t'].rstrip('…'), V)] if c]
+        if ents:
+            W[k] = ents
+        else:
+            del W[k]
     out, miss = {}, []
     for w in words:
         rec = {}
@@ -113,7 +189,7 @@ def main():
         if ' ' in term and len(term) > 6 and re.search(r'\b' + re.escape(term) + r'\b', low):
             phrases[term] = {'hw': term, 'e': ents[:2]}
     data = {'src': {'j': 'Samuel Johnson, A Dictionary of the English Language (1755); transcription by LEME, University of Toronto, CC BY 4.0',
-                    'w': 'Noah Webster, An American Dictionary of the English Language (1828); OCR of the Internet Archive scans, may contain errors',
+                    'w': 'Noah Webster, An American Dictionary of the English Language (1828); OCR of the Internet Archive scans; only entries whose OCR reads cleanly are shown, cut at the first garbled passage',
                     'b': 'John Bouvier, A Law Dictionary Adapted to the Constitution and Laws of the United States (6th ed., 1856)'},
             'words': out, 'phrases': phrases}
     open('docs/data/founding-dict.js', 'w', encoding='utf-8').write('window.FOUNDING_DICT=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')

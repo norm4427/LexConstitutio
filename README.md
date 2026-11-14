@@ -5,9 +5,12 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 ## Sections
 - **Articles:** about 22,600 constitutional law articles from 27 law reviews. Includes full-text search, a topic taxonomy (5 areas, 29 subtopics), filters, author pages, and Bluebook and BibTeX citations.
 - **Most influential (in Articles):** OpenAlex citation counts with a percentile within each decade, a "Most cited" sort, and rankings by topic, decade and journal.
-- **Supreme Court:** about 8,500 cases from Oyez. Each has a summary, the official one-line holding (recent terms), and an opinion PDF (supremecourt.gov or Library of Congress). Argument and opinion-announcement audio plays on the page with a synced, click-to-seek transcript.
+- **Supreme Court:** about 29,100 cases: about 8,500 from Oyez, plus every other Supreme Court Database case (1791–2025) with a name, citation, date and recorded vote (about 20,600, mostly before 1955; `add_scdb_cases.py`). Those show the citation, date, each justice's vote, and links to the opinion in the *United States Reports* (Library of Congress) and on Justia. The Oyez cases have a summary, the official one-line holding (recent terms), and an opinion PDF (supremecourt.gov or Library of Congress). Argument and opinion-announcement audio plays on the page with a synced, click-to-seek transcript.
+- **Justice ratings (Justices):** each justice's page shows a liberal–conservative score (share of liberal votes as coded by the Supreme Court Database, the same measured against the colleagues in the same cases, and Martin–Quinn scores through the 2021 Term) and an institutionalism score (voting with the majority, not writing separately, not concurring only in the judgment, not joining overrulings of precedent or decisions striking down laws, each measured against colleagues). The method is described on the page (`build_ratings.py`).
+- **Vote prediction (Justices):** for each sitting justice, a model of their vote (for the petitioner or the respondent) trained on SCDB variables known before the decision, tested on the most recent 20% of their votes against constant-guess baselines, with the main predictors and predicted votes in pending cases (`build_models.py`).
+- **Statistics (in Supreme Court):** term-by-term tables after the *Harvard Law Review*'s annual "The Statistics" for every Term 1791–2025: opinions written, dissenting votes, agreement matrices, unanimity, vote splits, 5–4 coalitions, dispositions by lower court, subject matter, and every case classed by direction and by an institutionalism index (`build_stats.py`).
 - **Current docket:** undecided cases for the current Term with the Court's argument calendar, status, questions presented, merits and amicus briefs, transcript PDFs, and argument audio (Oyez, or the Court's own MP3 until Oyez posts it). Every case page has a Precedents panel listing cases named in the Oyez summary and the most closely related decisions.
-- **Lectures:** about 230 lectures and debates from law schools, universities and constitutional institutions, embedded from YouTube.
+- **Lectures:** about 230 lectures and debates from law schools, universities and constitutional institutions, embedded from YouTube. There is no Lectures tab; the Beginner's Guide shows the ones that fit each topic under "Lectures and debates" (`scripts/guide_lectures.py`). The old `#/lectures` page still works for existing links.
 - **Beginner's Guide:** 20 beginner topics (overview, Wex link, explainer videos, landmark cases, starter books and articles), followed by an advanced doctrine section in 14 parts and 52 sections. The advanced section has original doctrinal summaries, black-letter tests, 179 linked cases, and excerpts from the opinions (`scripts/advanced/*.md`).
 - **Originalist's Corner:** 37 topics with passages from Blackstone, Tucker, Story, Kent, Vattel, Locke, The Federalist, Madison's Notes, founding documents and the acts of the first five Congresses, plus an on-site library of full texts.
 - **Quizzes:** 5 multiple-choice questions at the end of each beginner topic, and 4–8 Socratic-style case questions at the end of each advanced part (`scripts/quizzes/*.txt` → `build_quizzes.pl`). Answers show explanations, and the best score is kept in the browser.
@@ -44,6 +47,9 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 | OpenStax *American Government 3e* (CC BY 4.0) | The basics in each guide topic | `build_foundations.py` |
 | LEME (Johnson 1755, CC BY 4.0), Webster 1828 and Bouvier 1856 (public domain) | Founding-era word inspector | `build_dictionaries.py` |
 | National Archives transcription, Constitution Annotated | Annotated Constitution | `build_constitution.py`, `clauses.py` |
+| Supreme Court Database (Spaeth et al.), 2026 Release 01 and Legacy Release 07; its online codebook | Older cases, justice ratings, the Statistics tab, vote models | `scdb_codebook.py`, `add_scdb_cases.py`, `build_ratings.py`, `build_stats.py`, `build_models.py` |
+| Martin–Quinn scores (Martin & Quinn, 2021 release, mqscores.quantitative.emory.edu) | Ideal-point scores by term, 1937–2021 | `build_ratings.py` (CSV in `data/raw/mq/justices.csv`) |
+| supremecourt.gov docket pages | Lower court and counsel for pending cases (vote models) | `docket.sh` (cache), `build_models.py` |
 
 `scripts/sources.tsv` lists the journals. `scripts/guide.json` defines the guide topics and their landmark cases. `scripts/yt_queries.tsv` defines the lecture searches.
 
@@ -61,6 +67,7 @@ bash scripts/books.sh                   # book metadata and ratings (cached; del
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1     # writes docs/data/articles.js
 bash scripts/enrich.sh                  # bylines for new WordPress articles, then re-run build.ps1
 perl scripts/build_extras.pl            # writes scotus.js, lectures.js, guide.js, books.js
+python scripts/guide_lectures.py           # adds a "Lectures and debates" shelf to each guide topic (after build_extras.pl)
 bash scripts/corner.sh && bash scripts/wikisource_retry.sh   # founding-era sources (Wikisource rate-limits; the retry script backs off)
 perl scripts/build_corner.pl           # writes corner.js and library-*.js
 perl scripts/build_advanced.pl         # writes advanced.js from scripts/advanced/*.md
@@ -77,6 +84,12 @@ perl scripts/flag_reviews.pl           # confirms book reviews via Open Library 
 bash scripts/books_impact.sh && perl scripts/books_impact_merge.pl   # citation counts for books (Books tab only)
 bash scripts/docket.sh && perl scripts/build_docket.pl   # current docket, calendar, briefs (re-run weekly during the Term)
 python scripts/fix_citations.py         # real citations for "584 U.S. ___" placeholders; corrects mistyped S. Ct. volumes
+python scripts/scdb_codebook.py          # caches SCDB variable labels in data/raw/scdb/codebook/
+python scripts/add_scdb_cases.py         # adds SCDB cases the site lacks to scotus.js (re-runnable; after fix_citations.py)
+python scripts/build_votes.py            # again, so the added cases get their votes
+python scripts/build_ratings.py          # writes ratings.js (needs data/raw/mq/justices.csv from the Martin-Quinn site)
+python scripts/build_stats.py            # writes stats.js and stcases-<decade>.js (the Statistics tab)
+python scripts/build_models.py           # writes models.js: per-justice vote models + pending-case predictions (needs scikit-learn; re-run after docket.sh)
 python scripts/oyez_fetch_all.py        # caches Oyez records for every case without a summary (slow; resumable)
 python scripts/build_flashcards_terms.py   # writes fc-terms.js and fc-court-*.js (term-by-term decks)
 python scripts/build_games.py           # writes games.js and essential.js

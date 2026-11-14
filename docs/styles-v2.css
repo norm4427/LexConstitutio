@@ -214,3 +214,18 @@
 .vote-pop::before { content: ''; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
 .vote .vote-pop li a { color: var(--ink); font-size: 13.5px; text-decoration: none; border-bottom: 1px solid var(--line-2); }
 .vote .vote-pop li a:hover { color: var(--accent); border-color: var(--accent); }
+
+/* top bar: the tabs never scroll or clip; the search box gives up width first, then moves to its own row */
+.topnav { flex-shrink: 0; overflow: visible; }
+.topsearch { flex: 1 1 220px; min-width: 150px; }
+@media (max-width: 1180px) {
+  .topnav a { padding: 7px 9px; }
+  .topbar-inner { gap: 14px; }
+}
+@media (max-width: 1240px) {
+  .topbar-inner { flex-wrap: wrap; row-gap: 10px; }
+  .topsearch { order: 3; flex-basis: 100%; max-width: none; }
+}
+@media (max-width: 860px) {
+  .topnav { flex-shrink: 1; min-width: 0; overflow-x: auto; }
+}

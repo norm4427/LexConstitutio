@@ -29,6 +29,10 @@ def unmojibake(s):
     return RUN.sub(fix, s)
 
 
+TYPOS = {   # garbled words in source summaries, fixed wherever they appear
+    'the are not police allowed': 'the police are not allowed',
+    '"freedom contract"': '"freedom of contract"',
+}
 PLAIN_KEYS = {'ab', 't', 'q', 'ds', 'h', 'n', 'blurb', 'intro', 'note', 'title', 'a', 'd', 's', 'l'}   # fields shown as plain text
 ENT = {'&apos;': '’', '&#39;': '’', '&quot;': '"', '&amp;': '&', '&nbsp;': ' ', '&lt;': '<', '&gt;': '>'}
 
@@ -48,6 +52,8 @@ def tidy(s, key):
         s = re.sub(r'(?<=[\w’”)]) ([,;])(?= )', r'\1', s)      # "Tigard , simply" -> "Tigard, simply"
         if key == 't':
             s = re.sub(r'(?<=\w) ([?!])(?=\s|$)', r'\1', s)       # "the New Usery ?" -> "the New Usery?"
+    for a, b in TYPOS.items():
+        s = s.replace(a, b)
     if key == 'ds':
         # Oyez summaries that dropped the verb: "A case in which the Court that ..." / "... the Court the Sixth Amendment ..."
         s = re.sub(r'^(A case (?:that|in which) the Court) that\s+', r'\1 held that ', s)

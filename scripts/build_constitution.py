@@ -7,7 +7,8 @@ For each named clause in clauses.py:
               essay in full, plus the titles and opening paragraphs of the essays tracing how doctrine developed
   cases       the Supreme Court Database's cases decided under the clause's provision codes (lawSupp), ranked by later
               Supreme Court citations (case_impact.js), top 10
-  articles    law review articles whose titles name the clause, ranked by citations; 5-15 depending on how much there is
+  articles    law review articles whose title or keywords match the clause, or whose abstract names it, ranked by citations;
+              5-15 shown, the full list in docs/data/clause-articles.js (the Articles page's clause filter)
   founding    passages from Story, Rawle, Tucker, Kent, The Federalist, Madison's notes, Blackstone (Originalist's Corner)
   statutes    early federal statutes from the Corner's Statutes at Large collection that touch the clause
 Run from the repo root:  python scripts/build_constitution.py
@@ -30,6 +31,51 @@ def clean(h):
     return re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', '', h))).strip()
 
 
+def framer_name(href):
+    """a signer's full name from the National Archives "Founding Fathers" page the transcription links to
+    (/founding-docs/founding-fathers-new-jersey#livingston -> "William Livingston"), cached in data/raw/constitution/framers/."""
+    m = re.match(r'/founding-docs/(founding-fathers-[a-z-]+)#(\w+)', href or '')
+    if not m:
+        return ''
+    os.makedirs(f'{RAW}/framers', exist_ok=True)
+    path = f'{RAW}/framers/{m.group(1)}.html'
+    if not os.path.exists(path):
+        time.sleep(1.5)
+        req = urllib.request.Request('https://www.archives.gov/founding-docs/' + m.group(1), headers={'User-Agent': 'Mozilla/5.0 (LexConstitutio static site build)'})
+        open(path, 'w', encoding='utf-8').write(urllib.request.urlopen(req, timeout=60).read().decode('utf-8'))
+    n = re.search(r'id="' + m.group(2) + r'"[^>]*>\s*</a>\s*([^,<]+)', open(path, encoding='utf-8').read())
+    return clean(n.group(1)) if n else ''
+
+
+def closing():
+    """what follows Article VII in the engrossed Constitution: the note on interlineations, the attestation, the
+    "done in Convention" passage and the signatures, grouped by state as in the National Archives transcription.
+    Each signature is kept as written on the parchment ("Wil: Livingston", checked against Wikisource's transcription of
+    the 1787 printing) with the signer's full name from the Archives' Founding Fathers pages."""
+    s = open(f'{RAW}/constitution-transcript.html', encoding='utf-8').read()
+    s = s[s.index('<h2 id="7">'):]
+    s = s[:s.index('<h2>On This Page')] if '<h2>On This Page' in s else s
+    ps = [p for p in re.findall(r'<p>(.*?)</p>', s, re.S)]
+    notes = [clean(p) for p in ps[1:4] if not re.search(r'<a ', p)]
+
+    def person(chunk):
+        href = re.search(r'href="([^"]+)"', chunk)
+        sig = clean(chunk)
+        full = framer_name(href.group(1)) if href else ''
+        # add the full name only where the signature abbreviates it and the surnames agree (the Archives pages mix up
+        # the two Pinckneys' anchors, so a fully written signature is never "corrected")
+        sur = lambda x: re.sub(r'\s+(?:jun|Jr\.?)$', '', x).split()[-1].lower()
+        abbreviated = re.search(r'[:.°]|\b(?:Hu|Abr|B|Gouv)\b|\bjun\b|\bJr\b', sig)
+        bare = re.sub(r'\s+(?:jun|Jr\.?)$', '', sig)
+        return {'sig': sig, 'full': full if full and abbreviated and sur(full) == sur(sig) and full not in (sig, bare) else ''}
+    pres = next(p for p in ps if 'washington' in p)
+    pres_sig, pres_role = re.split(r'<br\s*/?>', pres, maxsplit=1)
+    signers = [{'state': '', 'names': [person(pres_sig)], 'role': clean(pres_role)}]
+    for st, body in re.findall(r'<h3[^>]*>.*?<strong>([^<]+)</strong>.*?</h3>\s*<p>(.*?)</p>', s, re.S):
+        signers.append({'state': clean(st), 'names': [person(n) for n in re.split(r'<br\s*/?>', body) if clean(n)]})
+    return {'notes': notes, 'signers': signers}
+
+
 def parse_text():
     units = []
     s = open(f'{RAW}/constitution-transcript.html', encoding='utf-8').read()
@@ -46,6 +92,8 @@ def parse_text():
         elif m.group(3):
             sec, para = int(m.group(3)), 0
         elif art and m.group(5) is not None:
+            if art == 7 and para >= 1:
+                break               # after Article VII's one clause come the closing notes and signatures (closing())
             t = clean(m.group(5))
             if not t or len(t) < 8 or t.startswith('done in Convention'):
                 continue
@@ -80,6 +128,12 @@ def parse_text():
                 ps = [clean(p) for p in re.findall(r'<p>(.*?)</p>', secs[j + 1], re.S)]
                 t = ' '.join(p for p in ps if p and not p.startswith(('Passed by Congress', 'Note:')))
                 units.append({'id': f'am{n}s{secs[j]}', 'label': f'Amendment {rn}, Section {secs[j]}', 'group': 'Later amendments', 'text': t})
+    for u in units:
+        t = u['text']
+        t = re.sub(r'\s*Back to Constitution Main Page.*$', '', t)                  # the page's navigation (after Amendment XXVII)
+        t = re.sub(r'^Originally proposed .*?Ratified [^.]*\d{4}\.\s*', '', t)      # Amendment XXVII's dates, not its text
+        t = re.sub(r'\s*\*(?:Changed|Superseded|Repealed) by [^.]*\.', '', t)        # the Archives' footnotes on superseded text
+        u['text'] = t.replace('*', '').strip()                                        # ...and their markers
     return units
 
 
@@ -166,6 +220,7 @@ def main():
     case_text = {c['id']: ' '.join(str(c.get(k) or '') for k in ('n', 'q', 'ds', 'h')) for c in sc}
     con = {c['id']: c.get('con') for c in sc}
     arts = load_js('articles')['articles']
+    clause_arts = {}
     corner = load_js('corner')
     passages = corner['passages']
     out = []
@@ -192,7 +247,7 @@ def main():
                 dev.append({'id': k, 'title': re.sub(r'\s+[A-Z][a-z]+ Amendment:$|\s+(Article|Amendment) [IVX]+.*$', '', ess[k][0]), 'p': ess[k][1][0][:900]})
             if len(dev) > 16:   # sample the history evenly so later doctrine is not cut off
                 dev = [dev[round(i * (len(dev) - 1) / 15)] for i in range(16)]
-            rec['conan'] = {'overview': {'id': ov, 'title': re.sub(r'\s+(Article [IVX]+|[A-Z][a-z]+(-[A-Z][a-z]+)? Amendment).*$', '', ess[ov][0]), 'paras': ess[ov][1][:6]} if ov else None, 'dev': dev}
+            rec['conan'] = {'overview': {'id': ov, 'title': ess[ov][0], 'paras': ess[ov][1][:6]} if ov else None, 'dev': dev}
         # cases, by later Supreme Court citations
         cs = set()
         for code in c['scdb']:
@@ -206,8 +261,13 @@ def main():
         rec['cases'] = sorted(cs, key=lambda i: -(impact.get(i) or [0, 0, -1])[2])[:10]
         rec['nCases'] = len(cs)
         # articles
+        # an article is about the clause when its title or subject keywords match the clause's pattern, or its abstract
+        # names the clause outright ("the Takings Clause", "the Second Amendment")
         rx = re.compile(c['art'], re.I)
-        hits = [a for a in arts if rx.search(a['t']) and not a.get('rv')]
+        name_rx = re.compile(r'\b' + re.escape(re.sub(r'\s*\(.*\)$', '', c['name'])) + r'\b', re.I)
+        hits = [a for a in arts if not a.get('rv') and (rx.search(a['t']) or rx.search(' '.join(a.get('kw') or []))
+                                                        or (len(c['name']) > 8 and name_rx.search(a.get('ab') or '')))]
+        clause_arts[c['id']] = [a['id'] for a in sorted(hits, key=lambda a: -(a.get('c') or 0))]
         n = max(5, min(15, round(len(hits) ** 0.5))) if hits else 0
         rec['articles'] = [a['id'] for a in sorted(hits, key=lambda a: -(a.get('c') or 0))[:n]]
         rec['nArticles'] = len(hits)
@@ -233,8 +293,12 @@ def main():
         rec['statutes'] = stat[:5]
         out.append(rec)
     data = {'src': 'Text: National Archives. Commentary: Constitution Annotated (CRS, public domain); overviews: Wikipedia (CC BY-SA 4.0).',
-            'units': units, 'clauses': out}
+            'units': units, 'closing': closing(), 'clauses': out}
     open('docs/data/constitution.js', 'w', encoding='utf-8').write('window.CONSTITUTION=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
+    # every article tagged with the clauses it concerns, for the Articles page's clause filter ("See all" in the panel)
+    names = {c['id']: c['name'] for c in CLAUSES if clause_arts.get(c['id'])}
+    open('docs/data/clause-articles.js', 'w', encoding='utf-8').write('window.CLAUSE_ARTS=' + json.dumps({'names': names, 'ids': {k: v for k, v in clause_arts.items() if v}}, ensure_ascii=False, separators=(',', ':')) + ';')
+    print(f"clause tags: {sum(len(v) for v in clause_arts.values())} on {len({i for v in clause_arts.values() for i in v})} articles")
     print(f'{len(units)} text units; {len(out)} clauses; missing units: {missing}')
     print('no Constitution Annotated:', [r['id'] for r in out if not r.get('conan') or not r['conan'].get('overview')])
     print('no Wikipedia:', [r['id'] for r in out if not r.get('wiki')])

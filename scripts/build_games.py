@@ -10,7 +10,7 @@
 Also writes docs/data/essential.js (the essential-case ids alone).
 Run from the repo root after build_flashcards.pl:  python scripts/build_games.py
 """
-import html, json, os, random, re, urllib.parse, urllib.request
+import html, json, os, random, re, time, urllib.error, urllib.parse, urllib.request
 
 random.seed(7)
 
@@ -56,6 +56,88 @@ def flip(s):
     return None
 
 
+def oyez_conclusion(cid):
+    """the first two sentences of Oyez's conclusion for a case (cached by oyez_fetch_all), or ''."""
+    f = f'data/raw/oyez/cases/{cid.replace("/", "_", 1)}.json'
+    try:
+        d = json.load(open(f, encoding='utf-8'))
+    except Exception:
+        return ''
+    t = plain(d.get('conclusion'))
+    if len(t) < 60:
+        return ''
+    parts = re.split(r'(?<=[a-z0-9)”"])\.\s+(?=[A-Z])', t)
+    out = '. '.join(parts[:2]).rstrip('.') + '.'
+    return out if len(out) < 600 else out[:600].rsplit(' ', 1)[0] + '…'
+
+
+def wiki_get(url):
+    """GET a Wikipedia API url politely (2.5 s apart, backing off on 429); None if it keeps failing (not cached)."""
+    for n in range(5):
+        time.sleep(2.5 + 20 * n)
+        try:
+            return json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'LexConstitutio/1.0 (static site build)'}), timeout=60))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return {}
+        except Exception:
+            pass
+    return None
+
+
+def wiki_holding(title):
+    """the "Holding" field of the case's Wikipedia infobox (cached in data/raw/games/wiki_holdings.json), or ''."""
+    path = 'data/raw/games/wiki_holdings.json'
+    cache = json.load(open(path, encoding='utf-8')) if os.path.exists(path) else {}
+    if title not in cache:
+        url = 'https://en.wikipedia.org/w/api.php?' + urllib.parse.urlencode({'action': 'parse', 'page': title, 'prop': 'wikitext', 'redirects': 1, 'format': 'json', 'formatversion': 2})
+        d = wiki_get(url)
+        if d is None:
+            return ''
+        try:
+            m = re.search(r'\|\s*Holding\s*=\s*(.*?)(?=\n\s*\||\n\}\})', d['parse']['wikitext'], re.S | re.I)
+            cache[title] = m.group(1) if m else ''
+        except Exception:
+            cache[title] = ''
+        open(path, 'w', encoding='utf-8').write(json.dumps(cache, ensure_ascii=False, indent=1))
+    s = cache[title]
+    s = re.sub(r'<ref[^>]*/>|<ref[^>]*>.*?</ref>', '', s, flags=re.S)
+    s = re.sub(r'\{\{(?:ussc|USSC)\|([^|}]*)\|([^|}]*)\|([^|}]*)[^}]*\}\}', r'\1 U.S. \2 (\3)', s)
+    s = re.sub(r'\{\{[^{}]*\}\}', '', s)
+    s = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', s)
+    s = re.sub(r"'{2,}", '', plain(s)).strip()
+    # drop disposition lines ("The judgments are affirmed.") and precedent notes ("Shurtleff distinguished, Myers limited.")
+    parts = [p.strip() for p in re.split(r'(?<=[a-z0-9)”"])\.\s+(?=[A-Z])', s)]
+    parts = [p for p in parts if not re.fullmatch(r'(?:The )?(?:judgments?|decisions?|lower court) (?:is|are|was|were) (?:affirmed|reversed|vacated|remanded)[^.]*\.?', p, re.I)
+             and not re.fullmatch(r'(?:[A-Z][\w.’\']*(?: v\. [\w.’\']+)? (?:distinguished|limited|overruled|followed|applied|affirmed|extended|questioned)[,;]?\s*)+\.?', p)]
+    s = '. '.join(parts[:2]).rstrip('.') + '.' if parts else ''
+    return s if len(s) >= 40 else ''
+
+
+def clean_conclusion(t):
+    """drop Oyez's yes/no answer to its own question and sentences that only report the vote or the author."""
+    t = re.sub(r'^(?:(?:Yes|No)(?:,? and (?:yes|no))*|No decision|Yes in part[^.]*|No in part[^.]*)[.,]\s*', '', t, flags=re.I)
+    parts = [p for p in re.split(r'(?<=[a-z0-9)”"])\.\s+(?=[A-Z])', t)
+             if not re.fullmatch(r'(?:In an? [^,]*(?:decision|opinion)[^,]*, )?(?:Justice|Chief Justice)[^.]*(?:wrote|delivered|writing)[^.]*(?:revers|affirm|remand|vacat)[^.]*\.?', p.strip())]
+    out = '. '.join(parts[:2]).rstrip('.') + '.' if parts else ''
+    return out if len(out) >= 60 else ''
+
+
+def wiki_lead(title):
+    """the first two sentences of a Wikipedia article's lead (cached in data/raw/games/wiki_leads.json), or ''."""
+    path = 'data/raw/games/wiki_leads.json'
+    cache = json.load(open(path, encoding='utf-8')) if os.path.exists(path) else {}
+    if title not in cache:
+        url = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + urllib.parse.quote(title.replace(' ', '_'))
+        d = wiki_get(url)
+        if d is None:
+            return ''
+        cache[title] = d.get('extract') or ''
+        open(path, 'w', encoding='utf-8').write(json.dumps(cache, ensure_ascii=False, indent=1))
+    parts = re.split(r'(?<=[a-z0-9)”"])\.\s+(?=[A-Z])', cache[title])
+    return '. '.join(parts[:2]).rstrip('.') + '.' if cache[title] else ''
+
+
 def overruled_pairs():
     path = 'data/raw/games/overruled.json'
     os.makedirs('data/raw/games', exist_ok=True)
@@ -71,7 +153,7 @@ def overruled_pairs():
             def parse(c):
                 l = re.search(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]", c)
                 cit = re.search(r'(\d+) U\.\s?S\. (\d+)', c)
-                return ((l.group(2) or l.group(1)).strip() if l else '', f'{cit.group(1)} U.S. {cit.group(2)}' if cit else '')
+                return ((l.group(2) or l.group(1)).strip() if l else '', f'{cit.group(1)} U.S. {cit.group(2)}' if cit else '', l.group(1).strip() if l else '')
             pairs.append((parse(cells[0]), parse(cells[1])))
     return pairs
 
@@ -120,13 +202,35 @@ def main():
         if c.get('citUS'):
             by_cit.setdefault(c['citUS'], cid)
     over = []
-    for (a, acit), (b, bcit) in overruled_pairs():
+    for (a, acit, awiki), (b, bcit, _) in overruled_pairs():
         ca = by_cit.get(acit) or by_key.get(key(a))
         cb = by_cit.get(bcit) or by_key.get(key(b))
         if ca and cb and ca != cb and (ca in F['cases'] or cb in F['cases']):
-            over.append({'old': ca, 'new': cb})
+            over.append({'old': ca, 'new': cb, 'wiki': awiki})
     seen = set()
     over = [o for o in over if not (o['old'] in seen or seen.add(o['old']))]
+    # what the overruled decision held, from sourced text: the Oyez summary, else the Holding line of the case's Wikipedia
+    # infobox (CC BY-SA), else Oyez's conclusion (minus its yes/no answer and vote-only sentences), else the lead of
+    # the case's Wikipedia article (CC BY-SA); a round with none of these is dropped
+    kept = []
+    for o in over:
+        c = S[o['old']]
+        h, src = (holding(c['ds']), '') if c.get('ds') else ('', '')
+        if not h and o['wiki']:
+            h, src = wiki_holding(o['wiki']), 'wiki'
+        if not h:
+            h, src = clean_conclusion(oyez_conclusion(o['old'])), ''
+        if not h and o['wiki']:
+            h, src = wiki_lead(o['wiki']), 'wiki'
+        wiki = o.pop('wiki')
+        if not h:
+            print(f"  overruled: no description for {c['n']}, round dropped")
+            continue
+        o['h'] = h
+        if src:
+            o['src'] = 'https://en.wikipedia.org/wiki/' + urllib.parse.quote(wiki.replace(' ', '_'))
+        kept.append(o)
+    over = kept
     data = {'ruling': ruling, 'overruled': over}
     open('docs/data/games.js', 'w', encoding='utf-8').write('window.GAMES=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
     # the essential-case ids on their own (small), for pages that need the list without the flashcards
