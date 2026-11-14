@@ -53,7 +53,10 @@ perl scripts/build_corner.pl           # writes corner.js and library-*.js
 perl scripts/build_advanced.pl         # writes advanced.js from scripts/advanced/*.md
 bash scripts/conan_fetch.sh && python scripts/conan_extract.py && perl scripts/build_conan.pl   # Constitution Annotated commentary (PDFs in data/raw/conan from GovInfo)
 perl scripts/build_quizzes.pl          # writes quizzes.js from scripts/quizzes/*.txt
-python scripts/build_votes.py          # writes votes.js (justice votes: SCDB CSVs in data/raw/scdb/csv/ + lineups parsed from opinion PDFs)
+python scripts/build_votes.py          # writes votes.js: each justice's vote (SCDB 2026_01 + Legacy 07 CSVs in data/raw/scdb/csv/, then opinion PDFs, then Oyez)
+python scripts/build_justices.py       # writes justices.js: all justices with portraits (Wikimedia Commons) and Wikipedia bios; run build_votes.py again after
+python scripts/cap_fetch.py            # caches Caselaw Access Project citation data for Supreme Court cases (data/raw/cap/)
+python scripts/build_case_impact.py    # writes case_impact.js: later Supreme Court citations + citation PageRank per case
 python scripts/crs_fetch.py           # caches CRS Legal Sidebars (public domain) from EveryCRSReport in data/raw/crs/
 python scripts/flashcards_fetch.py     # caches Oyez case details (facts, conclusion, vote) in data/raw/oyez/cases/
 perl scripts/build_flashcards.pl       # writes flashcards.js (run after build_extras.pl and build_advanced.pl)
@@ -92,3 +95,12 @@ AI narration (`scripts/narrate.py`, Kokoro voice `am_michael`) uses a pronunciat
 - `python scripts/pronounce_fetch.py` caches sources in `data/raw/pron/`: Wikipedia pages for the case articles, the parties they link, the justices, and same-surname people; plus Wiktionary for legal Latin.
 - `python scripts/pronounce_build.py` writes `scripts/pronounce.tsv` (term, phonemes, source). It keeps only words used in the narrated text whose sourced pronunciation differs from the voice engine's guess.
 - `scripts/pronounce_manual.tsv` holds hand overrides, which win over the sourced entries; `-` keeps the engine's default.
+
+## Narration
+
+```
+python scripts/pron_scan.py            # verify pronunciations of names and unusual words in every narrated section
+python scripts/narrate_all.py guide doctrine   # docs/audio/ (in the repo)
+python scripts/narrate_all.py conan    # ../audio-r2/ (Constitution Annotated, for Cloudflare R2)
+```
+Unverified words are listed in data/raw/pron/unverified.tsv; add corrections to scripts/pronounce_manual.tsv.
