@@ -34,13 +34,17 @@ my %PUBLISHER_SITE = (
 );
 sub uri { my $s = shift; utf8::encode($s) if utf8::is_utf8($s); $s =~ s/([^A-Za-z0-9\-_.~ ])/sprintf('%%%02X', ord $1)/ge; $s =~ s/ /+/g; $s }
 my $books = decode_json(slurp('scripts/books.json'));
+# out-of-scope books (reasons in the file); books_more.py also prunes them from books.json
+my %excluded = map { /^([^#\s]\S*)\t/ ? ($1 => 1) : () } split /\n/, slurp('scripts/books_excluded.tsv');
 my %by_id = map { $_->{id} => $_ } @$arts;
 my %guideFor;
 for my $g (@$guide) { push @{ $guideFor{$_} }, { id => $g->{id}, title => $g->{title} } for @{ $g->{books} || [] } }
 my (@booksOut, @dropped);
 for my $bk (@$books) {
-  my ($last) = $bk->{authors}[0] =~ /(\S+?)(?:,? (?:Jr|Sr)\.?)?$/;
-  my $lastRx = qr/\Q$last\E/i;
+  next if $excluded{$bk->{id}};
+  my ($last) = $bk->{authors}[0] =~ /(\S+?)(?:,? (?:Jr|Sr|I{2,3}|IV)\.?)?$/;
+  # whole-word surname: a bare substring let "Hart" (De Hart) match "Hartnett" and borrow another book's cover
+  my $lastRx = qr/(?<![A-Za-z])\Q$last\E(?![A-Za-z])/i;
   my ($main) = split /:/, $bk->{title};
   my %o = (%$bk);
   # Open Library: the work by the right author with the most editions
@@ -62,8 +66,15 @@ for my $bk (@$books) {
   # Goodreads: the matching edition with the most ratings
   my $gr = eval { decode_json(slurp("data/raw/books/$bk->{id}.gr.json")) } || [];
   my $mainNorm = norm($main);
+  # the Goodreads title (before any subtitle) must be this title, or one must begin the other; a shared word such as
+  # "Constitution" is not enough (it matched Amar's other books)
+  my $grTitleOk = sub {
+    return 1 if norm($_[0]) eq norm($bk->{title});   # same full title ("We the People: Volume 2: Transformations")
+    my $t = norm((split /:/, ($_[0] // ''))[0]);
+    $t eq $mainNorm || (length($mainNorm) >= 10 && index($t, $mainNorm) == 0) || (length($t) >= 10 && index($mainNorm, $t) == 0);
+  };
   my ($g) = sort { ($b->{ratingsCount} // 0) <=> ($a->{ratingsCount} // 0) }
-    grep { ($_->{author}{name} // '') =~ $lastRx && index(norm($_->{bookTitleBare} // $_->{title}), substr($mainNorm, 0, 12)) >= 0 } @$gr;
+    grep { ($_->{author}{name} // '') =~ $lastRx && $grTitleOk->($_->{bookTitleBare} // $_->{title}) } @$gr;
   if ($g && ($g->{ratingsCount} // 0) >= 20) {
     $o{gr} = { rating => $g->{avgRating} + 0, count => $g->{ratingsCount} + 0, url => "https://www.goodreads.com$g->{bookUrl}" };
     $o{gr}{url} =~ s/\?.*$//;

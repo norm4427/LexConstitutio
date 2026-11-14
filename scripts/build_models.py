@@ -15,7 +15,8 @@ four penalty strengths, or gradient-boosted trees):
   docket  only predictors that can be read off a pending case: issue area, source-court group, coarse petitioner and
           respondent class (federal / state / local government / other), jurisdiction, term. Used for the docket.
 Test set: the most recent 20% of each justice's votes by decision date (at least 40); the models never see them while
-being fitted or tuned. Baselines on the same test set: the training set's more common vote, and always voting for the
+being fitted or tuned. A model is said to beat the baselines only if it is 2+ points better and the lower end of its 95% interval is
+above the best one. Baselines on the same test set: the training set's more common vote, and always voting for the
 petitioner (reverse), and the better of always-petitioner and always-respondent picked with hindsight on the test
 set (a deliberately strict bar). Importance: drop in test accuracy when one predictor is shuffled (permutation importance, 10
 repeats). After evaluation the docket model is refitted on all of the justice's votes.
@@ -119,6 +120,9 @@ def binom_ci(p, n):
 
 
 # ------------------------------------------------------------- pending docket features
+STATES = '|'.join('Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois Indiana Iowa Kansas Kentucky Louisiana Maine Maryland Massachusetts Michigan Minnesota Mississippi Missouri Montana Nebraska Nevada Ohio Oklahoma Oregon Pennsylvania Tennessee Texas Utah Vermont Virginia Washington Wisconsin Wyoming'.split() + ['New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Rhode Island', 'South Carolina', 'South Dakota', 'West Virginia'])
+
+
 def strip(s):
     return re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', s)))
 
@@ -150,16 +154,21 @@ def docket_features(case):
     sec_r = re.search(r'Attorneys for Respondents?(.*?)(?:Other Attorneys|Attorneys for Petitioners?|$)', t)
 
     def cls(sec):
+        """Class of the side's lead party, from its counsel of record and party name (the first block in the section)."""
         if not sec:
             return 'other'
-        s = sec.group(1)[:4000]
-        if re.search(r'Solicitor General.{0,120}(United States|Department of Justice)', s):
+        m = re.search(r'^(.*?Party name: .{0,160})', sec.group(1))
+        s = m.group(1) if m else sec.group(1)[:600]
+        party = s.split('Party name:')[-1]
+        if re.search(r'Solicitor General.{0,120}(United States|Department of Justice)', s) or re.match(r'\s*United States\b', party):
             return 'federal'
+        if (re.search(r'\b(County|City|Town|Township|Village|Borough|School District|Board of Education)\b|\bCty\.', party)
+                or re.search(r"(County|City) (Attorney|Counsel|Solicitor)|State'?s Attorney", s)):
+            return 'local'
+        if re.match(r'\s*(State of|Commonwealth of|People of the State of)', party) or re.match(r'\s*(' + STATES + r')(,| et al\.|\s*$)', party):
+            return 'state'
         if re.search(r'(Office of (the )?(Attorney|Solicitor) General|Attorney General of|Solicitor General of|State Solicitor General|Department of Law)', s):
             return 'state'
-        parties = ' '.join(re.findall(r'Party name: (.*?)(?= [A-Z][a-z]+ [A-Z]| Ph:|$)', s))
-        if re.search(r'\b(County|City|Town|Township|Village|Parish|Borough|School District|Board of Education)\b', parties):
-            return 'local'
         return 'other'
     f['petParty'], f['resParty'] = cls(sec_p), cls(sec_r)
     return f, True
@@ -170,7 +179,7 @@ def issue_classifier(d, sid):
     cases = load_js('scotus')['cases']
     q = {c['id']: (c.get('q') or '') + ' ' + (c.get('ds') or '') for c in cases}
     first = d.drop_duplicates('caseId')
-    rows = [(q[sid[r.caseId]], int(r.issueArea), r.dateDecision) for r in first.itertuples()
+    rows = [(q[sid[r.caseId]], int(r.issueArea), r.date) for r in first.itertuples()
             if r.caseId in sid and r.issueArea == r.issueArea and len(q.get(sid[r.caseId], '').strip()) > 30]
     df = pd.DataFrame(rows, columns=['q', 'a', 'date']).sort_values('date')
     cut = int(len(df) * 0.8)
@@ -183,9 +192,20 @@ def issue_classifier(d, sid):
     return m, {'n': len(df), 'nTest': len(te), 'acc': round(acc, 4), 'base': round(base, 4)}
 
 
+def verdict_of(acc, ci, best):
+    """Plain-language result. 'Beats' needs at least 2 points over the best baseline; it is called certain only when the
+    lower end of the 95% interval is also above that baseline."""
+    if acc > best + 0.02:
+        return 'beats every baseline' if ci[0] > best else 'beats every baseline on this test set, but by less than its margin of error'
+    if acc > best + 0.005:
+        return 'barely beats the best baseline'
+    return 'no better than a baseline'
+
+
 def main():
     d = load_votes()
     d = d[d.decisionType.isin(FULL) & d.partyWinning.isin([0, 1]) & d.majority.isin([1, 2])].copy()
+    d['date'] = pd.to_datetime(d.dateDecision, format='%m/%d/%Y', errors='coerce')   # SCDB dates are m/d/yyyy strings
     d['y'] = (((d.majority == 2) & (d.partyWinning == 1)) | ((d.majority == 1) & (d.partyWinning == 0))).astype(int)
     X = prep(d)
     code2id, jinfo = justice_ids()
@@ -195,7 +215,13 @@ def main():
 
     K = load_js('docket')
     pending = []
+    seen = set()
     for c in K['cases']:
+        if c['id'] in seen:
+            continue
+        seen.add(c['id'])
+        if not c.get('n'):
+            c = dict(c, n='No. ' + c['d'])
         f, ok = docket_features(c)
         qtext = (c.get('q') or '') + ' ' + (c.get('ds') or '')
         probs = clf.predict_proba([qtext])[0]
@@ -208,7 +234,7 @@ def main():
     out = {}
     for code in CURRENT:
         m = d.justiceName == code
-        dj, Xj = d[m].sort_values('dateDecision'), X[m].loc[d[m].sort_values('dateDecision').index]
+        dj = d[m].sort_values(['date', 'caseId'], kind='stable'); Xj = X.loc[dj.index]
         y = dj.y.values
         nte = max(40, int(round(len(dj) * 0.2)))
         Xtr, Xte, ytr, yte = Xj.iloc[:-nte], Xj.iloc[-nte:], y[:-nte], y[-nte:]
@@ -219,18 +245,17 @@ def main():
         db, dcv, dcvs, dacc, dimp, _ = fit_eval(Xtr, ytr, Xte, yte, DOCKET_CAT)
         base_hind = max(base_rev, 1 - base_rev)   # the better constant guess, chosen with hindsight on the test set
         best_base = max(base_major, base_rev, base_hind)
-        verdict = ('beats every baseline' if facc > best_base + 0.02 else
-                   'no better than a baseline' if facc <= best_base + 0.005 else 'barely beats the best baseline')
+        verdict = verdict_of(facc, binom_ci(facc, nte), best_base)
         final = candidates(DOCKET_CAT)[db].fit(Xj[DOCKET_CAT + ['term']], y)
         pr = final.predict_proba(P[DOCKET_CAT + ['term']])[:, 1] if len(P) else []
         jid = code2id[code]
         out[jid] = {
             'code': code, 'n': int(len(dj)), 'nTrain': int(len(ytr)), 'nTest': int(nte),
-            'trainSpan': [str(dj.dateDecision.iloc[0]), str(dj.dateDecision.iloc[-nte - 1])],
-            'testSpan': [str(dj.dateDecision.iloc[-nte]), str(dj.dateDecision.iloc[-1])],
+            'trainSpan': [dj.date.iloc[0].strftime('%Y-%m-%d'), dj.date.iloc[-nte - 1].strftime('%Y-%m-%d')],
+            'testSpan': [dj.date.iloc[-nte].strftime('%Y-%m-%d'), dj.date.iloc[-1].strftime('%Y-%m-%d')],
             'revRateTrain': round(float(ytr.mean()), 4),
             'base': {'majority': round(base_major, 4), 'majorityLabel': 'petitioner' if maj_cls else 'respondent', 'reverse': round(base_rev, 4), 'hindsight': round(base_hind, 4)},
-            'dverdict': ('beats every baseline' if dacc > best_base + 0.02 else 'no better than a baseline' if dacc <= best_base + 0.005 else 'barely beats the best baseline'),
+            'dverdict': verdict_of(dacc, binom_ci(dacc, nte), best_base),
             'full': {'model': fb, 'cv': fcv, 'cvAll': fcvs, 'acc': facc, 'ci': binom_ci(facc, nte), 'imp': fimp[:8]},
             'docket': {'model': db, 'cv': dcv, 'cvAll': dcvs, 'acc': dacc, 'ci': binom_ci(dacc, nte), 'imp': dimp[:6]},
             'verdict': verdict,

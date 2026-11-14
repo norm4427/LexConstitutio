@@ -476,8 +476,8 @@
         ${a.ab ? `<div class="abstract">${esc(a.ab)}</div>` : '<p style="color:var(--ink-3)">No abstract is available for this article. Open the full text at the publisher.</p>'}
         <div class="actions">
           ${a.pdf ? `<a class="btn btn-primary" href="${esc(a.pdf)}" target="_blank" rel="noopener">Read the PDF ↗</a>` : ''}
-          <a class="btn ${a.pdf ? 'btn-ghost' : 'btn-primary'}" href="${esc(a.u)}" target="_blank" rel="noopener">${/doi\.org\/10\.2307/.test(a.u) ? 'View on JSTOR' : /doi\.org/.test(a.u) ? 'View via DOI' : 'View at ' + esc(j?.name || 'publisher')} ↗</a>
-          ${OPENALEX_JOURNALS.has(a.j) && j ? `<a class="btn btn-ghost" href="https://www.google.com/search?q=${encodeURIComponent('site:' + j.host + ' "' + a.t + '"')}" target="_blank" rel="noopener">Find on ${esc(j.host.replace(/^www\./, ''))} ↗</a>` : ''}
+          ${!a.pdf && a.oa ? `<a class="btn btn-primary" href="${esc(a.oa)}" target="_blank" rel="noopener" title="${a.oav === 'publishedVersion' ? 'The published version' : 'An author\'s version (manuscript), which may differ from the published text'}">Free copy at ${esc(a.oa.replace(/^https?:\/\/(www\.)?/, '').split('/')[0])}${a.oav && a.oav !== 'publishedVersion' ? ' (author\'s version)' : ''} ↗</a>` : ''}
+          <a class="btn ${a.pdf || a.oa ? 'btn-ghost' : 'btn-primary'}" href="${esc(a.u)}" target="_blank" rel="noopener">${/doi\.org\/10\.2307/.test(a.u) ? 'View on JSTOR' : /doi\.org/.test(a.u) ? 'View via DOI' : 'View at ' + esc(j?.name || 'publisher')} ↗</a>
           <button class="btn btn-ghost" id="save-article">${saved.has(a.id) ? '★ Saved' : '☆ Save to my list'}</button>
           <a class="btn btn-ghost" href="https://scholar.google.com/scholar?q=${encodeURIComponent('"' + a.t + '"')}" target="_blank" rel="noopener">Google Scholar ↗</a>
         </div>
@@ -615,8 +615,8 @@
       <h3>${esc(j.name)}</h3>
       <div class="foot"><span>${esc(j.host)}</span><b>${fmt(j.count)}</b></div></a>`;
     app.innerHTML = `<div class="fade-in">
-      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Journals</span></div>
-        <h1>Journal directory</h1><p>${journals.length} law reviews currently indexed. Specialist journals contribute every article. General law reviews contribute only articles about constitutional law.</p></div>
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/search">Articles</a><span>/</span><span>Journals</span></div>
+        <h1>Journal directory</h1><p>${journals.length} law reviews currently indexed. Specialist journals contribute every article. General law reviews contribute only articles about constitutional law.</p>${articleTabs('journals')}</div>
       <section class="section" style="padding-top:28px">
         <div class="section-head"><div><h2 style="font-size:24px">Specialist constitutional law journals</h2></div></div>
         <div class="jgrid">${spec.map(jc).join('')}</div>
@@ -755,6 +755,7 @@
       <a href="${hashFor('search', topic ? { topic } : {})}" class="${active === 'all' ? 'on' : ''}">All articles</a>
       <a href="${hashFor('impact', topic ? { topic } : {})}" class="${active === 'impact' ? 'on' : ''}">Most influential</a>
       <a href="#/topics" class="${active === 'topics' ? 'on' : ''}">Topics</a>
+      <a href="#/journals" class="${active === 'journals' ? 'on' : ''}">Journals</a>
     </div>`;
   }
   function viewImpact(params) {
@@ -2955,7 +2956,7 @@
     keepScrollOnce = false; lastRoute = { path, params };
     const seg = path.split('/');
     routeToken++;
-    const navKey = { docket: 'scotus', justices: 'scotus', justice: 'scotus', stats: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
+    const navKey = { docket: 'scotus', justices: 'scotus', justice: 'scotus', stats: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', journals: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
     document.querySelectorAll('.topnav a[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === navKey));
     document.querySelectorAll('audio').forEach(a => a.pause());
     const top = document.getElementById('topsearch-input');

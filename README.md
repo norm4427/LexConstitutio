@@ -22,7 +22,7 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 - **Annotated Constitution (Originalist's Corner):** every clause opens a panel with an overview, the Constitution Annotated commentary, leading cases by impact, scholarship, founding-era commentary and early statutes (`build_constitution.py`), and a word inspector with Johnson (1755), Webster (1828) and Bouvier (1856) definitions (`build_dictionaries.py`).
 - **Article pages:** a side pane lists the Supreme Court cases and indexed articles named in the article's title and abstract. The repositories serve full-text PDFs behind bot protection, so full text is not scanned.
 - **Topic flashcards (Learning Center):** 1,794 spaced-repetition flashcards for 560 essential Supreme Court cases in 20 topic decks. Cards are graded Again / Hard / Good / Easy (Anki-style SM-2 scheduling), with daily limits, sibling burying and per-profile progress in localStorage (export/import to move devices), plus a stats view. "What did the Court decide?" answers have three parts: Background (Oyez facts of the case, including what the law at issue says), Ruling (Oyez description and conclusion, plus the vote) and Importance (the advanced-section notes, the Constitution Annotated, and Congressional Research Service Legal Sidebars published after the decision; both public domain). Oyez text is CC BY-NC 4.0, so it is credited and linked on every card and the site must stay non-commercial.
-- **Books:** 76 curated major works (`scripts/books.json`) with covers, Goodreads ratings, matched law review book reviews, and Amazon, publisher, Goodreads and Open Library links. Guide topics link 1–2 introductory books each.
+- **Books:** about 290 scholarly works on constitutional law, history and the Court, 73 of them marked essential (`scripts/books.json`) with covers, Goodreads ratings, matched law review book reviews, and Amazon, publisher, Goodreads and Open Library links. Guide topics link 1–2 introductory books each.
 - **My list:** a saved bibliography with Bluebook and BibTeX export.
 
 ## Data sources
@@ -167,6 +167,12 @@ python scripts/merge_new.py            # re-runnable; replaces earlier merges of
 
 ### Books
 
-`scripts/books.json` holds the curated essentials (`essential: true`) plus about 300 more (`python scripts/books_more.py`).
-`bash scripts/books.sh` fetches Open Library and Goodreads data; `perl scripts/build_books.pl` builds books.js and drops
-non-essential books that Open Library cannot verify; then `perl scripts/books_impact_merge.pl`.
+`scripts/books.json` holds the curated essentials (`essential: true`) plus about 230 more (`python scripts/books_more.py`).
+Scope: scholarly works, or serious books by judges and legal scholars, substantially about American constitutional law,
+history or theory or the Supreme Court. Books that fail (journalism, memoirs, advocacy, general history or jurisprudence)
+are listed with reasons in `scripts/books_excluded.tsv`; `books_more.py` prunes them from books.json and `build_books.pl` skips them.
+`bash scripts/books.sh` fetches Open Library and Goodreads data; `perl scripts/build_books.pl` (also run by `build_extras.pl`)
+builds books.js, matching Open Library and Goodreads by title and whole-word author surname, and drops non-essential books
+that Open Library cannot verify; then `perl scripts/books_impact_merge.pl`; then `python scripts/book_covers.py`, which checks
+each ISBN against the book's Open Library work before using it for covers or the Amazon link (`scripts/book_covers_manual.tsv`
+holds covers checked by eye, or `none` for the placeholder).

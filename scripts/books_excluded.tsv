@@ -1,0 +1,80 @@
+# Books kept out of the Books section (read by books_more.py, which prunes them from books.json, and by build_books.pl).
+# Scope rule: an academic or scholarly work, or a serious book by a judge or legal scholar, that is substantially about
+# American constitutional law, constitutional history or theory, or the Supreme Court. Reasons rest on the publisher /
+# Goodreads descriptions cached in data/raw/books/<id>.gr.json. Columns: id <TAB> reason
+# --- not a scholarly work: journalism, popular narrative, memoir or advocacy
+just-mercy	Lawyer's memoir and advocacy against mass incarceration ("an unforgettable true story"); not a work of constitutional scholarship.
+the-new-jim-crow	Social critique of mass incarceration; not substantially about constitutional law.
+the-color-of-law	History of housing policy and residential segregation by a housing-policy analyst; not substantially constitutional law.
+charged	Journalism on prosecutorial power ("a renowned journalist ... exposes"); not constitutional scholarship.
+chokehold	Polemic on policing ("how the system really works, and how to disrupt it"); not constitutional scholarship.
+little-pink-house	Narrative journalism about Suzette Kelo's house (Kelo v. New London); not scholarship.
+love-wins	Narrative journalism co-written by the plaintiff about Obergefell v. Hodges; not scholarship.
+the-day-freedom-died	Narrative journalism about the Colfax massacre (true-crime style); not scholarship.
+separate	Journalist's narrative of Plessy v. Ferguson; popular history, not scholarship.
+minnesota-rag	Journalist's narrative of Near v. Minnesota; popular history, not scholarship.
+the-summer-of-1787	Popular narrative of the Convention ("a suspense story"); not scholarship.
+miranda	Journalist's narrative history of Miranda v. Arizona; not scholarship.
+the-brethren	Behind-the-scenes journalism about the Burger Court by two reporters; not scholarship.
+the-nine	Behind-the-scenes journalism ("acclaimed journalist Jeffrey Toobin takes us into the chambers"); not scholarship.
+the-oath	Journalist's "insider's account" of the Roberts Court and the Obama administration; not scholarship.
+supreme-conflict	Network legal correspondent's insider account of the Court; not scholarship.
+closed-chambers	Former clerk's exposé that "broke the code of silence" about the Court; not scholarship.
+nine-old-men	1936 newspaper columnists' attack on the Hughes Court; journalism, not scholarship.
+too-close-to-call	Journalist's narrative of the 2000 recount; not scholarship.
+injustices	Journalist's polemic against the Supreme Court; not scholarship.
+supreme-inequality	Journalist's polemic on the Court since Nixon; not scholarship.
+courtwatchers	Popular anecdotal history told through insiders' eyewitness accounts; not scholarship.
+the-chief	Journalist's biography of John Roberts; popular rather than scholarly biography.
+sandra-day-o-connor	Journalist's biography of Justice O'Connor; popular rather than scholarly biography.
+thurgood-marshall	Journalist's biography of Thurgood Marshall; popular rather than scholarly biography.
+justice-for-all	Newspaper journalist's biography of Earl Warren; popular rather than scholarly biography.
+supreme-power	Speechwriter's popular narrative of FDR versus the Court; not scholarship.
+my-beloved-world	Justice Sotomayor's personal memoir of her early life; not about constitutional law.
+my-grandfather-s-son	Justice Thomas's personal memoir; not about constitutional law.
+give-us-the-ballot	Journalist's narrative history of the Voting Rights Act (a statute); not scholarship.
+one-person-no-vote	Popular history of voter suppression with a senator's foreword; advocacy, not constitutional scholarship.
+let-the-people-pick-the-president	Journalist's case for abolishing the Electoral College; advocacy.
+the-fight-to-vote	Popular history by the president of the Brennan Center (an advocacy group); not scholarship.
+second-amendment-biography	Popular history by the president of the Brennan Center (an advocacy group); not scholarship.
+bending-toward-justice	Popular narrative history of the Voting Rights Act (a statute); not substantially constitutional law.
+constitutional-myths	Popular history aimed at debunking political talking points; not scholarship.
+the-constitution-in-exile	Television commentator's polemic (Goodreads matched a three-book omnibus); not scholarship.
+the-federalist-society	Advocacy critique of an organization; not constitutional scholarship.
+covering	Part "poetic memoir", part manifesto on civil rights; not substantially constitutional law.
+the-alchemy-of-race-and-rights	"An eloquent autobiographical essay" on race, gender and law; not substantially constitutional law.
+republic-lost	Book on money in politics and Congress ("how money corrupts Congress"); political reform, not substantially constitutional law.
+tyranny-of-the-minority	Trade book calling for reform of political institutions; comparative politics more than constitutional law.
+dollars-for-life	How the anti-abortion movement remade the Republican Party; party politics, not constitutional law.
+# --- scholarly, but not substantially about American constitutional law
+alexander-hamilton	Popular biography of Hamilton; not about constitutional law.
+founding-brothers	Study of the founders' personal relationships; not constitutional history.
+these-truths	One-volume general history of the United States.
+empire-of-liberty	General history of the United States, 1789-1815 (Oxford History of the United States).
+the-radicalism-of-the-american-revolution	Social history of the Revolution; not constitutional history.
+reconstruction	General history of Reconstruction; the constitutional side is covered by Foner's The Second Founding.
+democracy-in-america	Political and social study of American democracy; not constitutional law.
+the-concept-of-law	General jurisprudence (legal positivism); not American constitutional law.
+the-morality-of-law	General jurisprudence (law and morality); not American constitutional law.
+the-dignity-of-legislation	Legal philosophy of legislation (Aristotle, Locke, Kant); not American constitutional law.
+overcoming-law	Wide-ranging general legal theory; not substantially constitutional law.
+the-constitution-of-liberty	Political philosophy of liberty; not American constitutional law.
+how-democracies-die	Comparative politics of democratic breakdown; not constitutional law.
+democracy-and-its-critics	Democratic theory; not constitutional law.
+the-semisovereign-people	Political science of parties and pressure groups; not constitutional law.
+building-a-new-american-state	Political science on the growth of national administrative capacity; not constitutional law.
+the-politics-presidents-make	Political science on presidential leadership; not constitutional law.
+presidential-power	Political science on presidential persuasion and leadership; not constitutional law.
+the-price-of-federalism	Fiscal and policy analysis of federalism; not constitutional law.
+the-robust-federation	Comparative political science on designing federal systems; not American constitutional law.
+delegating-powers	Political science (transaction-cost) study of congressional delegation; not constitutional law.
+feminism-unmodified	Feminist legal theory on sexual politics; not substantially constitutional law.
+sexual-harassment-of-working-women	Employment discrimination law (Title VII); not substantially constitutional law.
+understanding-privacy	Theory of information privacy; not constitutional law.
+privacy-and-freedom	Information privacy and surveillance policy; not constitutional law.
+peculiar-institution	Sociology of the American death penalty; not substantially constitutional law.
+americans-in-waiting	Immigration law and policy; not substantially constitutional law.
+# --- duplicate
+the-constitution	Duplicate of America's Constitution: A Biography (Amar), and Goodreads matched a different Amar book.
+the-second-amendment	Same book as second-amendment-biography (Waldman), listed under a second id in books_more.py.
+ratf-ked	Journalist's account of the 2010 redistricting campaign; not scholarship.

@@ -23,6 +23,7 @@ Run from the repo root:  python scripts/build_stats.py
 """
 import collections, glob, os
 import numpy as np
+import pandas as pd
 from scdb_lib import load_votes, justice_ids, site_ids, source_group, write_js, load_js, path, FULL, ISSUE_AREA, SRC
 from add_scdb_cases import case_name
 
@@ -37,9 +38,12 @@ def disp_class(x):
 def main():
     d = load_votes()
     d = d[d.decisionType.isin(FULL)].copy()
+    d['date'] = pd.to_datetime(d.dateDecision, format='%m/%d/%Y', errors='coerce')   # SCDB dates are m/d/yyyy strings
     code2id, jinfo = justice_ids()
     sid = site_ids(d)
-    site_name = {c['id']: c['n'] for c in load_js('scotus')['cases']}
+    site_cases = load_js('scotus')['cases']
+    site_name = {c['id']: c['n'] for c in site_cases}
+    site_cit = {c['id']: c.get('cit', '') for c in site_cases}
     names = {}
     for code, jid in code2id.items():
         names[code] = [jinfo[jid]['last'], jid]
@@ -119,11 +123,11 @@ def main():
         cs['inst'] = (~cs.overr).astype(int) + (cs.strike == 0).astype(int) + (cs.ndis == 0).astype(int)
         inst = [int((cs.inst == v).sum()) for v in range(4)]
         I = {'overr': int(cs.overr.sum()), 'fed': int((cs.strike == 2).sum()), 'state': int((cs.strike == 3).sum()), 'local': int((cs.strike == 4).sum()), 'idx': inst}
-        for cid, r in cs.sort_values('dateDecision').iterrows():
+        for cid, r in cs.sort_values(['date', 'usCite']).iterrows():
             a = int(r.issueArea) if r.issueArea == r.issueArea else 0
             dd = 'L' if r.decisionDirection == 2 else 'C' if r.decisionDirection == 1 else 'U'
-            cases_by_dec[term // 10 * 10].append([term, sid.get(cid, ''), site_name.get(sid.get(cid)) or (case_name(r.caseName) if isinstance(r.caseName, str) else ''), r.usCite if isinstance(r.usCite, str) else '',
-                                                  r.dateDecision, int(r.majVotes) if r.majVotes == r.majVotes else None, int(r.minVotes) if r.minVotes == r.minVotes else 0,
+            cases_by_dec[term // 10 * 10].append([term, sid.get(cid, ''), site_name.get(sid.get(cid)) or (case_name(r.caseName) if isinstance(r.caseName, str) else ''), (r.usCite if isinstance(r.usCite, str) and r.usCite.strip() else site_cit.get(sid.get(cid), '')),
+                                                  r.date.strftime('%Y-%m-%d') if r.date == r.date else '', int(r.majVotes) if r.majVotes == r.majVotes else None, int(r.minVotes) if r.minVotes == r.minVotes else 0,
                                                   dd, int(r.inst), int(r.overr), int(r.strike), a, cid])
         rev = [sum(v[0] for v in disp.values()), sum(v[1] for v in disp.values()), sum(v[2] for v in disp.values())]
         terms.append({'t': term, 'n': n, 'pc': pc, 'chief': chief_name, 'roster': [[c] + names.get(c, [c, '']) for c in roster],

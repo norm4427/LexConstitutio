@@ -162,7 +162,7 @@ BOOKS = [
     (I, 'Constitutional Law: Principles and Policies', ['Erwin Chemerinsky'], 1997), (I, 'Understanding the Constitution', ['Jack W. Peltason'], 1949),
     (I, 'The American Supreme Court', ['Robert G. McCloskey'], 1960),
 ]
-ESSENTIAL_ADDS = {'The American Supreme Court', 'Give Us the Ballot'}   # added to the essential set after review
+ESSENTIAL_ADDS = {'The American Supreme Court'}   # added to the essential set after review
 MOVE_ESSENTIAL_CAT = {'The American Supreme Court': C}
 
 
@@ -170,8 +170,16 @@ def slug(t):
     return re.sub(r'[^a-z0-9]+', '-', t.lower().split(':')[0]).strip('-')[:48]
 
 
+def excluded():
+    """ids listed in scripts/books_excluded.tsv (out of scope; see the reasons there)."""
+    return {l.split('\t')[0] for l in open('scripts/books_excluded.tsv', encoding='utf-8') if l.strip() and not l.startswith('#')}
+
+
 def main():
     books = json.load(open('scripts/books.json', encoding='utf-8'))
+    ex = excluded()
+    pruned = [b['title'] for b in books if b['id'] in ex]
+    books = [b for b in books if b['id'] not in ex]
     have = {re.sub(r'[^a-z0-9]', '', b['title'].lower().split(':')[0]) for b in books}
     ids = {b['id'] for b in books}
     for b in books:
@@ -182,6 +190,8 @@ def main():
         if k in have:
             continue
         bid = slug(title)
+        if bid in ex:
+            continue
         while bid in ids:
             bid += '-2'
         have.add(k); ids.add(bid)
@@ -189,7 +199,7 @@ def main():
                       'essential': title in ESSENTIAL_ADDS})
         added += 1
     json.dump(books, open('scripts/books.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-    print(f'books.json: {len(books)} books ({sum(b["essential"] for b in books)} essential); added {added}')
+    print(f'books.json: {len(books)} books ({sum(b["essential"] for b in books)} essential); added {added}; removed {len(pruned)} excluded')
 
 
 if __name__ == '__main__':

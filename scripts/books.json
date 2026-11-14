@@ -455,31 +455,6 @@
   "essential": true
  },
  {
-  "id": "the-brethren",
-  "title": "The Brethren: Inside the Supreme Court",
-  "authors": [
-   "Bob Woodward",
-   "Scott Armstrong"
-  ],
-  "year": 1979,
-  "publisher": "Simon & Schuster",
-  "cat": "The Supreme Court",
-  "note": "The first inside account of the Burger Court's deliberations.",
-  "essential": true
- },
- {
-  "id": "the-nine",
-  "title": "The Nine: Inside the Secret World of the Supreme Court",
-  "authors": [
-   "Jeffrey Toobin"
-  ],
-  "year": 2007,
-  "publisher": "Doubleday",
-  "cat": "The Supreme Court",
-  "note": "A narrative portrait of the Rehnquist and early Roberts Courts.",
-  "essential": true
- },
- {
   "id": "supreme-court-vsi",
   "title": "The U.S. Supreme Court: A Very Short Introduction",
   "authors": [
@@ -743,18 +718,6 @@
   "essential": true
  },
  {
-  "id": "second-amendment-biography",
-  "title": "The Second Amendment: A Biography",
-  "authors": [
-   "Michael Waldman"
-  ],
-  "year": 2014,
-  "publisher": "Simon & Schuster",
-  "cat": "Rights & Liberties",
-  "note": "Traces how the meaning of the Second Amendment changed over two centuries.",
-  "essential": true
- },
- {
   "id": "race-racism-law",
   "title": "Race, Racism, and American Law",
   "authors": [
@@ -867,18 +830,6 @@
   "cat": "Democracy & Elections",
   "intro": true,
   "note": "The standard history of the expansion and contraction of the franchise.",
-  "essential": true
- },
- {
-  "id": "republic-lost",
-  "title": "Republic, Lost: How Money Corrupts Congress—and a Plan to Stop It",
-  "authors": [
-   "Lawrence Lessig"
-  ],
-  "year": 2011,
-  "publisher": "Twelve",
-  "cat": "Democracy & Elections",
-  "note": "A theory of 'dependence corruption' and the case for campaign finance reform.",
   "essential": true
  },
  {
@@ -1008,16 +959,6 @@
   "essential": false
  },
  {
-  "id": "overcoming-law",
-  "title": "Overcoming Law",
-  "authors": [
-   "Richard A. Posner"
-  ],
-  "year": 1995,
-  "cat": "Theory & Interpretation",
-  "essential": false
- },
- {
   "id": "law-s-empire",
   "title": "Law's Empire",
   "authors": [
@@ -1034,36 +975,6 @@
    "Jeremy Waldron"
   ],
   "year": 1999,
-  "cat": "Theory & Interpretation",
-  "essential": false
- },
- {
-  "id": "the-dignity-of-legislation",
-  "title": "The Dignity of Legislation",
-  "authors": [
-   "Jeremy Waldron"
-  ],
-  "year": 1999,
-  "cat": "Theory & Interpretation",
-  "essential": false
- },
- {
-  "id": "the-concept-of-law",
-  "title": "The Concept of Law",
-  "authors": [
-   "H. L. A. Hart"
-  ],
-  "year": 1961,
-  "cat": "Theory & Interpretation",
-  "essential": false
- },
- {
-  "id": "the-morality-of-law",
-  "title": "The Morality of Law",
-  "authors": [
-   "Lon L. Fuller"
-  ],
-  "year": 1964,
   "cat": "Theory & Interpretation",
   "essential": false
  },
@@ -1350,16 +1261,6 @@
   "essential": false
  },
  {
-  "id": "the-constitution-in-exile",
-  "title": "The Constitution in Exile",
-  "authors": [
-   "Andrew P. Napolitano"
-  ],
-  "year": 2006,
-  "cat": "Theory & Interpretation",
-  "essential": false
- },
- {
   "id": "constitutional-rot",
   "title": "Constitutional Rot",
   "authors": [
@@ -1380,33 +1281,12 @@
   "essential": false
  },
  {
-  "id": "the-constitution-of-liberty",
-  "title": "The Constitution of Liberty",
-  "authors": [
-   "Friedrich A. Hayek"
-  ],
-  "year": 1960,
-  "cat": "Theory & Interpretation",
-  "essential": false
- },
- {
   "id": "freedom-and-the-court",
   "title": "Freedom and the Court",
   "authors": [
    "Henry J. Abraham"
   ],
   "year": 1967,
-  "cat": "Theory & Interpretation",
-  "essential": false
- },
- {
-  "id": "the-federalist-society",
-  "title": "The Federalist Society: How Conservatives Took the Law Back from Liberals",
-  "authors": [
-   "Michael Avery",
-   "Danielle McLaughlin"
-  ],
-  "year": 2013,
   "cat": "Theory & Interpretation",
   "essential": false
  },
@@ -1451,42 +1331,12 @@
   "essential": false
  },
  {
-  "id": "the-radicalism-of-the-american-revolution",
-  "title": "The Radicalism of the American Revolution",
-  "authors": [
-   "Gordon S. Wood"
-  ],
-  "year": 1991,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
-  "id": "empire-of-liberty",
-  "title": "Empire of Liberty",
-  "authors": [
-   "Gordon S. Wood"
-  ],
-  "year": 2009,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
   "id": "american-scripture",
   "title": "American Scripture",
   "authors": [
    "Pauline Maier"
   ],
   "year": 1997,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
-  "id": "founding-brothers",
-  "title": "Founding Brothers",
-  "authors": [
-   "Joseph J. Ellis"
-  ],
-  "year": 2000,
   "cat": "History & Founding",
   "essential": false
  },
@@ -1557,16 +1407,6 @@
    "Danielle Allen"
   ],
   "year": 2014,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
-  "id": "reconstruction",
-  "title": "Reconstruction: America's Unfinished Revolution",
-  "authors": [
-   "Eric Foner"
-  ],
-  "year": 1988,
   "cat": "History & Founding",
   "essential": false
  },
@@ -1671,16 +1511,6 @@
   "essential": false
  },
  {
-  "id": "these-truths",
-  "title": "These Truths",
-  "authors": [
-   "Jill Lepore"
-  ],
-  "year": 2018,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
   "id": "unruly-americans-and-the-origins-of-the-constitu",
   "title": "Unruly Americans and the Origins of the Constitution",
   "authors": [
@@ -1747,16 +1577,6 @@
    "Edmund S. Morgan"
   ],
   "year": 1988,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
-  "id": "alexander-hamilton",
-  "title": "Alexander Hamilton",
-  "authors": [
-   "Ron Chernow"
-  ],
-  "year": 2004,
   "cat": "History & Founding",
   "essential": false
  },
@@ -1831,16 +1651,6 @@
   "essential": false
  },
  {
-  "id": "democracy-in-america",
-  "title": "Democracy in America",
-  "authors": [
-   "Alexis de Tocqueville"
-  ],
-  "year": 1835,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
   "id": "commentaries-on-the-constitution-of-the-united-s",
   "title": "Commentaries on the Constitution of the United States",
   "authors": [
@@ -1851,52 +1661,12 @@
   "essential": false
  },
  {
-  "id": "the-day-freedom-died",
-  "title": "The Day Freedom Died",
-  "authors": [
-   "Charles Lane"
-  ],
-  "year": 2008,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
-  "id": "separate",
-  "title": "Separate: The Story of Plessy v. Ferguson",
-  "authors": [
-   "Steve Luxenberg"
-  ],
-  "year": 2019,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
   "id": "birthright-citizens",
   "title": "Birthright Citizens",
   "authors": [
    "Martha S. Jones"
   ],
   "year": 2018,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
-  "id": "the-constitution",
-  "title": "The Constitution: A Biography",
-  "authors": [
-   "Akhil Reed Amar"
-  ],
-  "year": 2005,
-  "cat": "History & Founding",
-  "essential": false
- },
- {
-  "id": "the-summer-of-1787",
-  "title": "The Summer of 1787",
-  "authors": [
-   "David O. Stewart"
-  ],
-  "year": 2007,
   "cat": "History & Founding",
   "essential": false
  },
@@ -1961,50 +1731,10 @@
   "essential": false
  },
  {
-  "id": "the-oath",
-  "title": "The Oath",
-  "authors": [
-   "Jeffrey Toobin"
-  ],
-  "year": 2012,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "supreme-conflict",
-  "title": "Supreme Conflict",
-  "authors": [
-   "Jan Crawford Greenburg"
-  ],
-  "year": 2007,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
   "id": "becoming-justice-blackmun",
   "title": "Becoming Justice Blackmun",
   "authors": [
    "Linda Greenhouse"
-  ],
-  "year": 2005,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "the-chief",
-  "title": "The Chief: The Life and Turbulent Times of Chief Justice John Roberts",
-  "authors": [
-   "Joan Biskupic"
-  ],
-  "year": 2019,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "sandra-day-o-connor",
-  "title": "Sandra Day O'Connor",
-  "authors": [
-   "Joan Biskupic"
   ],
   "year": 2005,
   "cat": "The Supreme Court",
@@ -2088,26 +1818,6 @@
    "Ruth Bader Ginsburg"
   ],
   "year": 2016,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "my-beloved-world",
-  "title": "My Beloved World",
-  "authors": [
-   "Sonia Sotomayor"
-  ],
-  "year": 2013,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "my-grandfather-s-son",
-  "title": "My Grandfather's Son",
-  "authors": [
-   "Clarence Thomas"
-  ],
-  "year": 2007,
   "cat": "The Supreme Court",
   "essential": false
  },
@@ -2196,26 +1906,6 @@
   "essential": false
  },
  {
-  "id": "supreme-inequality",
-  "title": "Supreme Inequality",
-  "authors": [
-   "Adam Cohen"
-  ],
-  "year": 2020,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "injustices",
-  "title": "Injustices",
-  "authors": [
-   "Ian Millhiser"
-  ],
-  "year": 2015,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
   "id": "in-the-balance",
   "title": "In the Balance",
   "authors": [
@@ -2277,16 +1967,6 @@
   "essential": false
  },
  {
-  "id": "thurgood-marshall",
-  "title": "Thurgood Marshall: American Revolutionary",
-  "authors": [
-   "Juan Williams"
-  ],
-  "year": 1998,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
   "id": "democratic-justice",
   "title": "Democratic Justice: Felix Frankfurter, the Supreme Court, and the Making of the Liberal Establishment",
   "authors": [
@@ -2313,37 +1993,6 @@
    "Del Dickson"
   ],
   "year": 2001,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "courtwatchers",
-  "title": "Courtwatchers",
-  "authors": [
-   "Clare Cushman"
-  ],
-  "year": 2011,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "closed-chambers",
-  "title": "Closed Chambers",
-  "authors": [
-   "Edward Lazarus"
-  ],
-  "year": 1998,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
-  "id": "nine-old-men",
-  "title": "Nine Old Men",
-  "authors": [
-   "Drew Pearson",
-   "Robert S. Allen"
-  ],
-  "year": 1936,
   "cat": "The Supreme Court",
   "essential": false
  },
@@ -2438,16 +2087,6 @@
   "essential": false
  },
  {
-  "id": "supreme-power",
-  "title": "Supreme Power: Franklin Roosevelt vs. the Supreme Court",
-  "authors": [
-   "Jeff Shesol"
-  ],
-  "year": 2010,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
   "id": "the-supreme-court-reborn",
   "title": "The Supreme Court Reborn",
   "authors": [
@@ -2458,32 +2097,12 @@
   "essential": false
  },
  {
-  "id": "justice-for-all",
-  "title": "Justice for All: Earl Warren and the Nation He Made",
-  "authors": [
-   "Jim Newton"
-  ],
-  "year": 2006,
-  "cat": "The Supreme Court",
-  "essential": false
- },
- {
   "id": "the-president",
   "title": "The President: Office and Powers",
   "authors": [
    "Edward S. Corwin"
   ],
   "year": 1940,
-  "cat": "Structure & Powers",
-  "essential": false
- },
- {
-  "id": "presidential-power",
-  "title": "Presidential Power",
-  "authors": [
-   "Richard E. Neustadt"
-  ],
-  "year": 1960,
   "cat": "Structure & Powers",
   "essential": false
  },
@@ -2669,16 +2288,6 @@
   "essential": false
  },
  {
-  "id": "the-robust-federation",
-  "title": "The Robust Federation",
-  "authors": [
-   "Jenna Bednar"
-  ],
-  "year": 2009,
-  "cat": "Structure & Powers",
-  "essential": false
- },
- {
   "id": "terror-in-the-balance",
   "title": "Terror in the Balance",
   "authors": [
@@ -2696,16 +2305,6 @@
    "Peter M. Shane"
   ],
   "year": 2009,
-  "cat": "Structure & Powers",
-  "essential": false
- },
- {
-  "id": "the-politics-presidents-make",
-  "title": "The Politics Presidents Make",
-  "authors": [
-   "Stephen Skowronek"
-  ],
-  "year": 1993,
   "cat": "Structure & Powers",
   "essential": false
  },
@@ -2731,27 +2330,6 @@
   "essential": false
  },
  {
-  "id": "delegating-powers",
-  "title": "Delegating Powers",
-  "authors": [
-   "David Epstein",
-   "Sharyn O'Halloran"
-  ],
-  "year": 1999,
-  "cat": "Structure & Powers",
-  "essential": false
- },
- {
-  "id": "building-a-new-american-state",
-  "title": "Building a New American State",
-  "authors": [
-   "Stephen Skowronek"
-  ],
-  "year": 1982,
-  "cat": "Structure & Powers",
-  "essential": false
- },
- {
   "id": "the-constitution-and-the-conduct-of-foreign-poli",
   "title": "The Constitution and the Conduct of Foreign Policy",
   "authors": [
@@ -2768,16 +2346,6 @@
    "Louis Henkin"
   ],
   "year": 1996,
-  "cat": "Structure & Powers",
-  "essential": false
- },
- {
-  "id": "the-price-of-federalism",
-  "title": "The Price of Federalism",
-  "authors": [
-   "Paul E. Peterson"
-  ],
-  "year": 1995,
   "cat": "Structure & Powers",
   "essential": false
  },
@@ -2933,16 +2501,6 @@
   "essential": false
  },
  {
-  "id": "minnesota-rag",
-  "title": "Minnesota Rag",
-  "authors": [
-   "Fred W. Friendly"
-  ],
-  "year": 1981,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
   "id": "foreordained-failure",
   "title": "Foreordained Failure",
   "authors": [
@@ -3031,36 +2589,6 @@
    "Derrick Bell"
   ],
   "year": 2004,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "the-color-of-law",
-  "title": "The Color of Law",
-  "authors": [
-   "Richard Rothstein"
-  ],
-  "year": 2017,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "the-new-jim-crow",
-  "title": "The New Jim Crow",
-  "authors": [
-   "Michelle Alexander"
-  ],
-  "year": 2010,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "covering",
-  "title": "Covering: The Hidden Assault on Our Civil Rights",
-  "authors": [
-   "Kenji Yoshino"
-  ],
-  "year": 2006,
   "cat": "Rights & Liberties",
   "essential": false
  },
@@ -3166,43 +2694,12 @@
   "essential": false
  },
  {
-  "id": "dollars-for-life",
-  "title": "Dollars for Life",
-  "authors": [
-   "Mary Ziegler"
-  ],
-  "year": 2022,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
   "id": "from-the-closet-to-the-altar",
   "title": "From the Closet to the Altar",
   "authors": [
    "Michael J. Klarman"
   ],
   "year": 2012,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "love-wins",
-  "title": "Love Wins",
-  "authors": [
-   "Debbie Cenziper",
-   "Jim Obergefell"
-  ],
-  "year": 2016,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "understanding-privacy",
-  "title": "Understanding Privacy",
-  "authors": [
-   "Daniel J. Solove"
-  ],
-  "year": 2008,
   "cat": "Rights & Liberties",
   "essential": false
  },
@@ -3247,16 +2744,6 @@
   "essential": false
  },
  {
-  "id": "chokehold",
-  "title": "Chokehold",
-  "authors": [
-   "Paul Butler"
-  ],
-  "year": 2017,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
   "id": "unwarranted",
   "title": "Unwarranted: Policing Without Permission",
   "authors": [
@@ -3267,52 +2754,12 @@
   "essential": false
  },
  {
-  "id": "miranda",
-  "title": "Miranda: Crime, Law, and Politics",
-  "authors": [
-   "Liva Baker"
-  ],
-  "year": 1983,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
   "id": "the-death-penalty",
   "title": "The Death Penalty: An American History",
   "authors": [
    "Stuart Banner"
   ],
   "year": 2002,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "peculiar-institution",
-  "title": "Peculiar Institution",
-  "authors": [
-   "David Garland"
-  ],
-  "year": 2010,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "just-mercy",
-  "title": "Just Mercy",
-  "authors": [
-   "Bryan Stevenson"
-  ],
-  "year": 2014,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "charged",
-  "title": "Charged",
-  "authors": [
-   "Emily Bazelon"
-  ],
-  "year": 2019,
   "cat": "Rights & Liberties",
   "essential": false
  },
@@ -3357,16 +2804,6 @@
   "essential": false
  },
  {
-  "id": "little-pink-house",
-  "title": "Little Pink House",
-  "authors": [
-   "Jeff Benedict"
-  ],
-  "year": 2009,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
   "id": "the-guardian-of-every-other-right",
   "title": "The Guardian of Every Other Right",
   "authors": [
@@ -3383,16 +2820,6 @@
    "Joanna Schwartz"
   ],
   "year": 2023,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "americans-in-waiting",
-  "title": "Americans in Waiting",
-  "authors": [
-   "Hiroshi Motomura"
-  ],
-  "year": 2006,
   "cat": "Rights & Liberties",
   "essential": false
  },
@@ -3414,26 +2841,6 @@
    "Rogers M. Smith"
   ],
   "year": 1997,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "feminism-unmodified",
-  "title": "Feminism Unmodified",
-  "authors": [
-   "Catharine A. MacKinnon"
-  ],
-  "year": 1987,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "sexual-harassment-of-working-women",
-  "title": "Sexual Harassment of Working Women",
-  "authors": [
-   "Catharine A. MacKinnon"
-  ],
-  "year": 1979,
   "cat": "Rights & Liberties",
   "essential": false
  },
@@ -3475,26 +2882,6 @@
    "Evan D. Bernick"
   ],
   "year": 2021,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "privacy-and-freedom",
-  "title": "Privacy and Freedom",
-  "authors": [
-   "Alan F. Westin"
-  ],
-  "year": 1967,
-  "cat": "Rights & Liberties",
-  "essential": false
- },
- {
-  "id": "the-alchemy-of-race-and-rights",
-  "title": "The Alchemy of Race and Rights",
-  "authors": [
-   "Patricia J. Williams"
-  ],
-  "year": 1991,
   "cat": "Rights & Liberties",
   "essential": false
  },
@@ -3601,26 +2988,6 @@
   "essential": false
  },
  {
-  "id": "give-us-the-ballot",
-  "title": "Give Us the Ballot",
-  "authors": [
-   "Ari Berman"
-  ],
-  "year": 2015,
-  "cat": "Democracy & Elections",
-  "essential": true
- },
- {
-  "id": "one-person-no-vote",
-  "title": "One Person, No Vote",
-  "authors": [
-   "Carol Anderson"
-  ],
-  "year": 2018,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
   "id": "colorblind-injustice",
   "title": "Colorblind Injustice",
   "authors": [
@@ -3671,33 +3038,12 @@
   "essential": false
  },
  {
-  "id": "let-the-people-pick-the-president",
-  "title": "Let the People Pick the President",
-  "authors": [
-   "Jesse Wegman"
-  ],
-  "year": 2020,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
   "id": "why-do-we-still-have-the-electoral-college",
   "title": "Why Do We Still Have the Electoral College?",
   "authors": [
    "Alexander Keyssar"
   ],
   "year": 2020,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
-  "id": "how-democracies-die",
-  "title": "How Democracies Die",
-  "authors": [
-   "Steven Levitsky",
-   "Daniel Ziblatt"
-  ],
-  "year": 2018,
   "cat": "Democracy & Elections",
   "essential": false
  },
@@ -3717,26 +3063,6 @@
   "title": "How Democratic Is the American Constitution?",
   "authors": [
    "Robert A. Dahl"
-  ],
-  "year": 2001,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
-  "id": "the-fight-to-vote",
-  "title": "The Fight to Vote",
-  "authors": [
-   "Michael Waldman"
-  ],
-  "year": 2016,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
-  "id": "too-close-to-call",
-  "title": "Too Close to Call",
-  "authors": [
-   "Jeffrey Toobin"
   ],
   "year": 2001,
   "cat": "Democracy & Elections",
@@ -3773,53 +3099,12 @@
   "essential": false
  },
  {
-  "id": "the-semisovereign-people",
-  "title": "The Semisovereign People",
-  "authors": [
-   "E. E. Schattschneider"
-  ],
-  "year": 1960,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
-  "id": "tyranny-of-the-minority",
-  "title": "Tyranny of the Minority",
-  "authors": [
-   "Steven Levitsky",
-   "Daniel Ziblatt"
-  ],
-  "year": 2023,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
-  "id": "ratf-ked",
-  "title": "Ratf**ked",
-  "authors": [
-   "David Daley"
-  ],
-  "year": 2016,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
   "id": "gerrymandering-in-america",
   "title": "Gerrymandering in America",
   "authors": [
    "Anthony J. McGann"
   ],
   "year": 2016,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
-  "id": "bending-toward-justice",
-  "title": "Bending Toward Justice",
-  "authors": [
-   "Gary May"
-  ],
-  "year": 2013,
   "cat": "Democracy & Elections",
   "essential": false
  },
@@ -3831,16 +3116,6 @@
    "Bernard Grofman"
   ],
   "year": 1994,
-  "cat": "Democracy & Elections",
-  "essential": false
- },
- {
-  "id": "democracy-and-its-critics",
-  "title": "Democracy and Its Critics",
-  "authors": [
-   "Robert A. Dahl"
-  ],
-  "year": 1989,
   "cat": "Democracy & Elections",
   "essential": false
  },
@@ -3891,16 +3166,6 @@
    "Jack N. Rakove"
   ],
   "year": 2009,
-  "cat": "Introductions & Primers",
-  "essential": false
- },
- {
-  "id": "constitutional-myths",
-  "title": "Constitutional Myths",
-  "authors": [
-   "Ray Raphael"
-  ],
-  "year": 2013,
   "cat": "Introductions & Primers",
   "essential": false
  },
