@@ -22,6 +22,10 @@ MAP = {
     'r': 'ɹ', 'g': 'ɡ', 'x': 'k', 'ɫ': 'l', 'ʍ': 'w', 'ɵ': 'oʊ', 'ɨ': 'ᵻ', 'ʉ': 'uː', 'e': 'eɪ', 'o': 'oʊ', "'": 'ˈ', ',': 'ˌ',
 }
 MAP_KEYS = sorted(MAP, key=len, reverse=True)
+# ASCII stand-ins that {{IPAc-en}} accepts for its tokens
+ASCII_IPA = {'@': 'ə', '@r': 'ər', 'S': 'ʃ', 'Z': 'ʒ', 'T': 'θ', 'D': 'ð', 'N': 'ŋ', 'tS': 'tʃ', 'dZ': 'dʒ', 'a:': 'ɑː', 'A:': 'ɑː', 'a:r': 'ɑːr',
+             'ei': 'eɪ', 'ai': 'aɪ', 'au': 'aʊ', 'ou': 'oʊ', 'oi': 'ɔɪ', 'i:': 'iː', 'u:': 'uː', 'O:': 'ɔː', 'O:r': 'ɔːr', 'E': 'ɛ', 'I': 'ɪ',
+             'U': 'ʊ', 'V': 'ʌ', '3:': 'ɜː', '3:r': 'ɜːr', '{': 'æ', 'Q': 'ɒ', 'Ir': 'ɪər', 'Er': 'ɛər', 'Ur': 'ʊər'}
 
 
 def to_espeak(ipa, vocab):
@@ -29,6 +33,8 @@ def to_espeak(ipa, vocab):
     s = re.sub(r'\([^)]*\)', '', s)                       # optional sounds, e.g. (j)
     s = re.sub(r'[/\[\]\.ˑ‿̯̩͡ʰ]', '', s).replace('_', ' ')
     s = s.replace('eɪ', '\x01').replace('oʊ', '\x02')     # protect diphthongs from the single e/o mapping
+    s = re.sub(r'[rɹ](?=[ˈˌ]?[aeiouæɑɒɔəɛɜɪʊʌɐ\x01\x02])', '\x03', s)
+    s = re.sub(r'([ɛɪʊ])ə(?=\x03)', r'\1', s)   # an r before a vowel stays a consonant (Moreno, not "Mo-er-eeno")
     out, i = '', 0
     while i < len(s):
         for k in MAP_KEYS:
@@ -36,7 +42,7 @@ def to_espeak(ipa, vocab):
                 out += MAP[k]; i += len(k); break
         else:
             out += s[i]; i += 1
-    out = out.replace('\x01', 'eɪ').replace('\x02', 'oʊ').replace('ːː', 'ː')
+    out = out.replace('\x01', 'eɪ').replace('\x02', 'oʊ').replace('\x03', 'ɹ').replace('ːː', 'ː')
     # espeak puts the stress mark right before the vowel; Wikipedia puts it before the syllable
     res, pending = [], ''
     for ch in out:
@@ -49,7 +55,9 @@ def to_espeak(ipa, vocab):
         else:
             res.append(ch)
     out = ''.join(res)
-    out = ''.join(ch for ch in out if ch in vocab or ch == ' ')
+    out = out.replace(':', 'ː')
+    # phoneme symbols only: no capitals or punctuation, which the engine reads as letters or pauses
+    out = ''.join(ch for ch in out if ch == ' ' or (ch in vocab and not ch.isupper() and ch not in '!"(),.:;?—“”…→↓↗↘'))
     return re.sub(r'\s+', ' ', out).strip()
 
 
@@ -92,7 +100,7 @@ def lead_ipa(text):
         kind, args = t.group(1), [a.strip() for a in t.group(2).split('|')]
         if kind == 'IPAc-en':
             toks = [a for a in args if a and '=' not in a and not re.fullmatch(r'(?:US|UK|pron|icon|lang|local|also|Can|Aus|NZ|Eng|Irl|Sco|GA|RP)', a)]
-            out.append(''.join(toks))
+            out.append(''.join(ASCII_IPA.get(a, a) for a in toks))
         elif kind == 'IPA-en':
             out.append(args[0])
         else:
@@ -145,6 +153,16 @@ def main():
         words = [w for w in re.findall(r"[A-ZÀ-Ž][\w'’À-ž-]+", name) if w not in ('Jr', 'Sr', 'II', 'III', 'IV')]
         if not groups or not words or len(groups) > len(words):
             continue
+        if base == 1:
+            # same-surname pages: only people's pages ("First Last"), and a lone IPA group must be the title's surname
+            tw = re.findall(r"[A-ZÀ-Ž][\w'’À-ž-]+", title)
+            if re.search(r'[,(]', title) or not 2 <= len(title.split()) <= 4 or not tw:
+                continue
+            if len(groups) == 1:
+                best1 = min(words, key=lambda x: dist(eg(fold(x)), groups[0]))
+                if fold(best1) != fold(tw[-1]):
+                    continue
+                words = [best1]
         best = None
         for combo in itertools.combinations(range(len(words)), len(groups)):
             score = sum(dist(eg(fold(words[i])), g) / max(len(bare(g)), 1) for i, g in zip(combo, groups))
@@ -155,18 +173,22 @@ def main():
             if w not in wanted_fold:
                 continue
             ratio = dist(eg(w), g) / max(len(bare(g)), 1)
-            if ratio > 0.75:        # too far from the spelling: probably the wrong word
+            if ratio > (0.75 if base > 1 else 0.6):        # too far from the spelling: probably the wrong word
+                continue
+            if base == 1 and w not in fold(title):
                 continue
             if len(bare(g)) > 1.6 * len(bare(eg(w))) + 2:   # IPA covers more than this word (e.g. "Coeur d'Alene")
                 continue
             pri = base
             cands[wanted_fold[w]].append((g, f'Wikipedia: {title}', pri))
 
-    lex = {}
+    lex, same = {}, {}   # same: sourced words the engine already says correctly (recorded for pron_scan.py)
     for w, lst in cands.items():
         top = max(lst, key=lambda x: (x[2], sum(1 for y in lst if y[0] == x[0])))
         if differs(top[0], eg(w)):
             lex[w] = (top[0], top[1])
+        else:
+            same[w] = top[1]
 
     # Wiktionary terms
     terms = json.load(open(f'{SRC}/terms_wikt.json', encoding='utf-8'))
@@ -189,13 +211,18 @@ def main():
             continue
         if ph and req.lower() in corpus.lower() and differs(ph, eg(req)):
             lex[req] = (ph, f'Wiktionary: {title}')
+        elif ph:
+            same[req] = f'Wiktionary: {title}'
 
     # manual overrides win
     try:
         for line in open('scripts/pronounce_manual.tsv', encoding='utf-8'):
             if line.strip() and not line.startswith('#'):
                 parts = line.rstrip('\n').split('\t')
-                lex[parts[0]] = (parts[1], 'manual' + (': ' + parts[2] if len(parts) > 2 and parts[2] else ''))
+                if parts[1].strip() == '-':      # "-" = keep the voice engine's own pronunciation
+                    lex.pop(parts[0], None)
+                else:
+                    lex[parts[0]] = (parts[1], 'manual' + (': ' + parts[2] if len(parts) > 2 and parts[2] else ''))
     except FileNotFoundError:
         pass
 
@@ -203,6 +230,9 @@ def main():
         o.write('# term\tphonemes\tsource   (generated by scripts/pronounce_build.py; edit scripts/pronounce_manual.tsv instead)\n')
         for w in sorted(lex, key=str.lower):
             o.write(f'{w}\t{lex[w][0]}\t{lex[w][1]}\n')
+    with open(f'{SRC}/verified_same.tsv', 'w', encoding='utf-8', newline='\n') as o:
+        for w in sorted(same, key=str.lower):
+            o.write(f'{w}\t{same[w]}\n')
     print(f'{len(lex)} entries ({sum(1 for v in lex.values() if v[1].startswith("Wikipedia"))} names, '
           f'{sum(1 for v in lex.values() if v[1].startswith("Wiktionary"))} terms, {sum(1 for v in lex.values() if v[1].startswith("manual"))} manual)')
     for w in sys.argv[1:]:

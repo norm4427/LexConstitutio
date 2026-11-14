@@ -1,0 +1,12 @@
+# Manual pronunciation overrides for the narration (these win over scripts/pronounce.tsv).
+# Columns (tab-separated): term <TAB> phonemes <TAB> note
+# Phonemes use the voice engine's espeak-style IPA, stress mark before the vowel, e.g. Lujan -> luːhˈɑːn.
+# Use "-" as the phonemes to drop a sourced entry and keep the engine's default.
+# Namesakes whose Wikipedia pronunciation is not the American one used for these case parties:
+Daniel	-	Hebrew pronunciation from an Israeli namesake
+Peretz	-	Hebrew pronunciation from an Israeli namesake
+Weber	-	German pronunciation from a namesake; parties say WEB-er
+Wolf	-	German pronunciation from a namesake (Wolf v. Colorado)
+Orleans	-	Source IPA covered "New Orleans" as one word
+Peterson	-	Engine default matches the usual pronunciation
+Moreno	məɹˈiːnoʊ	Wikipedia: Bernie Moreno (stress mark restored)

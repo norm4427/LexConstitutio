@@ -191,3 +191,23 @@
 .vc-dots button { width: 8px; height: 8px; border-radius: 50%; border: 0; padding: 0; background: var(--line-2); cursor: pointer; transition: all .15s; }
 .vc-dots button.on { background: var(--accent); width: 22px; border-radius: 6px; }
 @media (max-width: 720px) { .vc-prev { left: 8px; } .vc-next { right: 8px; } .vthumb-gen.big { padding: 18px 20px; } }
+
+/* vote split with justice panel */
+.vote { flex-wrap: wrap; position: relative; border-radius: 10px; }
+.vote.has-pop { cursor: help; outline: none; }
+.vote.has-pop:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.vote-dots { flex-basis: 100%; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.vote-dots i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--accent); }
+.vote-dots i.on { background: var(--accent); }
+.vote-dots small { margin-left: 8px; font-size: 11.5px; color: var(--ink-3); }
+.vote-pop { display: none; position: absolute; z-index: 40; right: 0; top: calc(100% + 6px); width: 320px; max-width: 80vw; grid-template-columns: 1fr 1fr; gap: 14px;
+  padding: 14px 16px; background: var(--bg-elev); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow-lg); }
+.vote.has-pop:hover .vote-pop, .vote.has-pop:focus .vote-pop, .vote.has-pop:focus-within .vote-pop { display: grid; }
+.vote-pop h5 { margin: 0 0 6px; font: 700 10.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.vote-pop ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.vote-pop li { font-size: 13.5px; color: var(--ink); line-height: 1.3; }
+.vote-pop li em { display: block; font-style: normal; font-size: 11.5px; color: var(--accent); }
+.vote-pop p { margin: 0; font-size: 13px; color: var(--ink-3); }
+.vote-src { margin: 6px 0 0; font-size: 11.5px; color: var(--ink-3); }
+.vote-src a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.vote .vote-pop li span { color: var(--ink); font-size: 13.5px; }

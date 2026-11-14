@@ -66,7 +66,7 @@ my %tr;
   while ($h =~ m{argument_transcripts/(\d{4})/([^'"\s>]+\.pdf)['"]?[^>]*>\s*([0-9A-Z-]+)\s*<}g) { $tr{$3} //= "https://www.supremecourt.gov/oral_arguments/argument_transcripts/$1/$2" } }
 
 # ------------------------------------------------------------------ docket pages
-my @cases;
+my @cases; my $decidedCount = 0;
 my @dockets = grep { length } map { s/\s+//gr } split /\n/, slurp("$D/dockets.txt");
 for my $dk (@dockets) {
   my $h = slurp("$D/d-$dk.html");
@@ -89,6 +89,7 @@ for my $dk (@dockets) {
     $st{granted} //= $when if $desc =~ /Petition GRANTED|GRANTED\./;
     $st{set} = $1 if $desc =~ /SET FOR ARGUMENT on (\w+, \w+ \d{1,2}, \d{4}|\w+ \d{1,2}, \d{4})/i;
     $st{argued} = $when if $desc =~ /^Argued\./;
+    push @{$main::why{$dk}}, "$when $desc" if $desc =~ /JUDGMENT ISSUED|delivered the opinion|Opinion per curiam|denied by the Court.|(?:AFFIRMED|REVERSED|VACATED)|Adjudged to be|DISMISSED (?:as improvidently granted|per Rule)/; $st{decided} //= $when if $desc =~ /JUDGMENT ISSUED|delivered the opinion|Opinion per curiam|denied by the Court\.|(?:AFFIRMED|REVERSED|VACATED)|Adjudged to be|DISMISSED (?:as improvidently granted|per Rule)/;
     next unless $main;
     my $kind = $desc =~ /amic(?:us|i) curiae/i ? 'amicus'
       : $desc =~ /Petition for a writ of certiorari filed/i ? 'petition'
@@ -114,13 +115,18 @@ for my $dk (@dockets) {
   $c{sched} = $sched{$dk};
   $c{tr} = $tr{$dk} if $tr{$dk};
   if (!$c{sched} && $st{set} && $st{set} =~ /(\w+)\s+(\d{1,2}),\s+(\d{4})/) { $c{sched} = iso($1, $2, $3) }
+  if ($st{decided}) { $decidedCount++; print STDERR "DROP $dk: ", substr($main::why{$dk}[0], 0, 170), "
+"; next }   # decided: no longer on the pending docket
+  $c{n} =~ s/^\s*\)\s*//; $c{n} =~ s/\s*\(Consolidated[^)]*\)//i;
   delete @c{ grep { !defined $c{$_} } keys %c };
   push @cases, \%c;
 }
+# consolidated calendar lines run two names together ("Viramontes v. Cook County Grant v. Higgins"): drop another case's name used as a prefix
+for my $c (@cases) { for my $o (@cases) { next if $o == $c; my $short = $o->{n} =~ s/,.*$//r; next if length $short >= length $c->{n}; $c->{n} =~ s/^\Q$short\E(?:,[^,]*?)?\s+(?=\S+ v\. )// and last } }
 my $today = do { my @t = localtime; sprintf('%04d-%02d-%02d', $t[5] + 1900, $t[4] + 1, $t[3]) };
 for (@cases) { $_->{argued} //= $_->{sched} if $_->{sched} && $_->{sched} lt $today }
 @cases = sort { ($a->{sched} // $a->{argued} // '9999') cmp ($b->{sched} // $b->{argued} // '9999') || $a->{d} cmp $b->{d} } @cases;
-printf "pending cases: %d (argued %d, scheduled %d, with merits briefs %d); sittings: %d\n", scalar @cases,
+printf "dropped %d decided; ", $decidedCount; printf "pending cases: %d (argued %d, scheduled %d, with merits briefs %d); sittings: %d\n", scalar @cases,
   scalar(grep { $_->{argued} } @cases), scalar(grep { $_->{sched} } @cases), scalar(grep { grep { $_->{k} =~ /petitioner|respondent/ } @{ $_->{briefs} } } @cases), scalar @sittings;
 open my $out, '>:raw', 'docs/data/docket.js' or die;
 print $out 'window.DOCKET=', JSON::PP->new->utf8->canonical->encode({ term => $term + 0, updated => $today, sittings => \@sittings, cases => \@cases }), ';';

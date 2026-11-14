@@ -616,7 +616,7 @@
       <h2>Originalist's Corner</h2>
       <p>The Corner indexes the full texts of Blackstone's <em>Commentaries</em>, St. George Tucker's annotated Blackstone, Joseph Story's <em>Commentaries on the Constitution</em>, James Kent's <em>Commentaries</em>, Vattel's <em>Law of Nations</em> and Locke's <em>Two Treatises</em> (via the Lonang Institute). It also covers <em>The Federalist</em> (Project Gutenberg), Madison's Notes of the Convention debates and founding documents (the Avalon Project at Yale Law School), and the acts of the first five Congresses (<em>Statutes at Large</em>, vol. 1, via Wikisource). Passages are matched to topics automatically and should be read in context. The full texts of <em>The Federalist</em>, the founding documents and the statutes can be read in the site's library.</p>
       <h2>Supreme Court, lectures and guide</h2>
-      <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (text licensed <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>; flashcard and summary text is excerpted or adapted). Oyez is a registered trademark of Oyez, Inc. Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
+      <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (text licensed <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>; flashcard and summary text is excerpted or adapted). Oyez is a registered trademark of Oyez, Inc. Vote splits and each justice’s vote come from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Harold J. Spaeth et al., Version 2025 Release 01 and Legacy 07), and for later decisions from the lineup in the Court’s own opinion. Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
     </div></div>`;
   }
 
@@ -636,7 +636,7 @@
     const token = routeToken;
     if (!specs.every(([, g]) => window[g])) app.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading…</p></div>';
     Promise.all(specs.map(([n, g]) => loadData(n, g)))
-      .then(ds => { if (token === routeToken) fn(...ds); })
+      .then(ds => { if (token === routeToken) { fn(...ds); if (pendingScroll != null) { const yy = pendingScroll; pendingScroll = null; requestAnimationFrame(() => window.scrollTo({ top: Math.min(yy, document.documentElement.scrollHeight - innerHeight) })); } } })
       .catch(e => {
         app.innerHTML = `<div class="prose"><h1>Couldn't load this section</h1><p>${esc(e.message)}. This is usually a temporary network or hosting hiccup.</p><p><button class="btn btn-primary" id="retry-load">Try again</button></p></div>`;
         document.getElementById('retry-load').addEventListener('click', route);
@@ -727,7 +727,7 @@
     const era = ERAS.find(e => e.id === st.era);
     const filt = (skipTag) => S.cases.filter(c => {
       if (era && !(c.y >= era.from && c.y < era.to)) return false;
-      if (st.audio && !c.arg) return false;
+      if (st.audio && !hasArgAudio(c)) return false;
       if (st.con && !c.con) return false;
       if (!skipTag && st.tag && !(c.tg || []).includes(st.tag)) return false;
       if (pq.terms.length || pq.phrases.length) {
@@ -782,7 +782,7 @@
       <div class="card-meta">${c.cit ? `<span class="jn">${esc(c.cit)}</span>` : ''}${c.dec ? `<span>Decided ${esc(fmtDate(c.dec))}</span>` : `<span>Term ${esc(c.t)}</span>`}${c.d ? `<span>No. ${esc(c.d)}</span>` : ''}</div>
       <h3><a href="#/case/${esc(c.id)}">${esc(c.n)}</a></h3>
       ${summary ? `<p class="abs">${esc(summary)}</p>` : ''}
-      <div class="tags">${c.arg ? '<span class="tag tag-audio">▶ Argument audio</span>' : ''}${c.pdf ? '<span class="tag">Opinion PDF</span>' : ''}${c.tr ? '<span class="tag">Transcript PDF</span>' : ''}${(c.tg || []).slice(0, 3).map(t => `<a class="tag" href="${hashFor('scotus', { tag: t })}">${esc(topicById[t]?.name || t)}</a>`).join('')}</div>
+      <div class="tags">${hasArgAudio(c) ? '<span class="tag tag-audio">▶ Argument audio</span>' : ''}${c.pdf ? '<span class="tag">Opinion PDF</span>' : ''}${c.tr ? '<span class="tag">Transcript PDF</span>' : ''}${(c.tg || []).slice(0, 3).map(t => `<a class="tag" href="${hashFor('scotus', { tag: t })}">${esc(topicById[t]?.name || t)}</a>`).join('')}</div>
     </article>`;
   }
   /* ---- current docket */
@@ -895,6 +895,32 @@
   }
 
   function viewCase(id) { withData([['scotus', 'SCOTUS'], ['docket', 'DOCKET']], (S, K) => renderCase(S, id, K)); }
+  /* The Court began recording oral arguments in October 1955 (the 1955 Term); earlier argued cases have no audio. */
+  const hasArgAudio = c => !!c.arg && parseInt(String(c.t), 10) >= 1955;
+
+  /* ---- vote split: the number, a dot per justice, and a hover/focus panel naming each side ---- */
+  const VOTE_FLAG = ['', 'wrote the opinion', 'concurred', 'wrote a dissent'];
+  function voteHtml(v, src) {
+    const list = arr => arr.map(([n, f]) => `<li><span>${esc(n)}</span>${f ? `<em>${VOTE_FLAG[f]}</em>` : ''}</li>`).join('');
+    const who = v.maj.length > 0;
+    return `<div class="vote${who ? ' has-pop' : ''}"${who ? ' tabindex="0" aria-describedby="vote-pop"' : ''}>
+      <b>${v.m}–${v.n}</b><span class="vote-for">${v.party ? 'for ' + esc(v.party) : 'decision'}</span>
+      ${who ? `<span class="vote-dots" aria-hidden="true">${v.maj.map(() => '<i class="on"></i>').join('')}${v.min.map(() => '<i></i>').join('')}<small>Hover for the justices</small></span>
+      <div class="vote-pop" id="vote-pop" role="tooltip">
+        <div><h5>Majority · ${v.maj.length}</h5><ul>${list(v.maj)}</ul></div>
+        <div><h5>Dissent · ${v.min.length}</h5>${v.min.length ? `<ul>${list(v.min)}</ul>` : '<p>None (unanimous)</p>'}</div>
+      </div>` : ''}
+    </div><p class="vote-src">Votes: ${src}</p>`;
+  }
+  function oyezVote(dec) {
+    const vs = (dec.votes || []).filter(x => x && x.member);
+    const name = x => x.member.last_name || x.member.name;
+    const op = x => String(x.opinion_type || '');
+    const flag = x => x.vote === 'majority' ? (/majority|plurality/.test(op(x)) ? 1 : /concur/.test(op(x)) ? 2 : 0) : (/dissent/.test(op(x)) ? 3 : 0);
+    return { m: dec.majority_vote, n: dec.minority_vote, party: dec.winning_party,
+      maj: vs.filter(x => x.vote === 'majority').map(x => [name(x), flag(x)]), min: vs.filter(x => x.vote === 'minority').map(x => [name(x), flag(x)]) };
+  }
+
   function renderCase(S, id, K) {
     if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
     const dk = (K && K.cases.find(e => e.id === id || id.endsWith('/' + e.d))) || null;
@@ -959,6 +985,13 @@
     </div></div>`;
 
     const token = routeToken;
+    loadData('votes', 'VOTES').then(V => {
+      const ve = document.getElementById('case-vote'); const r = V && V.c[c.id];
+      if (token !== routeToken || !ve || !r || ve.dataset.src) return;
+      ve.dataset.src = 'scdb';
+      ve.innerHTML = voteHtml({ m: r[0], n: r[1], maj: r[2].map(([i, f]) => [V.j[i], f]), min: r[3].map(([i, f]) => [V.j[i], f]) },
+        r[4] ? `the Court's opinion${c.pdf ? ` (<a href="${esc(c.pdf)}" target="_blank" rel="noopener">PDF</a>)` : ''}` : '<a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a>');
+    }).catch(() => {});
     fetch(`https://api.oyez.org/cases/${c.id}`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
       if (token !== routeToken) return;
       const live = document.getElementById('case-live');
@@ -974,7 +1007,11 @@
       for (const r of d.related_cases || []) { const rid = ((r && r.href) || '').match(/\/cases\/(.+)$/); const x = rid && caseById.get(rid[1]); if (x && x.id !== c.id && !cited.includes(x)) cited.push(x); }
       if (cited.length) document.getElementById('prec-cited').innerHTML = `<div class="prec-group"><div class="prec-h">Discussed in this case</div><ul class="mini-list">${cited.slice(0, 8).map(precedentItem).join('')}</ul></div>`;
       const dec = (d.decisions || [])[0];
-      if (dec && dec.majority_vote != null) document.getElementById('case-vote').innerHTML = `<div class="vote"><b>${dec.majority_vote}–${dec.minority_vote}</b><span>${dec.winning_party ? 'for ' + esc(dec.winning_party) : 'decision'}</span></div>`;
+      if (dec && dec.majority_vote != null) {
+        const ve = document.getElementById('case-vote');
+        if (ve.dataset.src === 'scdb') { const f = ve.querySelector('.vote-for'); if (f && dec.winning_party) f.textContent = 'for ' + dec.winning_party; }
+        else { ve.dataset.src = 'oyez'; ve.innerHTML = voteHtml(oyezVote(dec), `<a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez</a>`); }
+      }
       const ops = (d.written_opinion || []).filter(o => o && o.type);
       if (ops.length) {
         const p = document.getElementById('case-opinions'); p.hidden = false;
@@ -990,6 +1027,7 @@
     });
     // the Court posts argument audio within days; Oyez's synced versions follow later
     function courtAudioFallback() {
+      if (!pend && c.arg && !hasArgAudio(c)) { document.getElementById('case-audio').innerHTML = '<p class="muted-line">No argument recording exists: the Court began recording oral arguments in October 1955.</p>'; return; }
       if (!pend || !pend.argued || pend.argued > todayIso()) return;
       mountAudio(document.getElementById('case-audio'), [{ kind: 'Oral argument', title: fmtDate(pend.argued) + ' (supremecourt.gov)', direct: `https://www.supremecourt.gov/media/audio/mp3files/${pend.d}.mp3`, trPdf: pend.tr }], c);
     }
@@ -2020,10 +2058,24 @@
   }
 
   /* ------------------------------------------------------------ router */
+  /* Scroll handling: filters, sorts and sub-tabs keep the reader's place; real navigation and paging go to the top. */
+  let lastRoute = { path: null, params: new URLSearchParams() }, keepScrollOnce = false, pendingScroll = null;
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#/"]');
+    if (a && a.closest('.subtabs, .seg, .chip-row, .filters, [data-keep-scroll]')) keepScrollOnce = true;
+  }, true);
+  function sameViewToggle(path, params) {
+    if (path !== lastRoute.path) return false;
+    // moving to another page of results goes to the top; a missing page number means page 1
+    return (params.get('page') || '1') === (lastRoute.params.get('page') || '1');
+  }
   function route() {
     const raw = location.hash.replace(/^#\/?/, '');
     const [path, qs] = raw.split('?');
     const params = new URLSearchParams(qs || '');
+    const keepScroll = keepScrollOnce || sameViewToggle(path, params);
+    const y = window.scrollY;
+    keepScrollOnce = false; lastRoute = { path, params };
     const seg = path.split('/');
     routeToken++;
     const navKey = { docket: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
@@ -2054,7 +2106,12 @@
       case 'about': viewAbout(); break;
       default: viewNotFound();
     }
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    pendingScroll = keepScroll ? y : null;   // applied again by withData once lazily loaded data has rendered
+    if (keepScroll) {
+      // re-renders replace the page; restore the position now and again once the new content has laid out
+      const restore = () => window.scrollTo({ top: Math.min(y, document.documentElement.scrollHeight - innerHeight), behavior: 'instant' in window ? 'instant' : 'auto' });
+      restore(); requestAnimationFrame(restore); setTimeout(restore, 120);
+    } else window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
   }
 
   /* ------------------------------------------------------------ global wiring */

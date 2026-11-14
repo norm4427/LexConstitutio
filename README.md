@@ -53,6 +53,7 @@ perl scripts/build_corner.pl           # writes corner.js and library-*.js
 perl scripts/build_advanced.pl         # writes advanced.js from scripts/advanced/*.md
 bash scripts/conan_fetch.sh && python scripts/conan_extract.py && perl scripts/build_conan.pl   # Constitution Annotated commentary (PDFs in data/raw/conan from GovInfo)
 perl scripts/build_quizzes.pl          # writes quizzes.js from scripts/quizzes/*.txt
+python scripts/build_votes.py          # writes votes.js (justice votes: SCDB CSVs in data/raw/scdb/csv/ + lineups parsed from opinion PDFs)
 python scripts/crs_fetch.py           # caches CRS Legal Sidebars (public domain) from EveryCRSReport in data/raw/crs/
 python scripts/flashcards_fetch.py     # caches Oyez case details (facts, conclusion, vote) in data/raw/oyez/cases/
 perl scripts/build_flashcards.pl       # writes flashcards.js (run after build_extras.pl and build_advanced.pl)
@@ -83,3 +84,11 @@ After rebuilding the data, commit the changed files in `docs/data/` and push, an
 ## Before each commit
 
 Run `sh scripts/stamp.sh` so visitors get the new files right away (GitHub Pages lets browsers cache files for 10 minutes).
+
+## Narration pronunciations
+
+AI narration (`scripts/narrate.py`, Kokoro voice `am_michael`) uses a pronunciation lexicon so names and legal terms are said correctly (e.g. Lujan = loo-HAHN):
+
+- `python scripts/pronounce_fetch.py` caches sources in `data/raw/pron/`: Wikipedia pages for the case articles, the parties they link, the justices, and same-surname people; plus Wiktionary for legal Latin.
+- `python scripts/pronounce_build.py` writes `scripts/pronounce.tsv` (term, phonemes, source). It keeps only words used in the narrated text whose sourced pronunciation differs from the voice engine's guess.
+- `scripts/pronounce_manual.tsv` holds hand overrides, which win over the sourced entries; `-` keeps the engine's default.

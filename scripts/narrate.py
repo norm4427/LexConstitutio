@@ -59,7 +59,14 @@ def speakable(text):
     t = re.sub(r'\bcl\.\s', 'clause ', t)
     t = re.sub(r'\bAmend\.\s', 'Amendment ', t)
     t = re.sub(r'\bNo\.\s(?=\d)', 'Number ', t)
-    t = re.sub(r'\b(Mr|Mrs|Ms|Dr|St|Jr|Inc|Co|Corp|Ltd|Bros)\.', r'\1', t)
+    # abbreviations are read as words ("St. Paul" -> Saint Paul, "Ass'n" -> Association)
+    ABBR = {'Dr': 'Doctor', 'St': 'Saint', 'Jr': 'Junior', 'Sr': 'Senior', 'Co': 'Company', 'Corp': 'Corporation', 'Ltd': 'Limited',
+            'Bros': 'Brothers', 'Dist': 'District', 'Cnty': 'County', 'Twp': 'Township', 'Educ': 'Education', 'Dept': 'Department', 'Univ': 'University'}
+    t = re.sub(r'\b(Dr|St|Jr|Sr|Co|Corp|Ltd|Bros|Dist|Cnty|Twp|Educ|Dept|Univ)\.', lambda m: ABBR[m.group(1)], t)
+    t = re.sub(r'\b(Mr|Mrs|Ms|Inc)\.', r'\1', t)
+    t = re.sub(r"\b(Ass|Dep|Comm|Nat|Int|Gov)['’](n|t|l)\b",
+               lambda m: {'Ass': 'Association', 'Dep': 'Department', 'Comm': 'Commission', 'Nat': 'National', 'Int': 'International', 'Gov': 'Government'}[m.group(1)], t)
+    t = re.sub(r'\bBd\. of Ed(?:uc)?\.', 'Board of Education', t)
     # periods inside abbreviations become pauses in the voice engine: U.S. -> US, N.A.A.C.P. -> NAACP, Susan B. Anthony -> Susan B Anthony
     t = re.sub(r'\b((?:[A-Z]\.\s?){2,})', lambda m: m.group(1).replace('.', '').replace(' ', '') + ' ', t)
     t = re.sub(r'\b([A-Z])\.\s(?=[A-Z])', r'\1 ', t)
@@ -87,7 +94,8 @@ def sentences(par):
     return [p for p in out if p]
 
 
-LEXICON = 'scripts/pronounce.tsv'
+# later files override earlier ones: pron_scan.py's verified additions, then the Wikipedia/Wiktionary list (which includes manual entries)
+LEXICONS = ['scripts/pronounce_scan.tsv', 'scripts/pronounce.tsv']
 
 
 def fold(t):
@@ -100,8 +108,10 @@ class Narrator:
         self.k = Kokoro(MODEL, VOICES)
         self.sr = 24000
         self.lex = {}
-        if os.path.exists(LEXICON):
-            for line in open(LEXICON, encoding='utf-8'):
+        for lexfile in LEXICONS:
+            if not os.path.exists(lexfile):
+                continue
+            for line in open(lexfile, encoding='utf-8'):
                 if line.strip() and not line.startswith('#'):
                     term, ph = line.rstrip('\n').split('\t')[:2]
                     self.lex[term if term[0].isupper() else term.lower()] = ph
@@ -115,6 +125,16 @@ class Narrator:
         spoken = fold(spoken)
         if not self.lex_re:
             return self.k.tokenizer.phonemize(spoken, lang)
+        # Phonemize the whole sentence with a placeholder name so the sentence keeps its natural stress pattern,
+        # then swap each placeholder for the sourced pronunciation.
+        hits = list(self.lex_re.finditer(spoken))
+        if not hits:
+            return self.k.tokenizer.phonemize(spoken, lang)
+        ph = self.k.tokenizer.phonemize(self.lex_re.sub(lambda m: 'Zeb' + (m.group(2) or ''), spoken), lang)
+        if ph.count('zˈɛb') == len(hits) and 'zˈɛb' not in self.k.tokenizer.phonemize(spoken, lang):
+            for m in hits:
+                ph = ph.replace('zˈɛb', self.lex.get(m.group(1)) or self.lex[m.group(1).lower()], 1)
+            return ph
         out, pos = [], 0
         for m in self.lex_re.finditer(spoken):
             if m.start() > pos:
