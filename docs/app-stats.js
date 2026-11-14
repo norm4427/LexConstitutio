@@ -96,37 +96,45 @@
   }
   const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 
+  const CHOICE = {
+    pooled: 'the Court-wide model (boosted trees over every justice’s votes since 1946, with the justice as a predictor)',
+    own: 'a model of this justice’s votes alone (logistic regression)',
+    blend: 'the average of the Court-wide model and a model of this justice’s votes alone'
+  };
   function modelPanel(M, m, j) {
-    const b = m.base;
+    const b = m.base, D = m.dock, F = m.full;
+    const best = Math.max(b.majority, b.reverse, b.hindsight);
     const accRows = [
-      ['Model: all pre-decision predictors', m.full.acc * 100, m.full.model, 'hi', m.full.ci.map(x => x * 100)],
-      ...(m.fullOld ? [['Same, without the argument and lower-court-history predictors', m.fullOld.acc * 100, m.fullOld.model, 'mid']] : []),
-      ['Model: docket predictors only', m.docket.acc * 100, m.docket.model, 'mid', m.docket.ci.map(x => x * 100)],
-      [`Baseline: always the more common vote in training (${b.majorityLabel})`, b.majority * 100, '', 'base'],
+      ['Pending-case model (used for the docket)', D.acc * 100, '', 'hi', D.ci.map(x => x * 100)],
+      ['Same, with the SCDB coding of the case (issue, law, disposition below)', F.acc * 100, '', 'mid', F.ci.map(x => x * 100)],
+      ...(m.old != null ? [['Previous version of this model (docket predictors only)', m.old * 100, '', 'mid']] : []),
+      [`Baseline: always the more common vote before 2022 (${b.majorityLabel})`, b.majority * 100, '', 'base'],
       ['Baseline: always for the petitioner (reverse)', b.reverse * 100, '', 'base'],
       ['Baseline: best constant guess, picked with hindsight', b.hindsight * 100, '', 'base']
     ];
     const weak = m.verdict !== 'beats every baseline';
     const caseOf = Object.fromEntries(M.cases.map(c => [c.id, c]));
-    const preds = m.pred.map(([id, p]) => ({ c: caseOf[id], p })).filter(x => x.c).sort((a, b) => Math.abs(b.p - 0.5) - Math.abs(a.p - 0.5));
-    const imp = m.full.imp.filter(r => r[1] > 0).slice(0, 6), impD = m.docket.imp.filter(r => r[1] > 0).slice(0, 5);
-    const impMax = Math.max(0.5, ...imp.map(r => r[1]), ...impD.map(r => r[1]));
+    const preds = (m.pred || []).map(([id, p]) => ({ c: caseOf[id], p })).filter(x => x.c).sort((a, b) => Math.abs(b.p - 0.5) - Math.abs(a.p - 0.5));
+    const imp = (m.imp || []).filter(r => r[2] > 0.05).slice(0, 7);
+    const impMax = Math.max(0.5, ...imp.map(r => r[2]));
+    const vals = Object.entries(D.val || {}).map(([k, v]) => `${k === 'pooled' ? 'Court-wide' : k === 'own' ? 'own votes only' : 'average of both'} ${pct(v[0] * 100)}`).join(', ');
+    const name = esc(j.last || j.name);
     return `<div class="panel st-panel st-model"><h4>Vote prediction model</h4>
-      <p class="st-lead">Predicts whether ${esc(j.last || j.name)} votes for the petitioner (to reverse or vacate) or for the respondent (to affirm). Trained on ${fmt(m.nTrain)} votes (${esc(m.trainSpan[0])} to ${esc(m.trainSpan[1])}) and tested on the ${fmt(m.nTest)} most recent (${esc(m.testSpan[0])} to ${esc(m.testSpan[1])}), which the model never saw.</p>
-      <p class="st-verdict ${weak ? 'weak' : ''}"><b>Result.</b> Full model: ${esc(m.verdict)} (${pct(m.full.acc * 100)} vs. ${pct(Math.max(b.majority, b.reverse, b.hindsight) * 100)} for the best baseline). Docket-only model: ${esc(m.dverdict)} (${pct(m.docket.acc * 100)}).${m.dverdict !== 'beats every baseline' ? ' The pending-case predictions below come from the docket-only model, so treat them as weak.' : ''}</p>
-      <div class="st-sub">Test-set accuracy (bars show the 95% interval for the models)</div>
+      <p class="st-lead">Predicts whether ${name} votes for the petitioner (to reverse or vacate) or for the respondent (to affirm). Tested on ${name}’s ${fmt(m.nTest)} votes in the ${M.test[0]}–${M.test[1]} Terms (${esc(m.testSpan[0])} to ${esc(m.testSpan[1])}): each Term was predicted by models fitted only on earlier Terms, so no test vote was used to fit or choose the model.</p>
+      <p class="st-verdict ${weak ? 'weak' : ''}"><b>Result.</b> ${esc(m.verdict.charAt(0).toUpperCase() + m.verdict.slice(1))}: ${pct(D.acc * 100)} of test votes called correctly, against ${pct(best * 100)} for the best baseline${m.old != null ? ` and ${pct(m.old * 100)} for the previous version` : ''}. With the database’s coding of each case (available only after decision): ${pct(F.acc * 100)}.</p>
+      <div class="st-sub">Test-vote accuracy (bars show the 95% interval for the models)</div>
       ${bars(accRows, 100, v => pct(v))}
-      <div class="st-two st-two-tight">
-        <div><div class="st-sub">Most important predictors, full model <span class="muted-line">(accuracy lost when shuffled, pts)</span></div>${imp.length ? bars(imp.map(r => [r[0], r[1], '', 'imp']), impMax, v => v.toFixed(1)) : '<p class="muted-line">No predictor improved test accuracy.</p>'}</div>
-        <div><div class="st-sub">Docket model</div>${impD.length ? bars(impD.map(r => [r[0], r[1], '', 'imp']), impMax, v => v.toFixed(1)) : '<p class="muted-line">No predictor improved test accuracy.</p>'}</div>
-      </div>
-      <div class="st-sub">Predicted votes in pending cases <span class="muted-line">(docket model, refitted on all ${fmt(m.n)} votes)</span></div>
-      ${preds.length ? `<ul class="st-preds">${preds.map(({ c, p }) => `<li><a href="#/case/${esc(c.id)}">${esc(c.n)}</a><span class="muted-line">${esc(c.src)}${c.area ? ' · ' + esc(c.area) : ''}</span><span class="st-pill ${p >= 0.5 ? 'rev' : 'aff'}" title="Predicted probability of voting for the petitioner: ${pct(p * 100, 0)}">${p >= 0.5 ? 'Reverse' : 'Affirm'} · ${pct((p >= 0.5 ? p : 1 - p) * 100, 0)}</span></li>`).join('')}</ul>` : '<p class="muted-line">No pending cases.</p>'}
+      <div class="st-sub">Tailored to ${name}</div>
+      <p class="st-lead">For each justice the site compares three models on the ${M.val[0]}–${M.val[1]} Terms (predicted the same way, Term by Term) and keeps the most accurate. For ${name}: ${esc(CHOICE[D.choice] || D.choice)}${vals ? ` (validation accuracy: ${vals})` : ' (no votes in the validation Terms, so the Court-wide model is used)'}.</p>
+      <div class="st-sub">What moves ${name}’s predicted vote <span class="muted-line">(how much worse the test predictions get, in log loss, when a group of predictors is scrambled)</span></div>
+      ${imp.length ? bars(imp.map(r => [r[0], r[2], `accuracy ${r[1] >= 0 ? '−' : '+'}${Math.abs(r[1]).toFixed(1)} pts`, 'imp']), impMax, v => '+' + v.toFixed(1) + '%') : '<p class="muted-line">No predictor group improved the test predictions.</p>'}
+      <div class="st-sub">Predicted votes in pending cases <span class="muted-line">(refitted on all votes through the ${M.test[1]} Term)</span></div>
+      ${preds.length ? `<ul class="st-preds">${preds.map(({ c, p }) => `<li><a href="#/case/${esc(c.id)}">${esc(c.n)}</a><span class="muted-line">${esc(c.src)}${c.area ? ' · ' + esc(c.area) : ''}${c.arg ? ' · argued' : ''}</span><span class="st-pill ${p >= 0.5 ? 'rev' : 'aff'}" title="Predicted probability of voting for the petitioner: ${pct(p * 100, 0)}">${p >= 0.5 ? 'Reverse' : 'Affirm'} · ${pct((p >= 0.5 ? p : 1 - p) * 100, 0)}</span></li>`).join('')}</ul>` : '<p class="muted-line">No pending cases.</p>'}
       <details class="st-method"><summary>About the model</summary>
-        <p>One model per justice, chosen by five-fold cross-validation on the training votes only (logistic regression at four penalty strengths, or gradient-boosted trees; this justice: <i>${esc(m.full.model)}</i> for the full model, <i>${esc(m.docket.model)}</i> for the docket model). Predictors are SCDB variables fixed before the decision: issue area and issue, law type, source and origin court, lower-court disposition and its ideological direction, the reason cert was granted, jurisdiction, petitioner and respondent type, agency involvement, three-judge court, a dissent below, and the term; plus how much this justice, and the Court as a whole, questioned each side at oral argument (the Court's official transcripts, from the 2004 Term on, when they began naming the justice speaking; ${fmt(M.nArg || 0)} cases) and how often the Court has sided with petitioners from the same lower court in the previous five Terms. ${m.testArg != null ? `${pct(100 * m.testArg, 0)} of the test votes had a transcript.` : ''} A vote for the petitioner is a majority vote when the petitioner won, or a dissent when the petitioner lost.</p>
-        <p>Pending cases have no SCDB coding yet, so the docket model uses only what can be read from the case: the lower court and the counsel for each side (Solicitor General, a state attorney general's office, a local government) from the supremecourt.gov docket page, and the issue area predicted from the question presented by a text classifier trained on decided cases (${pct(M.issueClf.acc * 100)} accurate on ${fmt(M.issueClf.nTest)} held-out cases, vs. ${pct(M.issueClf.base * 100)} for always guessing the commonest area). Probabilities near 50% mean the model has little to go on. Because the Court reverses most of the cases it hears, a model that has learned little predicts “reverse” almost everywhere.</p>
-        <p>A model is said to beat the baselines only if it is at least 2 points more accurate than the best of them and the lower end of its 95% interval is also above it; with a small test set (a newer justice) even a large gap can fall inside the margin of error.</p>
-        <p class="attrib">Computed on ${esc(M.generated)}. These are statistical predictions from past voting patterns, not forecasts by any expert.</p>
+        <p><b>Predictors</b>, all fixed before the decision: issue area; lower court; whether each side is the federal government, a state, a local government or a private party; jurisdiction; whether the decision under review was liberal or conservative (Supreme Court Database coding; for pending cases estimated from the question presented, issue and parties by a classifier that is ${pct(M.lcClf.acc * 100, 0)} accurate on held-out recent cases, against ${pct(M.lcClf.base * 100, 0)} for a constant guess); ${name}’s record in earlier Terms (share of liberal votes and of votes for the petitioner, overall and in the issue area); ${name}’s lean relative to the other justices in the case, multiplied by the direction of the decision below and by the side of the United States and the President’s party; the side the United States supports as a party or amicus and whether the Solicitor General was invited to give views; the number of amicus briefs for each side and at the cert stage (supremecourt.gov docket pages, ${fmt(M.nFacts)} cases since 2004); how much ${name} and the Court as a whole questioned each side at oral argument (official transcripts, ${fmt(M.nArg)} cases since 2004); and how often the Court has sided with petitioners recently and from the same lower court.</p>
+        <p><b>Sources for the design:</b> Katz, Bommarito &amp; Blackman, <i>PLOS ONE</i> 2017 (one model across justices with each justice’s record, refitted Term by Term); Martin, Quinn, Ruger &amp; Kim, <i>Perspectives on Politics</i> 2004 (separate models per justice, led by the direction of the decision below); Epstein, Landes &amp; Posner, <i>J. Legal Stud.</i> 2010 and Feldman, SCOTUSblog 2026 (questioning at argument); Solicitor General win rates (SCOTUSblog statistics); Kearney &amp; Merrill, <i>U. Pa. L. Rev.</i> 2000 (amicus briefs). Comparable published models call about 70% of votes correctly.</p>
+        <p>A model is said to beat the baselines only if it is at least 2 points more accurate than the best of them and the lower end of its 95% interval is also above it.</p>
+        <p class="attrib">Computed on ${esc(M.generated)}. Statistical predictions from past voting patterns, not forecasts by any expert.</p>
       </details>
     </div>`;
   }
@@ -258,24 +266,38 @@
     const c = M.cases.find(x => x.id === id || id.endsWith('/' + x.d));
     if (!c || !c.dist) { el.innerHTML = ''; return; }
     const byId = Object.fromEntries(J.justices.map(j => [j.id, j]));
-    const k = M.cases.indexOf(c);
-    const votes = M.order.map(jid => ({ j: byId[jid], p: M.j[jid].pred[k][1], m: M.j[jid] }));
+    const votes = M.order.map(jid => { const r = (M.j[jid].pred || []).find(x => x[0] === c.id); return { j: byId[jid], p: r ? r[1] : 0.5 }; });
     const pRev = c.pRev, pAff = 1 - pRev, n = c.dist.length - 1;
+    const cal = M.calib, emp = cal.emp || [];
     const outcomes = [];
-    const emp = (M.calib && M.calib.emp) || [];
-    for (let r = n; r >= 0; r--) outcomes.push({ label: r * 2 > n ? `Reverse ${r}–${n - r}` : r * 2 < n ? `Affirm ${n - r}–${r}` : `Split ${r}–${n - r}`, side: r * 2 > n ? 'rev' : 'aff', p: c.dist[r], e: emp[r] });
+    for (let r = n; r >= 0; r--) outcomes.push({ label: r * 2 > n ? `Reverse ${r}–${n - r}` : `Affirm ${n - r}–${r}`, side: r * 2 > n ? 'rev' : 'aff', p: c.dist[r], e: emp[r] });
     const top = Math.max(...outcomes.map(o => o.p)), scale = Math.max(top, ...outcomes.map(o => o.e || 0));
-    const beatsEmp = M.calib && M.calib.ll > M.calib.llEmp;
-    const cal = M.calib, gm = x => pct(100 * Math.exp(x), 0);
     const pc = x => (100 * x < 1 ? '<1' : Math.round(100 * x)) + '%';
+    const gm = x => pct(100 * Math.exp(x), 1);
+    const T = cal.test, beats = T[cal.kind] > T['historical frequencies'];
+    const unan = c.dist[0] + c.dist[n], close = c.dist[4] + c.dist[5];
+    const party = { federal: 'the federal government', state: 'a state', local: 'a local government', other: 'a private party' };
+    const usTxt = c.us === 0 ? 'Not taking part (as far as the docket and transcript show)' : `Supports the ${c.us > 0 ? 'petitioner' : 'respondent'}${c.usAmicus ? ' as amicus curiae' : ' as a party'}`;
+    const lc = c.lcLib;
+    const facts = [
+      ['Lower court', esc(c.lowerCourt || c.src)],
+      ['Issue area', `${esc(c.area)} <span class="muted-line">(predicted from the question presented, ${pct(100 * c.areaP, 0)} confidence)</span>`],
+      ['Parties', `${esc(party[c.pet] || c.pet)} v. ${esc(party[c.res] || c.res)}`],
+      ['Decision below', `${lc >= 0.5 ? 'Liberal' : 'Conservative'} <span class="muted-line">(estimated, ${pct(100 * Math.max(lc, 1 - lc), 0)} likely, in the Supreme Court Database’s sense of the terms)</span>`],
+      ['United States', esc(usTxt) + (c.cvsg ? ' <span class="muted-line">(Solicitor General invited to give views at the cert stage)</span>' : '')],
+      ['Amicus briefs', c.am ? `${c.am[0]} for the petitioner, ${c.am[1]} for the respondent <span class="muted-line">(${c.am[2]} at the cert stage; side read from the briefing schedule)</span>` : '<span class="muted-line">Merits briefing not complete; not used</span>'],
+      ['Oral argument', c.arg ? `The Court questioned the ${c.argCourt > 0 ? 'respondent' : 'petitioner'}’s side more <span class="muted-line">(log ratio of words ${signed(c.argCourt, 2)}; the side questioned more tends to lose)</span>` : '<span class="muted-line">Not argued yet (or no transcript); not used</span>']
+    ];
     el.innerHTML = `<section class="st-pred"><h2>Predicted outcome <small>(statistical model)</small></h2>
       <div class="st-market">
-        <div class="st-mhead"><div><b>${pc(pRev)}</b><span>Reverse or vacate</span></div><div class="aff"><b>${pc(pAff)}</b><span>Affirm</span></div></div>
+        <div class="st-mhead"><div><b>${pc(pRev)}</b><span>Reverse or vacate</span></div><div class="mid"><b>${pc(unan)}</b><span>Unanimous</span></div><div class="aff"><b>${pc(pAff)}</b><span>Affirm</span></div></div>
         <div class="st-split" role="img" aria-label="Chance of reversal ${pc(pRev)}"><i style="width:${(100 * pRev).toFixed(1)}%"></i></div>
-        <div class="st-sub st-board-h"><span>Chance of each vote split</span><span>Model</span><span title="How often each split occurred in cases decided by these nine justices">Past</span></div>
-        <div class="st-board">${outcomes.map(o => `<div class="st-row ${o.side} ${o.p === top ? 'top' : ''}" title="${esc(o.label)}: model ${pct(100 * o.p, 1)}${o.e != null ? '; happened in ' + pct(100 * o.e, 1) + ' of cases decided by these nine justices' : ''}"><span class="lab">${esc(o.label)}</span><span class="track"><i style="width:${(100 * o.p / scale).toFixed(1)}%"></i>${o.e != null ? `<b class="past" style="left:${(100 * o.e / scale).toFixed(1)}%"></b>` : ''}</span><span class="val">${pc(o.p)}</span><span class="val past">${o.e != null ? pc(o.e) : ''}</span></div>`).join('')}</div>
-        <p class="st-note">The tick on each bar marks the “Past” share. ${beatsEmp ? '' : `<b>Be cautious:</b> on ${fmt(cal.n)} recent cases these split odds have not beaten simply using how often each split occurred (the past column), so treat the case-specific differences as weak.`}</p>
+        <div class="st-sub st-board-h"><span>Chance of each vote split</span><span>Model</span><span title="How often each split occurred in ${M.val[0]}–${M.val[1]} Term cases">Past</span></div>
+        <div class="st-board">${outcomes.map(o => `<div class="st-row ${o.side} ${o.p === top ? 'top' : ''}" title="${esc(o.label)}: model ${pct(100 * o.p, 1)}${o.e != null ? '; occurred in ' + pct(100 * o.e, 1) + ' of ' + M.val[0] + '–' + M.val[1] + ' Term cases' : ''}"><span class="lab">${esc(o.label)}</span><span class="track"><i style="width:${(100 * o.p / scale).toFixed(1)}%"></i>${o.e != null ? `<b class="past" style="left:${(100 * o.e / scale).toFixed(1)}%"></b>` : ''}</span><span class="val">${pc(o.p)}</span><span class="val past">${o.e != null ? pc(o.e) : ''}</span></div>`).join('')}</div>
+        <p class="st-note">The tick on each bar marks the “Past” share. Chance of a 5–4 split either way: ${pc(close)}. ${beats ? '' : `<b>Be cautious:</b> on the ${fmt(cal.nTest)} test cases these split odds did not beat the past frequencies.`}</p>
       </div>
+      <div class="st-sub">What the model sees in this case</div>
+      <dl class="st-facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
       <div class="st-sub">How each justice is predicted to vote</div>
       <div class="st-jv">${votes.map(v => `<a class="st-jrow" href="#/justice/${esc(v.j.id)}" title="${esc(v.j.name)}: ${pct(100 * v.p, 0)} chance of voting for the petitioner">
         <span class="nm">${esc(v.j.name)}</span>
@@ -283,9 +305,10 @@
         <span class="st-pill ${v.p >= 0.5 ? 'rev' : 'aff'}">${v.p >= 0.5 ? 'Reverse' : 'Affirm'} · ${pct(100 * Math.max(v.p, 1 - v.p), 0)}</span></a>`).join('')}
         <div class="st-ends"><span>← affirm</span><span>reverse →</span></div></div>
       <details class="st-method"><summary>How this is estimated, and how well it has worked</summary>
-        <p>Each justice's probability comes from that justice's docket model (see their profile), which uses the lower court, the side each party's counsel represents, the issue area predicted from the question presented, how often the Court has sided with petitioners from this lower court in the past five Terms${c.arg ? ', and how much each justice questioned each side at oral argument (from the Court\'s transcript)' : ''}. ${c.arg ? '' : 'This case has not been argued yet (or its transcript is not yet available), so questioning at argument is not used. '}A vote for the petitioner means voting to reverse or vacate.</p>
-        <p>Justices' votes in a case move together, so the split odds are not computed as if the nine votes were independent: each justice's log-odds share a case-level shift whose average and spread (σ = ${cal.sigma}) was fitted on ${fmt(cal.n)} cases decided by these nine justices (${esc(cal.span[0] || '')} to ${esc(cal.span[1] || '')}), using predictions made without seeing each case. On those cases this method gave the actual split an average (geometric-mean) probability of ${gm(cal.ll)}, compared with ${gm(cal.llIndep)} if the votes were treated as independent and ${gm(cal.llEmp)} from simply using how often each split occurred. It called the winning side correctly in ${pct(100 * cal.hit, 0)} of them, against ${pct(100 * cal.revBase, 0)} for always picking the more common side. The shift's mean (${cal.mu}) and spread are fitted on the same cases, so these checks are, if anything, optimistic.</p>
-        <p class="attrib">Computed on ${esc(M.generated)} from the Supreme Court Database, supremecourt.gov docket pages and argument transcripts. This is a statistical estimate, not a betting market and not anyone's forecast; it ignores recusals.</p>
+        <p>Each justice’s probability comes from the pending-case model on that justice’s profile, which weighs the facts above together with the justice’s own record: for example, a justice who leans liberal relative to colleagues is predicted to affirm a liberal decision below and reverse a conservative one, to a degree learned from that justice’s past votes.</p>
+        <p>The nine votes are not treated as independent. Each justice’s log-odds get a shift shared by the whole Court (cases decided unanimously) plus a second shift multiplied by the justice’s lean (cases that split along ideological lines)${cal.kind === 'two+s' ? '; how large these shifts are depends on the number of amicus briefs and on how differently the justices questioned the two sides' : ''}. The sizes were fitted on ${fmt(cal.nVal)} cases from the ${M.val[0]}–${M.val[1]} Terms, using predictions made only from earlier Terms.</p>
+        <p><b>Test</b> on the ${fmt(cal.nTest)} cases of the ${M.test[0]}–${M.test[1]} Terms (never used for fitting): the actual split got an average (geometric-mean) probability of ${gm(T[cal.kind])}, against ${gm(T['historical frequencies'])} from the past frequencies, ${gm(T.shift)} with one shared shift only, and ${gm(T.indep)} if the votes were independent. The model called the winning side in ${pct(100 * cal.hit, 0)} of cases, against ${pct(100 * cal.revBase, 0)} for always picking the more common side${cal.confN ? `; in the ${fmt(cal.confN)} cases where it gave one side at least 75%, it was right ${pct(100 * cal.confHit, 0)} of the time` : ''}. It expected ${pct(100 * cal.unanPred, 0)} of the test cases to be unanimous; ${pct(100 * cal.unanAct, 0)} were.</p>
+        <p class="attrib">Computed on ${esc(M.generated)} from the Supreme Court Database, supremecourt.gov docket pages and argument transcripts. A statistical estimate, not a betting market and not anyone’s forecast; it ignores recusals.</p>
       </details></section>`;
   }
 

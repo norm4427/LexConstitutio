@@ -110,6 +110,12 @@
 .st-mhead { display: flex; justify-content: space-between; align-items: flex-end; }
 .st-mhead div { display: flex; flex-direction: column; }
 .st-mhead .aff { text-align: right; }
+.st-mhead .mid { text-align: center; align-items: center; }
+.st-mhead .mid b { font-size: 24px; color: var(--ink-2); }
+.st-facts { display: grid; grid-template-columns: 140px 1fr; gap: 6px 14px; margin: 4px 0 16px; font-size: 14px; }
+.st-facts dt { color: var(--ink-3); font-size: 12.5px; padding-top: 2px; }
+.st-facts dd { margin: 0; }
+@media (max-width: 560px) { .st-facts { grid-template-columns: 1fr; } .st-facts dd { margin-bottom: 6px; } }
 .st-mhead b { font-family: var(--serif); font-size: 34px; font-weight: 500; line-height: 1; color: var(--accent); }
 .st-mhead .aff b { color: var(--ink-2); }
 .st-mhead span { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
