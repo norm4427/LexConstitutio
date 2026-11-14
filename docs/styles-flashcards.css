@@ -118,3 +118,55 @@
 .fc-vote { display: block; margin-top: 6px; font: 500 13px var(--sans); color: var(--ink-3); }
 .fc-src { margin: 16px 0 0; font: 400 12px/1.5 var(--sans); color: var(--ink-3); }
 .fc-src a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Learning Center: term decks */
+.qm-terms { margin-top: 34px; }
+.qm-court { border: 1px solid var(--line); border-radius: 14px; background: var(--bg-elev); margin-bottom: 10px; }
+.qm-court summary { cursor: pointer; padding: 14px 18px; display: flex; align-items: baseline; gap: 12px; list-style: none; }
+.qm-court summary::-webkit-details-marker { display: none; }
+.qm-court summary::before { content: '▸'; color: var(--ink-3); transition: transform .15s; }
+.qm-court[open] summary::before { transform: rotate(90deg); }
+.qm-court summary b { font: 500 17px var(--serif); }
+.qm-court summary span { font-size: 12.5px; color: var(--ink-3); }
+.qm-term-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; padding: 0 18px 16px; }
+.qm-term-list a { display: flex; flex-direction: column; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); }
+.qm-term-list a:hover { border-color: var(--accent); }
+.qm-term-list b { font: 500 14.5px var(--serif); }
+.qm-term-list span { font-size: 12px; color: var(--ink-3); }
+
+/* Learning Center: games */
+.game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; max-width: 1000px; margin: 0 auto; }
+.game-card { display: flex; flex-direction: column; gap: 8px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--bg-elev); color: var(--ink); transition: all .15s; }
+.game-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.game-card b { font: 500 21px var(--serif); }
+.game-card span { font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+.game-card em { margin-top: auto; font-style: normal; font-size: 13px; font-weight: 600; color: var(--accent); }
+.game-score { font-size: 13px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.game-prompt { margin: 18px 0 6px; }
+.game-case { font: 400 22px/1.35 var(--serif); margin: 0 0 10px; }
+.game-case i { color: var(--accent); }
+.game-q { font: 400 16.5px/1.6 var(--serif); color: var(--ink); }
+.game-opts { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.game-opt { text-align: left; padding: 13px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--sans); cursor: pointer; transition: border-color .15s, background .15s; display: flex; gap: 10px; align-items: flex-start; }
+.game-opt:hover:not(.done) { border-color: var(--accent); }
+.game-opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+.game-opt.done { cursor: default; }
+.game-opt.right { border-color: #2f8f5b; background: color-mix(in srgb, #2f8f5b 14%, var(--bg)); }
+.game-opt.wrong { border-color: #c4453a; background: color-mix(in srgb, #c4453a 14%, var(--bg)); }
+.game-opt i { color: var(--accent); }
+.game-after { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.game-after p { margin: 0; color: var(--ink-2); }
+.tl-n { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.dd-clues { margin: 18px 0 6px; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; font: 400 15.5px/1.6 var(--serif); }
+.dd-more { align-self: flex-start; margin-top: 6px; }
+.qm-study.wide { max-width: 1060px; }
+.match-board { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+.match-col { display: flex; flex-direction: column; gap: 10px; }
+.match-item { text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-elev); color: var(--ink); font: 400 14px/1.5 var(--sans); cursor: pointer; min-height: 64px; transition: all .15s; }
+.match-item:not(.desc) { font: 400 15.5px/1.35 var(--serif); }
+.match-item i { color: var(--accent); }
+.match-item:hover:not(.matched) { border-color: var(--accent); }
+.match-item.sel { border-color: var(--accent); background: var(--accent-soft); }
+.match-item.wrong { border-color: #c4453a; background: color-mix(in srgb, #c4453a 14%, var(--bg-elev)); }
+.match-item.matched { border-color: #2f8f5b; background: color-mix(in srgb, #2f8f5b 12%, var(--bg-elev)); opacity: .65; cursor: default; }
+@media (max-width: 700px) { .match-board { grid-template-columns: 1fr; } }

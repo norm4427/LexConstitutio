@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Downloads raw metadata pages for every source in sources.tsv into data/raw/<id>/.
 # OAI-PMH (Digital Commons) follows resumption tokens; WordPress pages through the REST API.
-# Usage: bash scripts/harvest.sh [source_id ...]
+# Usage: [SOURCES=scripts/other.tsv] bash scripts/harvest.sh [source_id ...]
 cd "$(dirname "$0")/.."
 UA="ConLawIndex/1.0 (academic metadata harvester)"
 harvest_oai(){ id=$1 host=$2 set=$3; dir=data/raw/$id; mkdir -p "$dir"; rm -f "$dir"/*.xml
@@ -21,5 +21,5 @@ while IFS=$'\t' read -r id kind host set name; do
   [ -z "$id" ] && continue
   if [ $# -gt 0 ] && [[ ! " $* " == *" $id "* ]]; then continue; fi
   case $kind in oai) harvest_oai "$id" "$host" "$set" & ;; wp) harvest_wp "$id" "$host" & ;; esac  # openalex sources: scripts/openalex.sh
-done < scripts/sources.tsv
+done < "${SOURCES:-scripts/sources.tsv}"
 wait; echo DONE

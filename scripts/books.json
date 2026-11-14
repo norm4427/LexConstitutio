@@ -1,160 +1,3977 @@
 [
-  { "id": "federalist", "title": "The Federalist Papers", "authors": ["Alexander Hamilton", "James Madison", "John Jay"], "year": 1788, "publisher": "Penguin Classics", "cat": "History & Founding", "intro": true,
-    "note": "The 85 essays written to win ratification; still the most-cited guide to what the framers thought they were building." },
-  { "id": "creation-american-republic", "title": "The Creation of the American Republic, 1776–1787", "authors": ["Gordon S. Wood"], "year": 1969, "publisher": "University of North Carolina Press", "cat": "History & Founding",
-    "note": "Bancroft Prize-winning account of how American political thought was transformed between independence and the Constitution." },
-  { "id": "ideological-origins", "title": "The Ideological Origins of the American Revolution", "authors": ["Bernard Bailyn"], "year": 1967, "publisher": "Harvard University Press", "cat": "History & Founding",
-    "note": "Pulitzer and Bancroft Prize winner tracing the pamphlet literature and ideas that drove the Revolution." },
-  { "id": "original-meanings", "title": "Original Meanings: Politics and Ideas in the Making of the Constitution", "authors": ["Jack N. Rakove"], "year": 1996, "publisher": "Knopf", "cat": "History & Founding",
-    "note": "Pulitzer Prize-winning history of the Convention and ratification, and a historian's challenge to easy originalism." },
-  { "id": "framers-coup", "title": "The Framers' Coup: The Making of the United States Constitution", "authors": ["Michael J. Klarman"], "year": 2016, "publisher": "Oxford University Press", "cat": "History & Founding",
-    "note": "A detailed narrative arguing the Constitution was a conservative reaction against the democratic excesses of the 1780s." },
-  { "id": "ratification", "title": "Ratification: The People Debate the Constitution, 1787–1788", "authors": ["Pauline Maier"], "year": 2010, "publisher": "Simon & Schuster", "cat": "History & Founding",
-    "note": "A state-by-state history of the ratification debates and the ordinary Americans who conducted them." },
-  { "id": "miracle-at-philadelphia", "title": "Miracle at Philadelphia: The Story of the Constitutional Convention", "authors": ["Catherine Drinker Bowen"], "year": 1966, "publisher": "Little, Brown and Company", "cat": "History & Founding", "intro": true,
-    "note": "A vivid, highly readable narrative of the summer of 1787." },
-  { "id": "economic-interpretation", "title": "An Economic Interpretation of the Constitution of the United States", "authors": ["Charles A. Beard"], "year": 1913, "publisher": "Macmillan", "cat": "History & Founding",
-    "note": "The provocative classic arguing that the framers' economic interests shaped the Constitution." },
-  { "id": "second-founding", "title": "The Second Founding: How the Civil War and Reconstruction Remade the Constitution", "authors": ["Eric Foner"], "year": 2019, "publisher": "W. W. Norton", "cat": "History & Founding", "intro": true,
-    "note": "A concise history of the Thirteenth, Fourteenth and Fifteenth Amendments and their narrowing by the courts." },
-  { "id": "americas-constitution", "title": "America's Constitution: A Biography", "authors": ["Akhil Reed Amar"], "year": 2005, "publisher": "Random House", "cat": "History & Founding", "intro": true,
-    "note": "A clause-by-clause tour of the Constitution's text and history, written for general readers." },
-  { "id": "bill-of-rights-amar", "title": "The Bill of Rights: Creation and Reconstruction", "authors": ["Akhil Reed Amar"], "year": 1998, "publisher": "Yale University Press", "cat": "Rights & Liberties",
-    "note": "Argues the Bill of Rights was reshaped by the Fourteenth Amendment, recasting the incorporation debate." },
-
-  { "id": "democracy-and-distrust", "title": "Democracy and Distrust: A Theory of Judicial Review", "authors": ["John Hart Ely"], "year": 1980, "publisher": "Harvard University Press", "cat": "Theory & Interpretation",
-    "note": "The representation-reinforcement theory of judicial review; among the most cited works of American legal scholarship." },
-  { "id": "least-dangerous-branch", "title": "The Least Dangerous Branch: The Supreme Court at the Bar of Politics", "authors": ["Alexander M. Bickel"], "year": 1962, "publisher": "Yale University Press", "cat": "Theory & Interpretation",
-    "note": "Named the 'counter-majoritarian difficulty' and set the agenda for decades of debate about judicial review." },
-  { "id": "we-the-people-foundations", "title": "We the People, Volume 1: Foundations", "authors": ["Bruce Ackerman"], "year": 1991, "publisher": "Harvard University Press", "cat": "Theory & Interpretation",
-    "note": "Introduces 'dualist democracy' and constitutional moments outside the Article V process." },
-  { "id": "we-the-people-transformations", "title": "We the People, Volume 2: Transformations", "authors": ["Bruce Ackerman"], "year": 1998, "publisher": "Harvard University Press", "cat": "Theory & Interpretation",
-    "note": "Applies Ackerman's theory to Reconstruction and the New Deal." },
-  { "id": "freedoms-law", "title": "Freedom's Law: The Moral Reading of the American Constitution", "authors": ["Ronald Dworkin"], "year": 1996, "publisher": "Harvard University Press", "cat": "Theory & Interpretation",
-    "note": "Dworkin's case for reading the Constitution's abstract clauses as moral principles." },
-  { "id": "taking-rights-seriously", "title": "Taking Rights Seriously", "authors": ["Ronald Dworkin"], "year": 1977, "publisher": "Harvard University Press", "cat": "Theory & Interpretation",
-    "note": "The jurisprudential classic on rights as trumps and the role of principle in hard cases." },
-  { "id": "matter-of-interpretation", "title": "A Matter of Interpretation: Federal Courts and the Law", "authors": ["Antonin Scalia"], "year": 1997, "publisher": "Princeton University Press", "cat": "Theory & Interpretation", "intro": true,
-    "note": "Scalia's short manifesto for textualism and originalism, with responses from Tribe, Dworkin, Glendon and Wood." },
-  { "id": "reading-law", "title": "Reading Law: The Interpretation of Legal Texts", "authors": ["Antonin Scalia", "Bryan A. Garner"], "year": 2012, "publisher": "Thomson/West", "cat": "Theory & Interpretation",
-    "note": "A catalogue of 57 canons of construction, the textualist's reference work." },
-  { "id": "tempting-of-america", "title": "The Tempting of America: The Political Seduction of the Law", "authors": ["Robert H. Bork"], "year": 1990, "publisher": "Free Press", "cat": "Theory & Interpretation",
-    "note": "Bork's defense of original understanding, written after his failed Supreme Court nomination." },
-  { "id": "living-originalism", "title": "Living Originalism", "authors": ["Jack M. Balkin"], "year": 2011, "publisher": "Harvard University Press", "cat": "Theory & Interpretation",
-    "note": "Argues originalism and living constitutionalism are compatible through 'framework originalism'." },
-  { "id": "living-constitution", "title": "The Living Constitution", "authors": ["David A. Strauss"], "year": 2010, "publisher": "Oxford University Press", "cat": "Theory & Interpretation", "intro": true,
-    "note": "A short, clear argument that American constitutional law is a common-law system built on precedent." },
-  { "id": "restoring-lost-constitution", "title": "Restoring the Lost Constitution: The Presumption of Liberty", "authors": ["Randy E. Barnett"], "year": 2004, "publisher": "Princeton University Press", "cat": "Theory & Interpretation",
-    "note": "The libertarian originalist case for a presumption of liberty and a narrower federal government." },
-  { "id": "people-themselves", "title": "The People Themselves: Popular Constitutionalism and Judicial Review", "authors": ["Larry D. Kramer"], "year": 2004, "publisher": "Oxford University Press", "cat": "Theory & Interpretation",
-    "note": "A historical argument that the people, not the courts, were meant to have the final say on the Constitution." },
-  { "id": "constitutional-fate", "title": "Constitutional Fate: Theory of the Constitution", "authors": ["Philip Bobbitt"], "year": 1982, "publisher": "Oxford University Press", "cat": "Theory & Interpretation",
-    "note": "Identifies the six 'modalities' of constitutional argument that lawyers actually use." },
-  { "id": "one-case-at-a-time", "title": "One Case at a Time: Judicial Minimalism on the Supreme Court", "authors": ["Cass R. Sunstein"], "year": 1999, "publisher": "Harvard University Press", "cat": "Theory & Interpretation",
-    "note": "The case for narrow, shallow decisions that leave hard questions to democratic processes." },
-  { "id": "taking-constitution-away", "title": "Taking the Constitution Away from the Courts", "authors": ["Mark Tushnet"], "year": 1999, "publisher": "Princeton University Press", "cat": "Theory & Interpretation",
-    "note": "A provocative argument against judicial supremacy and for a 'populist constitutional law'." },
-  { "id": "common-good-constitutionalism", "title": "Common Good Constitutionalism", "authors": ["Adrian Vermeule"], "year": 2022, "publisher": "Polity", "cat": "Theory & Interpretation",
-    "note": "A classical-legal-tradition challenge to both originalism and progressive living constitutionalism." },
-  { "id": "constitutional-interpretation-whittington", "title": "Constitutional Interpretation: Textual Meaning, Original Intent, and Judicial Review", "authors": ["Keith E. Whittington"], "year": 1999, "publisher": "University Press of Kansas", "cat": "Theory & Interpretation",
-    "note": "A political scientist's influential defense of originalism grounded in popular sovereignty." },
-  { "id": "our-undemocratic-constitution", "title": "Our Undemocratic Constitution: Where the Constitution Goes Wrong (And How We the People Can Correct It)", "authors": ["Sanford Levinson"], "year": 2006, "publisher": "Oxford University Press", "cat": "Theory & Interpretation",
-    "note": "A critique of the Constitution's structural features and a call for a new constitutional convention." },
-  { "id": "americas-unwritten-constitution", "title": "America's Unwritten Constitution: The Precedents and Principles We Live By", "authors": ["Akhil Reed Amar"], "year": 2012, "publisher": "Basic Books", "cat": "Theory & Interpretation",
-    "note": "Explores the practices, precedents and principles that supplement the written text." },
-  { "id": "how-rights-went-wrong", "title": "How Rights Went Wrong: Why Our Obsession with Rights Is Tearing America Apart", "authors": ["Jamal Greene"], "year": 2021, "publisher": "Houghton Mifflin Harcourt", "cat": "Theory & Interpretation",
-    "note": "Argues American rights adjudication should borrow proportionality-style balancing from abroad." },
-
-  { "id": "hollow-hope", "title": "The Hollow Hope: Can Courts Bring About Social Change?", "authors": ["Gerald N. Rosenberg"], "year": 1991, "publisher": "University of Chicago Press", "cat": "The Supreme Court",
-    "note": "An empirical challenge to the belief that landmark decisions like Brown and Roe produced social change." },
-  { "id": "will-of-the-people", "title": "The Will of the People: How Public Opinion Has Influenced the Supreme Court and Shaped the Meaning of the Constitution", "authors": ["Barry Friedman"], "year": 2009, "publisher": "Farrar, Straus and Giroux", "cat": "The Supreme Court",
-    "note": "A sweeping history showing how the Court has tracked public opinion over two centuries." },
-  { "id": "jim-crow-civil-rights", "title": "From Jim Crow to Civil Rights: The Supreme Court and the Struggle for Racial Equality", "authors": ["Michael J. Klarman"], "year": 2004, "publisher": "Oxford University Press", "cat": "The Supreme Court",
-    "note": "Bancroft Prize winner on the Court's race decisions from Plessy to Brown and the backlash that followed." },
-  { "id": "simple-justice", "title": "Simple Justice: The History of Brown v. Board of Education and Black America's Struggle for Equality", "authors": ["Richard Kluger"], "year": 1976, "publisher": "Knopf", "cat": "The Supreme Court", "intro": true,
-    "note": "The definitive narrative history of the litigation campaign that produced Brown." },
-  { "id": "gideons-trumpet", "title": "Gideon's Trumpet", "authors": ["Anthony Lewis"], "year": 1964, "publisher": "Random House", "cat": "The Supreme Court", "intro": true,
-    "note": "The story of Clarence Earl Gideon and the right to counsel; a classic introduction to how the Court works." },
-  { "id": "the-brethren", "title": "The Brethren: Inside the Supreme Court", "authors": ["Bob Woodward", "Scott Armstrong"], "year": 1979, "publisher": "Simon & Schuster", "cat": "The Supreme Court",
-    "note": "The first inside account of the Burger Court's deliberations." },
-  { "id": "the-nine", "title": "The Nine: Inside the Secret World of the Supreme Court", "authors": ["Jeffrey Toobin"], "year": 2007, "publisher": "Doubleday", "cat": "The Supreme Court",
-    "note": "A narrative portrait of the Rehnquist and early Roberts Courts." },
-  { "id": "supreme-court-vsi", "title": "The U.S. Supreme Court: A Very Short Introduction", "authors": ["Linda Greenhouse"], "year": 2012, "publisher": "Oxford University Press", "cat": "The Supreme Court", "intro": true,
-    "note": "A compact, authoritative primer on the Court's history, procedures and role, by a longtime Court reporter." },
-  { "id": "shadow-docket", "title": "The Shadow Docket: How the Supreme Court Uses Stealth Rulings to Amass Power and Undermine the Republic", "authors": ["Stephen Vladeck"], "year": 2023, "publisher": "Basic Books", "cat": "The Supreme Court",
-    "note": "How the emergency docket became a major source of the Court's power." },
-  { "id": "case-against-supreme-court", "title": "The Case Against the Supreme Court", "authors": ["Erwin Chemerinsky"], "year": 2014, "publisher": "Viking", "cat": "The Supreme Court",
-    "note": "A critical history arguing the Court has more often failed than protected minorities." },
-  { "id": "active-liberty", "title": "Active Liberty: Interpreting Our Democratic Constitution", "authors": ["Stephen Breyer"], "year": 2005, "publisher": "Knopf", "cat": "The Supreme Court",
-    "note": "Justice Breyer's purposive approach to interpretation, framed around democratic participation." },
-  { "id": "republic-if-you-can-keep-it", "title": "A Republic, If You Can Keep It", "authors": ["Neil Gorsuch"], "year": 2019, "publisher": "Crown Forum", "cat": "The Supreme Court",
-    "note": "Justice Gorsuch's speeches and opinions on originalism, textualism and the separation of powers." },
-
-  { "id": "unitary-executive", "title": "The Unitary Executive: Presidential Power from Washington to Bush", "authors": ["Steven G. Calabresi", "Christopher S. Yoo"], "year": 2008, "publisher": "Yale University Press", "cat": "Structure & Powers",
-    "note": "A historical defense of presidential control over the executive branch, administration by administration." },
-  { "id": "executive-unbound", "title": "The Executive Unbound: After the Madisonian Republic", "authors": ["Eric A. Posner", "Adrian Vermeule"], "year": 2010, "publisher": "Oxford University Press", "cat": "Structure & Powers",
-    "note": "Argues that law no longer meaningfully constrains the modern presidency; politics does." },
-  { "id": "imperial-presidency", "title": "The Imperial Presidency", "authors": ["Arthur M. Schlesinger Jr."], "year": 1973, "publisher": "Houghton Mifflin", "cat": "Structure & Powers", "intro": true,
-    "note": "The classic warning about the growth of presidential war and secrecy powers." },
-  { "id": "administrative-law-unlawful", "title": "Is Administrative Law Unlawful?", "authors": ["Philip Hamburger"], "year": 2014, "publisher": "University of Chicago Press", "cat": "Structure & Powers",
-    "note": "A historical attack on agency lawmaking as a revival of extralegal prerogative power." },
-  { "id": "law-and-leviathan", "title": "Law and Leviathan: Redeeming the Administrative State", "authors": ["Cass R. Sunstein", "Adrian Vermeule"], "year": 2020, "publisher": "Harvard University Press", "cat": "Structure & Powers", "intro": true,
-    "note": "A short defense of the administrative state built on the 'morality of administrative law'." },
-  { "id": "war-and-responsibility", "title": "War and Responsibility: Constitutional Lessons of Vietnam and Its Aftermath", "authors": ["John Hart Ely"], "year": 1993, "publisher": "Princeton University Press", "cat": "Structure & Powers", "intro": true,
-    "note": "Argues the Constitution requires congressional authorization for war, and that courts should enforce it." },
-  { "id": "presidential-war-power", "title": "Presidential War Power", "authors": ["Louis Fisher"], "year": 1995, "publisher": "University Press of Kansas", "cat": "Structure & Powers",
-    "note": "A history of how presidents have taken the war power from Congress." },
-  { "id": "federalism-feeley-rubin", "title": "Federalism: Political Identity and Tragic Compromise", "authors": ["Malcolm M. Feeley", "Edward Rubin"], "year": 2008, "publisher": "University of Michigan Press", "cat": "Structure & Powers",
-    "note": "A skeptical account of the values usually claimed for American federalism." },
-
-  { "id": "freedom-for-thought", "title": "Freedom for the Thought That We Hate: A Biography of the First Amendment", "authors": ["Anthony Lewis"], "year": 2007, "publisher": "Basic Books", "cat": "Rights & Liberties", "intro": true,
-    "note": "A short, lucid history of free speech and press doctrine for general readers." },
-  { "id": "make-no-law", "title": "Make No Law: The Sullivan Case and the First Amendment", "authors": ["Anthony Lewis"], "year": 1991, "publisher": "Random House", "cat": "Rights & Liberties",
-    "note": "The story of New York Times v. Sullivan and the transformation of libel law." },
-  { "id": "free-speech-meiklejohn", "title": "Free Speech and Its Relation to Self-Government", "authors": ["Alexander Meiklejohn"], "year": 1948, "publisher": "Harper & Brothers", "cat": "Rights & Liberties",
-    "note": "The foundational self-governance theory of the First Amendment." },
-  { "id": "worthy-tradition", "title": "A Worthy Tradition: Freedom of Speech in America", "authors": ["Harry Kalven Jr."], "year": 1988, "publisher": "Harper & Row", "cat": "Rights & Liberties",
-    "note": "A masterful, posthumously published survey of free-speech doctrine." },
-  { "id": "perilous-times", "title": "Perilous Times: Free Speech in Wartime from the Sedition Act of 1798 to the War on Terrorism", "authors": ["Geoffrey R. Stone"], "year": 2004, "publisher": "W. W. Norton", "cat": "Rights & Liberties",
-    "note": "Prize-winning history of how civil liberties have fared during national crises." },
-  { "id": "divided-by-god", "title": "Divided by God: America's Church-State Problem—and What We Should Do About It", "authors": ["Noah Feldman"], "year": 2005, "publisher": "Farrar, Straus and Giroux", "cat": "Rights & Liberties", "intro": true,
-    "note": "An accessible history of church-state conflict and a proposal for resolving it." },
-  { "id": "liberty-of-conscience", "title": "Liberty of Conscience: In Defense of America's Tradition of Religious Equality", "authors": ["Martha C. Nussbaum"], "year": 2008, "publisher": "Basic Books", "cat": "Rights & Liberties",
-    "note": "A philosopher's account of religious liberty grounded in equal respect for conscience." },
-  { "id": "gunfight", "title": "Gunfight: The Battle over the Right to Bear Arms in America", "authors": ["Adam Winkler"], "year": 2011, "publisher": "W. W. Norton", "cat": "Rights & Liberties", "intro": true,
-    "note": "A balanced history of gun rights and gun control, built around the Heller litigation." },
-  { "id": "second-amendment-biography", "title": "The Second Amendment: A Biography", "authors": ["Michael Waldman"], "year": 2014, "publisher": "Simon & Schuster", "cat": "Rights & Liberties",
-    "note": "Traces how the meaning of the Second Amendment changed over two centuries." },
-  { "id": "race-racism-law", "title": "Race, Racism, and American Law", "authors": ["Derrick A. Bell Jr."], "year": 1973, "publisher": "Little, Brown and Company", "cat": "Rights & Liberties",
-    "note": "The pioneering text that helped launch critical race theory." },
-  { "id": "abortion-clash-of-absolutes", "title": "Abortion: The Clash of Absolutes", "authors": ["Laurence H. Tribe"], "year": 1990, "publisher": "W. W. Norton", "cat": "Rights & Liberties",
-    "note": "A constitutional and historical analysis of the abortion debate." },
-  { "id": "rights-talk", "title": "Rights Talk: The Impoverishment of Political Discourse", "authors": ["Mary Ann Glendon"], "year": 1991, "publisher": "Free Press", "cat": "Rights & Liberties",
-    "note": "A critique of American rights discourse as absolutist and individualistic." },
-  { "id": "right-to-privacy", "title": "The Right to Privacy", "authors": ["Ellen Alderman", "Caroline Kennedy"], "year": 1995, "publisher": "Knopf", "cat": "Rights & Liberties", "intro": true,
-    "note": "Case stories illustrating the many strands of the constitutional right to privacy." },
-  { "id": "takings-epstein", "title": "Takings: Private Property and the Power of Eminent Domain", "authors": ["Richard A. Epstein"], "year": 1985, "publisher": "Harvard University Press", "cat": "Rights & Liberties", "intro": true,
-    "note": "The influential argument for reading the Takings Clause broadly to limit regulation." },
-  { "id": "constitution-criminal-procedure", "title": "The Constitution and Criminal Procedure: First Principles", "authors": ["Akhil Reed Amar"], "year": 1997, "publisher": "Yale University Press", "cat": "Rights & Liberties", "intro": true,
-    "note": "Rethinks the Fourth, Fifth and Sixth Amendments from first principles." },
-  { "id": "collapse-criminal-justice", "title": "The Collapse of American Criminal Justice", "authors": ["William J. Stuntz"], "year": 2011, "publisher": "Harvard University Press", "cat": "Rights & Liberties",
-    "note": "Argues constitutional criminal procedure contributed to mass incarceration." },
-  { "id": "courting-death", "title": "Courting Death: The Supreme Court and Capital Punishment", "authors": ["Carol S. Steiker", "Jordan M. Steiker"], "year": 2016, "publisher": "Harvard University Press", "cat": "Rights & Liberties", "intro": true,
-    "note": "A history of the Court's regulation of the death penalty since the 1970s." },
-
-  { "id": "right-to-vote", "title": "The Right to Vote: The Contested History of Democracy in the United States", "authors": ["Alexander Keyssar"], "year": 2000, "publisher": "Basic Books", "cat": "Democracy & Elections", "intro": true,
-    "note": "The standard history of the expansion and contraction of the franchise." },
-  { "id": "republic-lost", "title": "Republic, Lost: How Money Corrupts Congress—and a Plan to Stop It", "authors": ["Lawrence Lessig"], "year": 2011, "publisher": "Twelve", "cat": "Democracy & Elections",
-    "note": "A theory of 'dependence corruption' and the case for campaign finance reform." },
-  { "id": "supreme-court-election-law", "title": "The Supreme Court and Election Law: Judging Equality from Baker v. Carr to Bush v. Gore", "authors": ["Richard L. Hasen"], "year": 2003, "publisher": "NYU Press", "cat": "Democracy & Elections", "intro": true,
-    "note": "How the Court entered the 'political thicket' and what equality in voting has come to mean." },
-
-  { "id": "chemerinsky-principles", "title": "Constitutional Law: Principles and Policies", "authors": ["Erwin Chemerinsky"], "year": 1997, "publisher": "Aspen Publishing", "cat": "Introductions & Primers", "intro": true,
-    "note": "The standard student treatise, covering every major doctrine clearly and comprehensively." },
-  { "id": "currie-primer", "title": "The Constitution of the United States: A Primer for the People", "authors": ["David P. Currie"], "year": 1988, "publisher": "University of Chicago Press", "cat": "Introductions & Primers", "intro": true,
-    "note": "A short, plain-English walk through the Constitution's structure and rights." },
-  { "id": "penguin-guide", "title": "The Penguin Guide to the United States Constitution", "authors": ["Richard Beeman"], "year": 2010, "publisher": "Penguin Books", "cat": "Introductions & Primers", "intro": true,
-    "note": "An annotated text of the Constitution with a concise history and glossary." },
-  { "id": "chemerinsky-federal-jurisdiction", "title": "Federal Jurisdiction", "authors": ["Erwin Chemerinsky"], "year": 1989, "publisher": "Aspen Publishing", "cat": "Introductions & Primers", "intro": true,
-    "note": "The leading student guide to standing, justiciability and the power of the federal courts." }
+ {
+  "id": "federalist",
+  "title": "The Federalist Papers",
+  "authors": [
+   "Alexander Hamilton",
+   "James Madison",
+   "John Jay"
+  ],
+  "year": 1788,
+  "publisher": "Penguin Classics",
+  "cat": "History & Founding",
+  "intro": true,
+  "note": "The 85 essays written to win ratification; still the most-cited guide to what the framers thought they were building.",
+  "essential": true
+ },
+ {
+  "id": "creation-american-republic",
+  "title": "The Creation of the American Republic, 1776–1787",
+  "authors": [
+   "Gordon S. Wood"
+  ],
+  "year": 1969,
+  "publisher": "University of North Carolina Press",
+  "cat": "History & Founding",
+  "note": "Bancroft Prize-winning account of how American political thought was transformed between independence and the Constitution.",
+  "essential": true
+ },
+ {
+  "id": "ideological-origins",
+  "title": "The Ideological Origins of the American Revolution",
+  "authors": [
+   "Bernard Bailyn"
+  ],
+  "year": 1967,
+  "publisher": "Harvard University Press",
+  "cat": "History & Founding",
+  "note": "Pulitzer and Bancroft Prize winner tracing the pamphlet literature and ideas that drove the Revolution.",
+  "essential": true
+ },
+ {
+  "id": "original-meanings",
+  "title": "Original Meanings: Politics and Ideas in the Making of the Constitution",
+  "authors": [
+   "Jack N. Rakove"
+  ],
+  "year": 1996,
+  "publisher": "Knopf",
+  "cat": "History & Founding",
+  "note": "Pulitzer Prize-winning history of the Convention and ratification, and a historian's challenge to easy originalism.",
+  "essential": true
+ },
+ {
+  "id": "framers-coup",
+  "title": "The Framers' Coup: The Making of the United States Constitution",
+  "authors": [
+   "Michael J. Klarman"
+  ],
+  "year": 2016,
+  "publisher": "Oxford University Press",
+  "cat": "History & Founding",
+  "note": "A detailed narrative arguing the Constitution was a conservative reaction against the democratic excesses of the 1780s.",
+  "essential": true
+ },
+ {
+  "id": "ratification",
+  "title": "Ratification: The People Debate the Constitution, 1787–1788",
+  "authors": [
+   "Pauline Maier"
+  ],
+  "year": 2010,
+  "publisher": "Simon & Schuster",
+  "cat": "History & Founding",
+  "note": "A state-by-state history of the ratification debates and the ordinary Americans who conducted them.",
+  "essential": true
+ },
+ {
+  "id": "miracle-at-philadelphia",
+  "title": "Miracle at Philadelphia: The Story of the Constitutional Convention",
+  "authors": [
+   "Catherine Drinker Bowen"
+  ],
+  "year": 1966,
+  "publisher": "Little, Brown and Company",
+  "cat": "History & Founding",
+  "intro": true,
+  "note": "A vivid, highly readable narrative of the summer of 1787.",
+  "essential": true
+ },
+ {
+  "id": "economic-interpretation",
+  "title": "An Economic Interpretation of the Constitution of the United States",
+  "authors": [
+   "Charles A. Beard"
+  ],
+  "year": 1913,
+  "publisher": "Macmillan",
+  "cat": "History & Founding",
+  "note": "The provocative classic arguing that the framers' economic interests shaped the Constitution.",
+  "essential": true
+ },
+ {
+  "id": "second-founding",
+  "title": "The Second Founding: How the Civil War and Reconstruction Remade the Constitution",
+  "authors": [
+   "Eric Foner"
+  ],
+  "year": 2019,
+  "publisher": "W. W. Norton",
+  "cat": "History & Founding",
+  "intro": true,
+  "note": "A concise history of the Thirteenth, Fourteenth and Fifteenth Amendments and their narrowing by the courts.",
+  "essential": true
+ },
+ {
+  "id": "americas-constitution",
+  "title": "America's Constitution: A Biography",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 2005,
+  "publisher": "Random House",
+  "cat": "History & Founding",
+  "intro": true,
+  "note": "A clause-by-clause tour of the Constitution's text and history, written for general readers.",
+  "essential": true
+ },
+ {
+  "id": "bill-of-rights-amar",
+  "title": "The Bill of Rights: Creation and Reconstruction",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 1998,
+  "publisher": "Yale University Press",
+  "cat": "Rights & Liberties",
+  "note": "Argues the Bill of Rights was reshaped by the Fourteenth Amendment, recasting the incorporation debate.",
+  "essential": true
+ },
+ {
+  "id": "democracy-and-distrust",
+  "title": "Democracy and Distrust: A Theory of Judicial Review",
+  "authors": [
+   "John Hart Ely"
+  ],
+  "year": 1980,
+  "publisher": "Harvard University Press",
+  "cat": "Theory & Interpretation",
+  "note": "The representation-reinforcement theory of judicial review; among the most cited works of American legal scholarship.",
+  "essential": true
+ },
+ {
+  "id": "least-dangerous-branch",
+  "title": "The Least Dangerous Branch: The Supreme Court at the Bar of Politics",
+  "authors": [
+   "Alexander M. Bickel"
+  ],
+  "year": 1962,
+  "publisher": "Yale University Press",
+  "cat": "Theory & Interpretation",
+  "note": "Named the 'counter-majoritarian difficulty' and set the agenda for decades of debate about judicial review.",
+  "essential": true
+ },
+ {
+  "id": "we-the-people-foundations",
+  "title": "We the People, Volume 1: Foundations",
+  "authors": [
+   "Bruce Ackerman"
+  ],
+  "year": 1991,
+  "publisher": "Harvard University Press",
+  "cat": "Theory & Interpretation",
+  "note": "Introduces 'dualist democracy' and constitutional moments outside the Article V process.",
+  "essential": true
+ },
+ {
+  "id": "we-the-people-transformations",
+  "title": "We the People, Volume 2: Transformations",
+  "authors": [
+   "Bruce Ackerman"
+  ],
+  "year": 1998,
+  "publisher": "Harvard University Press",
+  "cat": "Theory & Interpretation",
+  "note": "Applies Ackerman's theory to Reconstruction and the New Deal.",
+  "essential": true
+ },
+ {
+  "id": "freedoms-law",
+  "title": "Freedom's Law: The Moral Reading of the American Constitution",
+  "authors": [
+   "Ronald Dworkin"
+  ],
+  "year": 1996,
+  "publisher": "Harvard University Press",
+  "cat": "Theory & Interpretation",
+  "note": "Dworkin's case for reading the Constitution's abstract clauses as moral principles.",
+  "essential": true
+ },
+ {
+  "id": "taking-rights-seriously",
+  "title": "Taking Rights Seriously",
+  "authors": [
+   "Ronald Dworkin"
+  ],
+  "year": 1977,
+  "publisher": "Harvard University Press",
+  "cat": "Theory & Interpretation",
+  "note": "The jurisprudential classic on rights as trumps and the role of principle in hard cases.",
+  "essential": true
+ },
+ {
+  "id": "matter-of-interpretation",
+  "title": "A Matter of Interpretation: Federal Courts and the Law",
+  "authors": [
+   "Antonin Scalia"
+  ],
+  "year": 1997,
+  "publisher": "Princeton University Press",
+  "cat": "Theory & Interpretation",
+  "intro": true,
+  "note": "Scalia's short manifesto for textualism and originalism, with responses from Tribe, Dworkin, Glendon and Wood.",
+  "essential": true
+ },
+ {
+  "id": "reading-law",
+  "title": "Reading Law: The Interpretation of Legal Texts",
+  "authors": [
+   "Antonin Scalia",
+   "Bryan A. Garner"
+  ],
+  "year": 2012,
+  "publisher": "Thomson/West",
+  "cat": "Theory & Interpretation",
+  "note": "A catalogue of 57 canons of construction, the textualist's reference work.",
+  "essential": true
+ },
+ {
+  "id": "tempting-of-america",
+  "title": "The Tempting of America: The Political Seduction of the Law",
+  "authors": [
+   "Robert H. Bork"
+  ],
+  "year": 1990,
+  "publisher": "Free Press",
+  "cat": "Theory & Interpretation",
+  "note": "Bork's defense of original understanding, written after his failed Supreme Court nomination.",
+  "essential": true
+ },
+ {
+  "id": "living-originalism",
+  "title": "Living Originalism",
+  "authors": [
+   "Jack M. Balkin"
+  ],
+  "year": 2011,
+  "publisher": "Harvard University Press",
+  "cat": "Theory & Interpretation",
+  "note": "Argues originalism and living constitutionalism are compatible through 'framework originalism'.",
+  "essential": true
+ },
+ {
+  "id": "living-constitution",
+  "title": "The Living Constitution",
+  "authors": [
+   "David A. Strauss"
+  ],
+  "year": 2010,
+  "publisher": "Oxford University Press",
+  "cat": "Theory & Interpretation",
+  "intro": true,
+  "note": "A short, clear argument that American constitutional law is a common-law system built on precedent.",
+  "essential": true
+ },
+ {
+  "id": "restoring-lost-constitution",
+  "title": "Restoring the Lost Constitution: The Presumption of Liberty",
+  "authors": [
+   "Randy E. Barnett"
+  ],
+  "year": 2004,
+  "publisher": "Princeton University Press",
+  "cat": "Theory & Interpretation",
+  "note": "The libertarian originalist case for a presumption of liberty and a narrower federal government.",
+  "essential": true
+ },
+ {
+  "id": "people-themselves",
+  "title": "The People Themselves: Popular Constitutionalism and Judicial Review",
+  "authors": [
+   "Larry D. Kramer"
+  ],
+  "year": 2004,
+  "publisher": "Oxford University Press",
+  "cat": "Theory & Interpretation",
+  "note": "A historical argument that the people, not the courts, were meant to have the final say on the Constitution.",
+  "essential": true
+ },
+ {
+  "id": "constitutional-fate",
+  "title": "Constitutional Fate: Theory of the Constitution",
+  "authors": [
+   "Philip Bobbitt"
+  ],
+  "year": 1982,
+  "publisher": "Oxford University Press",
+  "cat": "Theory & Interpretation",
+  "note": "Identifies the six 'modalities' of constitutional argument that lawyers actually use.",
+  "essential": true
+ },
+ {
+  "id": "one-case-at-a-time",
+  "title": "One Case at a Time: Judicial Minimalism on the Supreme Court",
+  "authors": [
+   "Cass R. Sunstein"
+  ],
+  "year": 1999,
+  "publisher": "Harvard University Press",
+  "cat": "Theory & Interpretation",
+  "note": "The case for narrow, shallow decisions that leave hard questions to democratic processes.",
+  "essential": true
+ },
+ {
+  "id": "taking-constitution-away",
+  "title": "Taking the Constitution Away from the Courts",
+  "authors": [
+   "Mark Tushnet"
+  ],
+  "year": 1999,
+  "publisher": "Princeton University Press",
+  "cat": "Theory & Interpretation",
+  "note": "A provocative argument against judicial supremacy and for a 'populist constitutional law'.",
+  "essential": true
+ },
+ {
+  "id": "common-good-constitutionalism",
+  "title": "Common Good Constitutionalism",
+  "authors": [
+   "Adrian Vermeule"
+  ],
+  "year": 2022,
+  "publisher": "Polity",
+  "cat": "Theory & Interpretation",
+  "note": "A classical-legal-tradition challenge to both originalism and progressive living constitutionalism.",
+  "essential": true
+ },
+ {
+  "id": "constitutional-interpretation-whittington",
+  "title": "Constitutional Interpretation: Textual Meaning, Original Intent, and Judicial Review",
+  "authors": [
+   "Keith E. Whittington"
+  ],
+  "year": 1999,
+  "publisher": "University Press of Kansas",
+  "cat": "Theory & Interpretation",
+  "note": "A political scientist's influential defense of originalism grounded in popular sovereignty.",
+  "essential": true
+ },
+ {
+  "id": "our-undemocratic-constitution",
+  "title": "Our Undemocratic Constitution: Where the Constitution Goes Wrong (And How We the People Can Correct It)",
+  "authors": [
+   "Sanford Levinson"
+  ],
+  "year": 2006,
+  "publisher": "Oxford University Press",
+  "cat": "Theory & Interpretation",
+  "note": "A critique of the Constitution's structural features and a call for a new constitutional convention.",
+  "essential": true
+ },
+ {
+  "id": "americas-unwritten-constitution",
+  "title": "America's Unwritten Constitution: The Precedents and Principles We Live By",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 2012,
+  "publisher": "Basic Books",
+  "cat": "Theory & Interpretation",
+  "note": "Explores the practices, precedents and principles that supplement the written text.",
+  "essential": true
+ },
+ {
+  "id": "how-rights-went-wrong",
+  "title": "How Rights Went Wrong: Why Our Obsession with Rights Is Tearing America Apart",
+  "authors": [
+   "Jamal Greene"
+  ],
+  "year": 2021,
+  "publisher": "Houghton Mifflin Harcourt",
+  "cat": "Theory & Interpretation",
+  "note": "Argues American rights adjudication should borrow proportionality-style balancing from abroad.",
+  "essential": true
+ },
+ {
+  "id": "hollow-hope",
+  "title": "The Hollow Hope: Can Courts Bring About Social Change?",
+  "authors": [
+   "Gerald N. Rosenberg"
+  ],
+  "year": 1991,
+  "publisher": "University of Chicago Press",
+  "cat": "The Supreme Court",
+  "note": "An empirical challenge to the belief that landmark decisions like Brown and Roe produced social change.",
+  "essential": true
+ },
+ {
+  "id": "will-of-the-people",
+  "title": "The Will of the People: How Public Opinion Has Influenced the Supreme Court and Shaped the Meaning of the Constitution",
+  "authors": [
+   "Barry Friedman"
+  ],
+  "year": 2009,
+  "publisher": "Farrar, Straus and Giroux",
+  "cat": "The Supreme Court",
+  "note": "A sweeping history showing how the Court has tracked public opinion over two centuries.",
+  "essential": true
+ },
+ {
+  "id": "jim-crow-civil-rights",
+  "title": "From Jim Crow to Civil Rights: The Supreme Court and the Struggle for Racial Equality",
+  "authors": [
+   "Michael J. Klarman"
+  ],
+  "year": 2004,
+  "publisher": "Oxford University Press",
+  "cat": "The Supreme Court",
+  "note": "Bancroft Prize winner on the Court's race decisions from Plessy to Brown and the backlash that followed.",
+  "essential": true
+ },
+ {
+  "id": "simple-justice",
+  "title": "Simple Justice: The History of Brown v. Board of Education and Black America's Struggle for Equality",
+  "authors": [
+   "Richard Kluger"
+  ],
+  "year": 1976,
+  "publisher": "Knopf",
+  "cat": "The Supreme Court",
+  "intro": true,
+  "note": "The definitive narrative history of the litigation campaign that produced Brown.",
+  "essential": true
+ },
+ {
+  "id": "gideons-trumpet",
+  "title": "Gideon's Trumpet",
+  "authors": [
+   "Anthony Lewis"
+  ],
+  "year": 1964,
+  "publisher": "Random House",
+  "cat": "The Supreme Court",
+  "intro": true,
+  "note": "The story of Clarence Earl Gideon and the right to counsel; a classic introduction to how the Court works.",
+  "essential": true
+ },
+ {
+  "id": "the-brethren",
+  "title": "The Brethren: Inside the Supreme Court",
+  "authors": [
+   "Bob Woodward",
+   "Scott Armstrong"
+  ],
+  "year": 1979,
+  "publisher": "Simon & Schuster",
+  "cat": "The Supreme Court",
+  "note": "The first inside account of the Burger Court's deliberations.",
+  "essential": true
+ },
+ {
+  "id": "the-nine",
+  "title": "The Nine: Inside the Secret World of the Supreme Court",
+  "authors": [
+   "Jeffrey Toobin"
+  ],
+  "year": 2007,
+  "publisher": "Doubleday",
+  "cat": "The Supreme Court",
+  "note": "A narrative portrait of the Rehnquist and early Roberts Courts.",
+  "essential": true
+ },
+ {
+  "id": "supreme-court-vsi",
+  "title": "The U.S. Supreme Court: A Very Short Introduction",
+  "authors": [
+   "Linda Greenhouse"
+  ],
+  "year": 2012,
+  "publisher": "Oxford University Press",
+  "cat": "The Supreme Court",
+  "intro": true,
+  "note": "A compact, authoritative primer on the Court's history, procedures and role, by a longtime Court reporter.",
+  "essential": true
+ },
+ {
+  "id": "shadow-docket",
+  "title": "The Shadow Docket: How the Supreme Court Uses Stealth Rulings to Amass Power and Undermine the Republic",
+  "authors": [
+   "Stephen Vladeck"
+  ],
+  "year": 2023,
+  "publisher": "Basic Books",
+  "cat": "The Supreme Court",
+  "note": "How the emergency docket became a major source of the Court's power.",
+  "essential": true
+ },
+ {
+  "id": "case-against-supreme-court",
+  "title": "The Case Against the Supreme Court",
+  "authors": [
+   "Erwin Chemerinsky"
+  ],
+  "year": 2014,
+  "publisher": "Viking",
+  "cat": "The Supreme Court",
+  "note": "A critical history arguing the Court has more often failed than protected minorities.",
+  "essential": true
+ },
+ {
+  "id": "active-liberty",
+  "title": "Active Liberty: Interpreting Our Democratic Constitution",
+  "authors": [
+   "Stephen Breyer"
+  ],
+  "year": 2005,
+  "publisher": "Knopf",
+  "cat": "The Supreme Court",
+  "note": "Justice Breyer's purposive approach to interpretation, framed around democratic participation.",
+  "essential": true
+ },
+ {
+  "id": "republic-if-you-can-keep-it",
+  "title": "A Republic, If You Can Keep It",
+  "authors": [
+   "Neil Gorsuch"
+  ],
+  "year": 2019,
+  "publisher": "Crown Forum",
+  "cat": "The Supreme Court",
+  "note": "Justice Gorsuch's speeches and opinions on originalism, textualism and the separation of powers.",
+  "essential": true
+ },
+ {
+  "id": "unitary-executive",
+  "title": "The Unitary Executive: Presidential Power from Washington to Bush",
+  "authors": [
+   "Steven G. Calabresi",
+   "Christopher S. Yoo"
+  ],
+  "year": 2008,
+  "publisher": "Yale University Press",
+  "cat": "Structure & Powers",
+  "note": "A historical defense of presidential control over the executive branch, administration by administration.",
+  "essential": true
+ },
+ {
+  "id": "executive-unbound",
+  "title": "The Executive Unbound: After the Madisonian Republic",
+  "authors": [
+   "Eric A. Posner",
+   "Adrian Vermeule"
+  ],
+  "year": 2010,
+  "publisher": "Oxford University Press",
+  "cat": "Structure & Powers",
+  "note": "Argues that law no longer meaningfully constrains the modern presidency; politics does.",
+  "essential": true
+ },
+ {
+  "id": "imperial-presidency",
+  "title": "The Imperial Presidency",
+  "authors": [
+   "Arthur M. Schlesinger Jr."
+  ],
+  "year": 1973,
+  "publisher": "Houghton Mifflin",
+  "cat": "Structure & Powers",
+  "intro": true,
+  "note": "The classic warning about the growth of presidential war and secrecy powers.",
+  "essential": true
+ },
+ {
+  "id": "administrative-law-unlawful",
+  "title": "Is Administrative Law Unlawful?",
+  "authors": [
+   "Philip Hamburger"
+  ],
+  "year": 2014,
+  "publisher": "University of Chicago Press",
+  "cat": "Structure & Powers",
+  "note": "A historical attack on agency lawmaking as a revival of extralegal prerogative power.",
+  "essential": true
+ },
+ {
+  "id": "law-and-leviathan",
+  "title": "Law and Leviathan: Redeeming the Administrative State",
+  "authors": [
+   "Cass R. Sunstein",
+   "Adrian Vermeule"
+  ],
+  "year": 2020,
+  "publisher": "Harvard University Press",
+  "cat": "Structure & Powers",
+  "intro": true,
+  "note": "A short defense of the administrative state built on the 'morality of administrative law'.",
+  "essential": true
+ },
+ {
+  "id": "war-and-responsibility",
+  "title": "War and Responsibility: Constitutional Lessons of Vietnam and Its Aftermath",
+  "authors": [
+   "John Hart Ely"
+  ],
+  "year": 1993,
+  "publisher": "Princeton University Press",
+  "cat": "Structure & Powers",
+  "intro": true,
+  "note": "Argues the Constitution requires congressional authorization for war, and that courts should enforce it.",
+  "essential": true
+ },
+ {
+  "id": "presidential-war-power",
+  "title": "Presidential War Power",
+  "authors": [
+   "Louis Fisher"
+  ],
+  "year": 1995,
+  "publisher": "University Press of Kansas",
+  "cat": "Structure & Powers",
+  "note": "A history of how presidents have taken the war power from Congress.",
+  "essential": true
+ },
+ {
+  "id": "federalism-feeley-rubin",
+  "title": "Federalism: Political Identity and Tragic Compromise",
+  "authors": [
+   "Malcolm M. Feeley",
+   "Edward Rubin"
+  ],
+  "year": 2008,
+  "publisher": "University of Michigan Press",
+  "cat": "Structure & Powers",
+  "note": "A skeptical account of the values usually claimed for American federalism.",
+  "essential": true
+ },
+ {
+  "id": "freedom-for-thought",
+  "title": "Freedom for the Thought That We Hate: A Biography of the First Amendment",
+  "authors": [
+   "Anthony Lewis"
+  ],
+  "year": 2007,
+  "publisher": "Basic Books",
+  "cat": "Rights & Liberties",
+  "intro": true,
+  "note": "A short, lucid history of free speech and press doctrine for general readers.",
+  "essential": true
+ },
+ {
+  "id": "make-no-law",
+  "title": "Make No Law: The Sullivan Case and the First Amendment",
+  "authors": [
+   "Anthony Lewis"
+  ],
+  "year": 1991,
+  "publisher": "Random House",
+  "cat": "Rights & Liberties",
+  "note": "The story of New York Times v. Sullivan and the transformation of libel law.",
+  "essential": true
+ },
+ {
+  "id": "free-speech-meiklejohn",
+  "title": "Free Speech and Its Relation to Self-Government",
+  "authors": [
+   "Alexander Meiklejohn"
+  ],
+  "year": 1948,
+  "publisher": "Harper & Brothers",
+  "cat": "Rights & Liberties",
+  "note": "The foundational self-governance theory of the First Amendment.",
+  "essential": true
+ },
+ {
+  "id": "worthy-tradition",
+  "title": "A Worthy Tradition: Freedom of Speech in America",
+  "authors": [
+   "Harry Kalven Jr."
+  ],
+  "year": 1988,
+  "publisher": "Harper & Row",
+  "cat": "Rights & Liberties",
+  "note": "A masterful, posthumously published survey of free-speech doctrine.",
+  "essential": true
+ },
+ {
+  "id": "perilous-times",
+  "title": "Perilous Times: Free Speech in Wartime from the Sedition Act of 1798 to the War on Terrorism",
+  "authors": [
+   "Geoffrey R. Stone"
+  ],
+  "year": 2004,
+  "publisher": "W. W. Norton",
+  "cat": "Rights & Liberties",
+  "note": "Prize-winning history of how civil liberties have fared during national crises.",
+  "essential": true
+ },
+ {
+  "id": "divided-by-god",
+  "title": "Divided by God: America's Church-State Problem—and What We Should Do About It",
+  "authors": [
+   "Noah Feldman"
+  ],
+  "year": 2005,
+  "publisher": "Farrar, Straus and Giroux",
+  "cat": "Rights & Liberties",
+  "intro": true,
+  "note": "An accessible history of church-state conflict and a proposal for resolving it.",
+  "essential": true
+ },
+ {
+  "id": "liberty-of-conscience",
+  "title": "Liberty of Conscience: In Defense of America's Tradition of Religious Equality",
+  "authors": [
+   "Martha C. Nussbaum"
+  ],
+  "year": 2008,
+  "publisher": "Basic Books",
+  "cat": "Rights & Liberties",
+  "note": "A philosopher's account of religious liberty grounded in equal respect for conscience.",
+  "essential": true
+ },
+ {
+  "id": "gunfight",
+  "title": "Gunfight: The Battle over the Right to Bear Arms in America",
+  "authors": [
+   "Adam Winkler"
+  ],
+  "year": 2011,
+  "publisher": "W. W. Norton",
+  "cat": "Rights & Liberties",
+  "intro": true,
+  "note": "A balanced history of gun rights and gun control, built around the Heller litigation.",
+  "essential": true
+ },
+ {
+  "id": "second-amendment-biography",
+  "title": "The Second Amendment: A Biography",
+  "authors": [
+   "Michael Waldman"
+  ],
+  "year": 2014,
+  "publisher": "Simon & Schuster",
+  "cat": "Rights & Liberties",
+  "note": "Traces how the meaning of the Second Amendment changed over two centuries.",
+  "essential": true
+ },
+ {
+  "id": "race-racism-law",
+  "title": "Race, Racism, and American Law",
+  "authors": [
+   "Derrick A. Bell Jr."
+  ],
+  "year": 1973,
+  "publisher": "Little, Brown and Company",
+  "cat": "Rights & Liberties",
+  "note": "The pioneering text that helped launch critical race theory.",
+  "essential": true
+ },
+ {
+  "id": "abortion-clash-of-absolutes",
+  "title": "Abortion: The Clash of Absolutes",
+  "authors": [
+   "Laurence H. Tribe"
+  ],
+  "year": 1990,
+  "publisher": "W. W. Norton",
+  "cat": "Rights & Liberties",
+  "note": "A constitutional and historical analysis of the abortion debate.",
+  "essential": true
+ },
+ {
+  "id": "rights-talk",
+  "title": "Rights Talk: The Impoverishment of Political Discourse",
+  "authors": [
+   "Mary Ann Glendon"
+  ],
+  "year": 1991,
+  "publisher": "Free Press",
+  "cat": "Rights & Liberties",
+  "note": "A critique of American rights discourse as absolutist and individualistic.",
+  "essential": true
+ },
+ {
+  "id": "right-to-privacy",
+  "title": "The Right to Privacy",
+  "authors": [
+   "Ellen Alderman",
+   "Caroline Kennedy"
+  ],
+  "year": 1995,
+  "publisher": "Knopf",
+  "cat": "Rights & Liberties",
+  "intro": true,
+  "note": "Case stories illustrating the many strands of the constitutional right to privacy.",
+  "essential": true
+ },
+ {
+  "id": "takings-epstein",
+  "title": "Takings: Private Property and the Power of Eminent Domain",
+  "authors": [
+   "Richard A. Epstein"
+  ],
+  "year": 1985,
+  "publisher": "Harvard University Press",
+  "cat": "Rights & Liberties",
+  "intro": true,
+  "note": "The influential argument for reading the Takings Clause broadly to limit regulation.",
+  "essential": true
+ },
+ {
+  "id": "constitution-criminal-procedure",
+  "title": "The Constitution and Criminal Procedure: First Principles",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 1997,
+  "publisher": "Yale University Press",
+  "cat": "Rights & Liberties",
+  "intro": true,
+  "note": "Rethinks the Fourth, Fifth and Sixth Amendments from first principles.",
+  "essential": true
+ },
+ {
+  "id": "collapse-criminal-justice",
+  "title": "The Collapse of American Criminal Justice",
+  "authors": [
+   "William J. Stuntz"
+  ],
+  "year": 2011,
+  "publisher": "Harvard University Press",
+  "cat": "Rights & Liberties",
+  "note": "Argues constitutional criminal procedure contributed to mass incarceration.",
+  "essential": true
+ },
+ {
+  "id": "courting-death",
+  "title": "Courting Death: The Supreme Court and Capital Punishment",
+  "authors": [
+   "Carol S. Steiker",
+   "Jordan M. Steiker"
+  ],
+  "year": 2016,
+  "publisher": "Harvard University Press",
+  "cat": "Rights & Liberties",
+  "intro": true,
+  "note": "A history of the Court's regulation of the death penalty since the 1970s.",
+  "essential": true
+ },
+ {
+  "id": "right-to-vote",
+  "title": "The Right to Vote: The Contested History of Democracy in the United States",
+  "authors": [
+   "Alexander Keyssar"
+  ],
+  "year": 2000,
+  "publisher": "Basic Books",
+  "cat": "Democracy & Elections",
+  "intro": true,
+  "note": "The standard history of the expansion and contraction of the franchise.",
+  "essential": true
+ },
+ {
+  "id": "republic-lost",
+  "title": "Republic, Lost: How Money Corrupts Congress—and a Plan to Stop It",
+  "authors": [
+   "Lawrence Lessig"
+  ],
+  "year": 2011,
+  "publisher": "Twelve",
+  "cat": "Democracy & Elections",
+  "note": "A theory of 'dependence corruption' and the case for campaign finance reform.",
+  "essential": true
+ },
+ {
+  "id": "supreme-court-election-law",
+  "title": "The Supreme Court and Election Law: Judging Equality from Baker v. Carr to Bush v. Gore",
+  "authors": [
+   "Richard L. Hasen"
+  ],
+  "year": 2003,
+  "publisher": "NYU Press",
+  "cat": "Democracy & Elections",
+  "intro": true,
+  "note": "How the Court entered the 'political thicket' and what equality in voting has come to mean.",
+  "essential": true
+ },
+ {
+  "id": "chemerinsky-principles",
+  "title": "Constitutional Law: Principles and Policies",
+  "authors": [
+   "Erwin Chemerinsky"
+  ],
+  "year": 1997,
+  "publisher": "Aspen Publishing",
+  "cat": "Introductions & Primers",
+  "intro": true,
+  "note": "The standard student treatise, covering every major doctrine clearly and comprehensively.",
+  "essential": true
+ },
+ {
+  "id": "currie-primer",
+  "title": "The Constitution of the United States: A Primer for the People",
+  "authors": [
+   "David P. Currie"
+  ],
+  "year": 1988,
+  "publisher": "University of Chicago Press",
+  "cat": "Introductions & Primers",
+  "intro": true,
+  "note": "A short, plain-English walk through the Constitution's structure and rights.",
+  "essential": true
+ },
+ {
+  "id": "penguin-guide",
+  "title": "The Penguin Guide to the United States Constitution",
+  "authors": [
+   "Richard Beeman"
+  ],
+  "year": 2010,
+  "publisher": "Penguin Books",
+  "cat": "Introductions & Primers",
+  "intro": true,
+  "note": "An annotated text of the Constitution with a concise history and glossary.",
+  "essential": true
+ },
+ {
+  "id": "chemerinsky-federal-jurisdiction",
+  "title": "Federal Jurisdiction",
+  "authors": [
+   "Erwin Chemerinsky"
+  ],
+  "year": 1989,
+  "publisher": "Aspen Publishing",
+  "cat": "Introductions & Primers",
+  "intro": true,
+  "note": "The leading student guide to standing, justiciability and the power of the federal courts.",
+  "essential": true
+ },
+ {
+  "id": "american-constitutional-law",
+  "title": "American Constitutional Law",
+  "authors": [
+   "Laurence H. Tribe"
+  ],
+  "year": 1978,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "on-reading-the-constitution",
+  "title": "On Reading the Constitution",
+  "authors": [
+   "Laurence H. Tribe",
+   "Michael C. Dorf"
+  ],
+  "year": 1991,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-partial-constitution",
+  "title": "The Partial Constitution",
+  "authors": [
+   "Cass R. Sunstein"
+  ],
+  "year": 1993,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "radicals-in-robes",
+  "title": "Radicals in Robes",
+  "authors": [
+   "Cass R. Sunstein"
+  ],
+  "year": 2005,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "legal-reasoning-and-political-conflict",
+  "title": "Legal Reasoning and Political Conflict",
+  "authors": [
+   "Cass R. Sunstein"
+  ],
+  "year": 1996,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "how-judges-think",
+  "title": "How Judges Think",
+  "authors": [
+   "Richard A. Posner"
+  ],
+  "year": 2008,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "overcoming-law",
+  "title": "Overcoming Law",
+  "authors": [
+   "Richard A. Posner"
+  ],
+  "year": 1995,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "law-s-empire",
+  "title": "Law's Empire",
+  "authors": [
+   "Ronald Dworkin"
+  ],
+  "year": 1986,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "law-and-disagreement",
+  "title": "Law and Disagreement",
+  "authors": [
+   "Jeremy Waldron"
+  ],
+  "year": 1999,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-dignity-of-legislation",
+  "title": "The Dignity of Legislation",
+  "authors": [
+   "Jeremy Waldron"
+  ],
+  "year": 1999,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-concept-of-law",
+  "title": "The Concept of Law",
+  "authors": [
+   "H. L. A. Hart"
+  ],
+  "year": 1961,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-morality-of-law",
+  "title": "The Morality of Law",
+  "authors": [
+   "Lon L. Fuller"
+  ],
+  "year": 1964,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-supreme-court-and-the-idea-of-progress",
+  "title": "The Supreme Court and the Idea of Progress",
+  "authors": [
+   "Alexander M. Bickel"
+  ],
+  "year": 1970,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-morality-of-consent",
+  "title": "The Morality of Consent",
+  "authors": [
+   "Alexander M. Bickel"
+  ],
+  "year": 1975,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "constitutional-redemption",
+  "title": "Constitutional Redemption",
+  "authors": [
+   "Jack M. Balkin"
+  ],
+  "year": 2011,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-cycles-of-constitutional-time",
+  "title": "The Cycles of Constitutional Time",
+  "authors": [
+   "Jack M. Balkin"
+  ],
+  "year": 2020,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "constitutional-construction",
+  "title": "Constitutional Construction",
+  "authors": [
+   "Keith E. Whittington"
+  ],
+  "year": 1999,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "political-foundations-of-judicial-supremacy",
+  "title": "Political Foundations of Judicial Supremacy",
+  "authors": [
+   "Keith E. Whittington"
+  ],
+  "year": 2007,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "our-republican-constitution",
+  "title": "Our Republican Constitution",
+  "authors": [
+   "Randy E. Barnett"
+  ],
+  "year": 2016,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "originalism-and-the-good-constitution",
+  "title": "Originalism and the Good Constitution",
+  "authors": [
+   "John O. McGinnis",
+   "Michael B. Rappaport"
+  ],
+  "year": 2013,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "constitutional-originalism",
+  "title": "Constitutional Originalism: A Debate",
+  "authors": [
+   "Robert W. Bennett",
+   "Lawrence B. Solum"
+  ],
+  "year": 2011,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "judging-under-uncertainty",
+  "title": "Judging Under Uncertainty",
+  "authors": [
+   "Adrian Vermeule"
+  ],
+  "year": 2006,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "law-s-abnegation",
+  "title": "Law's Abnegation",
+  "authors": [
+   "Adrian Vermeule"
+  ],
+  "year": 2016,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "red-white-and-blue",
+  "title": "Red, White, and Blue: A Critical Analysis of Constitutional Law",
+  "authors": [
+   "Mark Tushnet"
+  ],
+  "year": 1988,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "weak-courts-strong-rights",
+  "title": "Weak Courts, Strong Rights",
+  "authors": [
+   "Mark Tushnet"
+  ],
+  "year": 2008,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "government-by-judiciary",
+  "title": "Government by Judiciary",
+  "authors": [
+   "Raoul Berger"
+  ],
+  "year": 1977,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "constitutional-self-government",
+  "title": "Constitutional Self-Government",
+  "authors": [
+   "Christopher L. Eisgruber"
+  ],
+  "year": 2001,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "we-the-people-volume-3",
+  "title": "We the People, Volume 3: The Civil Rights Revolution",
+  "authors": [
+   "Bruce Ackerman"
+  ],
+  "year": 2014,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-law-of-the-land",
+  "title": "The Law of the Land",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 2015,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "constitutional-faith",
+  "title": "Constitutional Faith",
+  "authors": [
+   "Sanford Levinson"
+  ],
+  "year": 1988,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "brennan-and-democracy",
+  "title": "Brennan and Democracy",
+  "authors": [
+   "Frank I. Michelman"
+  ],
+  "year": 1999,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "implementing-the-constitution",
+  "title": "Implementing the Constitution",
+  "authors": [
+   "Richard H. Fallon Jr."
+  ],
+  "year": 2001,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "cosmic-constitutional-theory",
+  "title": "Cosmic Constitutional Theory",
+  "authors": [
+   "J. Harvie Wilkinson III"
+  ],
+  "year": 2012,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "we-the-people",
+  "title": "We the People: A Progressive Reading of the Constitution for the Twenty-First Century",
+  "authors": [
+   "Erwin Chemerinsky"
+  ],
+  "year": 2018,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "originalism-as-faith",
+  "title": "Originalism as Faith",
+  "authors": [
+   "Eric J. Segall"
+  ],
+  "year": 2018,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "against-constitutional-originalism",
+  "title": "Against Constitutional Originalism",
+  "authors": [
+   "Jonathan Gienapp"
+  ],
+  "year": 2024,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "structure-and-relationship-in-constitutional-law",
+  "title": "Structure and Relationship in Constitutional Law",
+  "authors": [
+   "Charles L. Black Jr."
+  ],
+  "year": 1969,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "on-constitutional-disobedience",
+  "title": "On Constitutional Disobedience",
+  "authors": [
+   "Louis Michael Seidman"
+  ],
+  "year": 2012,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-second-bill-of-rights",
+  "title": "The Second Bill of Rights",
+  "authors": [
+   "Cass R. Sunstein"
+  ],
+  "year": 2004,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "law-and-judicial-duty",
+  "title": "Law and Judicial Duty",
+  "authors": [
+   "Philip Hamburger"
+  ],
+  "year": 2008,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-constitution-in-exile",
+  "title": "The Constitution in Exile",
+  "authors": [
+   "Andrew P. Napolitano"
+  ],
+  "year": 2006,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "constitutional-rot",
+  "title": "Constitutional Rot",
+  "authors": [
+   "Jack M. Balkin"
+  ],
+  "year": 2024,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "taking-back-the-constitution",
+  "title": "Taking Back the Constitution",
+  "authors": [
+   "Mark Tushnet"
+  ],
+  "year": 2020,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-constitution-of-liberty",
+  "title": "The Constitution of Liberty",
+  "authors": [
+   "Friedrich A. Hayek"
+  ],
+  "year": 1960,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "freedom-and-the-court",
+  "title": "Freedom and the Court",
+  "authors": [
+   "Henry J. Abraham"
+  ],
+  "year": 1967,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-federalist-society",
+  "title": "The Federalist Society: How Conservatives Took the Law Back from Liberals",
+  "authors": [
+   "Michael Avery",
+   "Danielle McLaughlin"
+  ],
+  "year": 2013,
+  "cat": "Theory & Interpretation",
+  "essential": false
+ },
+ {
+  "id": "the-framing-of-the-constitution-of-the-united-st",
+  "title": "The Framing of the Constitution of the United States",
+  "authors": [
+   "Max Farrand"
+  ],
+  "year": 1913,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-records-of-the-federal-convention-of-1787",
+  "title": "The Records of the Federal Convention of 1787",
+  "authors": [
+   "Max Farrand"
+  ],
+  "year": 1911,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "notes-of-debates-in-the-federal-convention-of-17",
+  "title": "Notes of Debates in the Federal Convention of 1787",
+  "authors": [
+   "James Madison"
+  ],
+  "year": 1840,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "what-the-anti-federalists-were-for",
+  "title": "What the Anti-Federalists Were For",
+  "authors": [
+   "Herbert J. Storing"
+  ],
+  "year": 1981,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-radicalism-of-the-american-revolution",
+  "title": "The Radicalism of the American Revolution",
+  "authors": [
+   "Gordon S. Wood"
+  ],
+  "year": 1991,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "empire-of-liberty",
+  "title": "Empire of Liberty",
+  "authors": [
+   "Gordon S. Wood"
+  ],
+  "year": 2009,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "american-scripture",
+  "title": "American Scripture",
+  "authors": [
+   "Pauline Maier"
+  ],
+  "year": 1997,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "founding-brothers",
+  "title": "Founding Brothers",
+  "authors": [
+   "Joseph J. Ellis"
+  ],
+  "year": 2000,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-quartet",
+  "title": "The Quartet",
+  "authors": [
+   "Joseph J. Ellis"
+  ],
+  "year": 2015,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "plain-honest-men",
+  "title": "Plain, Honest Men",
+  "authors": [
+   "Richard Beeman"
+  ],
+  "year": 2009,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "novus-ordo-seclorum",
+  "title": "Novus Ordo Seclorum",
+  "authors": [
+   "Forrest McDonald"
+  ],
+  "year": 1985,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-sacred-fire-of-liberty",
+  "title": "The Sacred Fire of Liberty",
+  "authors": [
+   "Lance Banning"
+  ],
+  "year": 1995,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "revolutionaries",
+  "title": "Revolutionaries: A New History of the Invention of America",
+  "authors": [
+   "Jack N. Rakove"
+  ],
+  "year": 2010,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-words-that-made-us",
+  "title": "The Words That Made Us",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 2021,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "our-declaration",
+  "title": "Our Declaration",
+  "authors": [
+   "Danielle Allen"
+  ],
+  "year": 2014,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "reconstruction",
+  "title": "Reconstruction: America's Unfinished Revolution",
+  "authors": [
+   "Eric Foner"
+  ],
+  "year": 1988,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "democracy-reborn",
+  "title": "Democracy Reborn",
+  "authors": [
+   "Garrett Epps"
+  ],
+  "year": 2006,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "no-state-shall-abridge",
+  "title": "No State Shall Abridge",
+  "authors": [
+   "Michael Kent Curtis"
+  ],
+  "year": 1986,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-fourteenth-amendment",
+  "title": "The Fourteenth Amendment: From Political Principle to Judicial Doctrine",
+  "authors": [
+   "William E. Nelson"
+  ],
+  "year": 1988,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-constitution-in-the-supreme-court",
+  "title": "The Constitution in the Supreme Court: The First Hundred Years",
+  "authors": [
+   "David P. Currie"
+  ],
+  "year": 1985,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-constitution-in-congress",
+  "title": "The Constitution in Congress: The Federalist Period",
+  "authors": [
+   "David P. Currie"
+  ],
+  "year": 1997,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-dred-scott-case",
+  "title": "The Dred Scott Case",
+  "authors": [
+   "Don E. Fehrenbacher"
+  ],
+  "year": 1978,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "slavery-and-the-founders",
+  "title": "Slavery and the Founders",
+  "authors": [
+   "Paul Finkelman"
+  ],
+  "year": 1996,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "no-property-in-man",
+  "title": "No Property in Man",
+  "authors": [
+   "Sean Wilentz"
+  ],
+  "year": 2018,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-crooked-path-to-abolition",
+  "title": "The Crooked Path to Abolition",
+  "authors": [
+   "James Oakes"
+  ],
+  "year": 2021,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "madison-s-hand",
+  "title": "Madison's Hand",
+  "authors": [
+   "Mary Sarah Bilder"
+  ],
+  "year": 2015,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "these-truths",
+  "title": "These Truths",
+  "authors": [
+   "Jill Lepore"
+  ],
+  "year": 2018,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "unruly-americans-and-the-origins-of-the-constitu",
+  "title": "Unruly Americans and the Origins of the Constitution",
+  "authors": [
+   "Woody Holton"
+  ],
+  "year": 2007,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "a-brilliant-solution",
+  "title": "A Brilliant Solution",
+  "authors": [
+   "Carol Berkin"
+  ],
+  "year": 2002,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "origins-of-the-fifth-amendment",
+  "title": "Origins of the Fifth Amendment",
+  "authors": [
+   "Leonard W. Levy"
+  ],
+  "year": 1968,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "emergence-of-a-free-press",
+  "title": "Emergence of a Free Press",
+  "authors": [
+   "Leonard W. Levy"
+  ],
+  "year": 1985,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "separation-of-church-and-state",
+  "title": "Separation of Church and State",
+  "authors": [
+   "Philip Hamburger"
+  ],
+  "year": 2002,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-plessy-case",
+  "title": "The Plessy Case",
+  "authors": [
+   "Charles A. Lofgren"
+  ],
+  "year": 1987,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "inventing-the-people",
+  "title": "Inventing the People",
+  "authors": [
+   "Edmund S. Morgan"
+  ],
+  "year": 1988,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "alexander-hamilton",
+  "title": "Alexander Hamilton",
+  "authors": [
+   "Ron Chernow"
+  ],
+  "year": 2004,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-other-founders",
+  "title": "The Other Founders",
+  "authors": [
+   "Saul Cornell"
+  ],
+  "year": 1999,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-second-creation",
+  "title": "The Second Creation",
+  "authors": [
+   "Jonathan Gienapp"
+  ],
+  "year": 2018,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-ideological-origins-of-american-federalism",
+  "title": "The Ideological Origins of American Federalism",
+  "authors": [
+   "Alison L. LaCroix"
+  ],
+  "year": 2010,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "until-justice-be-done",
+  "title": "Until Justice Be Done",
+  "authors": [
+   "Kate Masur"
+  ],
+  "year": 2021,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "a-legal-history-of-the-civil-war-and-reconstruct",
+  "title": "A Legal History of the Civil War and Reconstruction",
+  "authors": [
+   "Laura F. Edwards"
+  ],
+  "year": 2015,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-broken-constitution",
+  "title": "The Broken Constitution",
+  "authors": [
+   "Noah Feldman"
+  ],
+  "year": 2021,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-anti-federalist-papers",
+  "title": "The Anti-Federalist Papers",
+  "authors": [
+   "Ralph Ketcham"
+  ],
+  "year": 1986,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "democracy-in-america",
+  "title": "Democracy in America",
+  "authors": [
+   "Alexis de Tocqueville"
+  ],
+  "year": 1835,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "commentaries-on-the-constitution-of-the-united-s",
+  "title": "Commentaries on the Constitution of the United States",
+  "authors": [
+   "Joseph Story"
+  ],
+  "year": 1833,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-day-freedom-died",
+  "title": "The Day Freedom Died",
+  "authors": [
+   "Charles Lane"
+  ],
+  "year": 2008,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "separate",
+  "title": "Separate: The Story of Plessy v. Ferguson",
+  "authors": [
+   "Steve Luxenberg"
+  ],
+  "year": 2019,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "birthright-citizens",
+  "title": "Birthright Citizens",
+  "authors": [
+   "Martha S. Jones"
+  ],
+  "year": 2018,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-constitution",
+  "title": "The Constitution: A Biography",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 2005,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "the-summer-of-1787",
+  "title": "The Summer of 1787",
+  "authors": [
+   "David O. Stewart"
+  ],
+  "year": 2007,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "vanguard-of-the-revolution",
+  "title": "Vanguard of the Revolution",
+  "authors": [
+   "Richard R. Beeman"
+  ],
+  "year": 2013,
+  "cat": "History & Founding",
+  "essential": false
+ },
+ {
+  "id": "justices-presidents-and-senators",
+  "title": "Justices, Presidents, and Senators",
+  "authors": [
+   "Henry J. Abraham"
+  ],
+  "year": 1974,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "a-history-of-the-supreme-court",
+  "title": "A History of the Supreme Court",
+  "authors": [
+   "Bernard Schwartz"
+  ],
+  "year": 1993,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-warren-court-and-american-politics",
+  "title": "The Warren Court and American Politics",
+  "authors": [
+   "Lucas A. Powe Jr."
+  ],
+  "year": 2000,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-supreme-court-and-the-american-elite-1789-20",
+  "title": "The Supreme Court and the American Elite, 1789-2008",
+  "authors": [
+   "Lucas A. Powe Jr."
+  ],
+  "year": 2009,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-supreme-court",
+  "title": "The Supreme Court",
+  "authors": [
+   "William H. Rehnquist"
+  ],
+  "year": 1987,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-oath",
+  "title": "The Oath",
+  "authors": [
+   "Jeffrey Toobin"
+  ],
+  "year": 2012,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "supreme-conflict",
+  "title": "Supreme Conflict",
+  "authors": [
+   "Jan Crawford Greenburg"
+  ],
+  "year": 2007,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "becoming-justice-blackmun",
+  "title": "Becoming Justice Blackmun",
+  "authors": [
+   "Linda Greenhouse"
+  ],
+  "year": 2005,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-chief",
+  "title": "The Chief: The Life and Turbulent Times of Chief Justice John Roberts",
+  "authors": [
+   "Joan Biskupic"
+  ],
+  "year": 2019,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "sandra-day-o-connor",
+  "title": "Sandra Day O'Connor",
+  "authors": [
+   "Joan Biskupic"
+  ],
+  "year": 2005,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "scorpions",
+  "title": "Scorpions",
+  "authors": [
+   "Noah Feldman"
+  ],
+  "year": 2010,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "john-marshall",
+  "title": "John Marshall: Definer of a Nation",
+  "authors": [
+   "Jean Edward Smith"
+  ],
+  "year": 1996,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "john-marshall-and-the-heroic-age-of-the-supreme-",
+  "title": "John Marshall and the Heroic Age of the Supreme Court",
+  "authors": [
+   "R. Kent Newmyer"
+  ],
+  "year": 2001,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "learned-hand",
+  "title": "Learned Hand: The Man and the Judge",
+  "authors": [
+   "Gerald Gunther"
+  ],
+  "year": 1994,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-american-judicial-tradition",
+  "title": "The American Judicial Tradition",
+  "authors": [
+   "G. Edward White"
+  ],
+  "year": 1976,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "justice-brennan",
+  "title": "Justice Brennan: Liberal Champion",
+  "authors": [
+   "Seth Stern",
+   "Stephen Wermiel"
+  ],
+  "year": 2010,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "louis-d-brandeis",
+  "title": "Louis D. Brandeis: A Life",
+  "authors": [
+   "Melvin I. Urofsky"
+  ],
+  "year": 2009,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "my-own-words",
+  "title": "My Own Words",
+  "authors": [
+   "Ruth Bader Ginsburg"
+  ],
+  "year": 2016,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "my-beloved-world",
+  "title": "My Beloved World",
+  "authors": [
+   "Sonia Sotomayor"
+  ],
+  "year": 2013,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "my-grandfather-s-son",
+  "title": "My Grandfather's Son",
+  "authors": [
+   "Clarence Thomas"
+  ],
+  "year": 2007,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "five-chiefs",
+  "title": "Five Chiefs",
+  "authors": [
+   "John Paul Stevens"
+  ],
+  "year": 2011,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "making-our-democracy-work",
+  "title": "Making Our Democracy Work",
+  "authors": [
+   "Stephen Breyer"
+  ],
+  "year": 2010,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-supreme-court-and-the-attitudinal-model-revi",
+  "title": "The Supreme Court and the Attitudinal Model Revisited",
+  "authors": [
+   "Jeffrey A. Segal",
+   "Harold J. Spaeth"
+  ],
+  "year": 2002,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-choices-justices-make",
+  "title": "The Choices Justices Make",
+  "authors": [
+   "Lee Epstein",
+   "Jack Knight"
+  ],
+  "year": 1998,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-behavior-of-federal-judges",
+  "title": "The Behavior of Federal Judges",
+  "authors": [
+   "Lee Epstein",
+   "William M. Landes",
+   "Richard A. Posner"
+  ],
+  "year": 2013,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-rights-revolution",
+  "title": "The Rights Revolution",
+  "authors": [
+   "Charles R. Epp"
+  ],
+  "year": 1998,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-rise-of-the-conservative-legal-movement",
+  "title": "The Rise of the Conservative Legal Movement",
+  "authors": [
+   "Steven M. Teles"
+  ],
+  "year": 2008,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-most-democratic-branch",
+  "title": "The Most Democratic Branch",
+  "authors": [
+   "Jeffrey Rosen"
+  ],
+  "year": 2006,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "supreme-inequality",
+  "title": "Supreme Inequality",
+  "authors": [
+   "Adam Cohen"
+  ],
+  "year": 2020,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "injustices",
+  "title": "Injustices",
+  "authors": [
+   "Ian Millhiser"
+  ],
+  "year": 2015,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "in-the-balance",
+  "title": "In the Balance",
+  "authors": [
+   "Mark Tushnet"
+  ],
+  "year": 2013,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "uncertain-justice",
+  "title": "Uncertain Justice",
+  "authors": [
+   "Laurence Tribe",
+   "Joshua Matz"
+  ],
+  "year": 2014,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "storm-center",
+  "title": "Storm Center",
+  "authors": [
+   "David M. O'Brien"
+  ],
+  "year": 1986,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "a-people-s-history-of-the-supreme-court",
+  "title": "A People's History of the Supreme Court",
+  "authors": [
+   "Peter Irons"
+  ],
+  "year": 1999,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-oxford-companion-to-the-supreme-court-of-the",
+  "title": "The Oxford Companion to the Supreme Court of the United States",
+  "authors": [
+   "Kermit L. Hall"
+  ],
+  "year": 1992,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "making-civil-rights-law",
+  "title": "Making Civil Rights Law",
+  "authors": [
+   "Mark Tushnet"
+  ],
+  "year": 1994,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "thurgood-marshall",
+  "title": "Thurgood Marshall: American Revolutionary",
+  "authors": [
+   "Juan Williams"
+  ],
+  "year": 1998,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "democratic-justice",
+  "title": "Democratic Justice: Felix Frankfurter, the Supreme Court, and the Making of the Liberal Establishment",
+  "authors": [
+   "Brad Snyder"
+  ],
+  "year": 2022,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "ruth-bader-ginsburg",
+  "title": "Ruth Bader Ginsburg: A Life",
+  "authors": [
+   "Jane Sherron De Hart"
+  ],
+  "year": 2018,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-supreme-court-in-conference",
+  "title": "The Supreme Court in Conference",
+  "authors": [
+   "Del Dickson"
+  ],
+  "year": 2001,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "courtwatchers",
+  "title": "Courtwatchers",
+  "authors": [
+   "Clare Cushman"
+  ],
+  "year": 2011,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "closed-chambers",
+  "title": "Closed Chambers",
+  "authors": [
+   "Edward Lazarus"
+  ],
+  "year": 1998,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "nine-old-men",
+  "title": "Nine Old Men",
+  "authors": [
+   "Drew Pearson",
+   "Robert S. Allen"
+  ],
+  "year": 1936,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "hugo-black",
+  "title": "Hugo Black: A Biography",
+  "authors": [
+   "Roger K. Newman"
+  ],
+  "year": 1994,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "earl-warren",
+  "title": "Earl Warren: A Public Life",
+  "authors": [
+   "G. Edward White"
+  ],
+  "year": 1982,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "super-chief",
+  "title": "Super Chief: Earl Warren and His Supreme Court",
+  "authors": [
+   "Bernard Schwartz"
+  ],
+  "year": 1983,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-majesty-of-the-law",
+  "title": "The Majesty of the Law",
+  "authors": [
+   "Sandra Day O'Connor"
+  ],
+  "year": 2003,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "scalia",
+  "title": "Scalia: A Court of One",
+  "authors": [
+   "Bruce Allen Murphy"
+  ],
+  "year": 2014,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-court-and-the-world",
+  "title": "The Court and the World",
+  "authors": [
+   "Stephen Breyer"
+  ],
+  "year": 2015,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "deciding-to-decide",
+  "title": "Deciding to Decide",
+  "authors": [
+   "H. W. Perry Jr."
+  ],
+  "year": 1991,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-supreme-court-in-the-early-republic",
+  "title": "The Supreme Court in the Early Republic",
+  "authors": [
+   "William R. Casto"
+  ],
+  "year": 1995,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "packing-the-court",
+  "title": "Packing the Court",
+  "authors": [
+   "James MacGregor Burns"
+  ],
+  "year": 2009,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "supreme-power",
+  "title": "Supreme Power: Franklin Roosevelt vs. the Supreme Court",
+  "authors": [
+   "Jeff Shesol"
+  ],
+  "year": 2010,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-supreme-court-reborn",
+  "title": "The Supreme Court Reborn",
+  "authors": [
+   "William E. Leuchtenburg"
+  ],
+  "year": 1995,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "justice-for-all",
+  "title": "Justice for All: Earl Warren and the Nation He Made",
+  "authors": [
+   "Jim Newton"
+  ],
+  "year": 2006,
+  "cat": "The Supreme Court",
+  "essential": false
+ },
+ {
+  "id": "the-president",
+  "title": "The President: Office and Powers",
+  "authors": [
+   "Edward S. Corwin"
+  ],
+  "year": 1940,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "presidential-power",
+  "title": "Presidential Power",
+  "authors": [
+   "Richard E. Neustadt"
+  ],
+  "year": 1960,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "constitutional-conflicts-between-congress-and-th",
+  "title": "Constitutional Conflicts Between Congress and the President",
+  "authors": [
+   "Louis Fisher"
+  ],
+  "year": 1985,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-national-security-constitution",
+  "title": "The National Security Constitution",
+  "authors": [
+   "Harold Hongju Koh"
+  ],
+  "year": 1990,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-powers-of-war-and-peace",
+  "title": "The Powers of War and Peace",
+  "authors": [
+   "John Yoo"
+  ],
+  "year": 2005,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-terror-presidency",
+  "title": "The Terror Presidency",
+  "authors": [
+   "Jack Goldsmith"
+  ],
+  "year": 2007,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "power-and-constraint",
+  "title": "Power and Constraint",
+  "authors": [
+   "Jack Goldsmith"
+  ],
+  "year": 2012,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-decline-and-fall-of-the-american-republic",
+  "title": "The Decline and Fall of the American Republic",
+  "authors": [
+   "Bruce Ackerman"
+  ],
+  "year": 2010,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "imperial-from-the-beginning",
+  "title": "Imperial from the Beginning",
+  "authors": [
+   "Saikrishna Bangalore Prakash"
+  ],
+  "year": 2015,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-living-presidency",
+  "title": "The Living Presidency",
+  "authors": [
+   "Saikrishna Bangalore Prakash"
+  ],
+  "year": 2020,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "congress-s-constitution",
+  "title": "Congress's Constitution",
+  "authors": [
+   "Josh Chafetz"
+  ],
+  "year": 2017,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-administrative-threat",
+  "title": "The Administrative Threat",
+  "authors": [
+   "Philip Hamburger"
+  ],
+  "year": 2017,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "creating-the-administrative-constitution",
+  "title": "Creating the Administrative Constitution",
+  "authors": [
+   "Jerry L. Mashaw"
+  ],
+  "year": 2012,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "tocqueville-s-nightmare",
+  "title": "Tocqueville's Nightmare",
+  "authors": [
+   "Daniel R. Ernst"
+  ],
+  "year": 2014,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "impeachment",
+  "title": "Impeachment: The Constitutional Problems",
+  "authors": [
+   "Raoul Berger"
+  ],
+  "year": 1973,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-federal-impeachment-process",
+  "title": "The Federal Impeachment Process",
+  "authors": [
+   "Michael J. Gerhardt"
+  ],
+  "year": 1996,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "to-end-a-presidency",
+  "title": "To End a Presidency",
+  "authors": [
+   "Laurence Tribe",
+   "Joshua Matz"
+  ],
+  "year": 2018,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "enhancing-government",
+  "title": "Enhancing Government: Federalism for the 21st Century",
+  "authors": [
+   "Erwin Chemerinsky"
+  ],
+  "year": 2008,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-upside-down-constitution",
+  "title": "The Upside-Down Constitution",
+  "authors": [
+   "Michael S. Greve"
+  ],
+  "year": 2012,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-implosion-of-american-federalism",
+  "title": "The Implosion of American Federalism",
+  "authors": [
+   "Robert F. Nagel"
+  ],
+  "year": 2001,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-robust-federation",
+  "title": "The Robust Federation",
+  "authors": [
+   "Jenna Bednar"
+  ],
+  "year": 2009,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "terror-in-the-balance",
+  "title": "Terror in the Balance",
+  "authors": [
+   "Eric A. Posner",
+   "Adrian Vermeule"
+  ],
+  "year": 2007,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "madison-s-nightmare",
+  "title": "Madison's Nightmare",
+  "authors": [
+   "Peter M. Shane"
+  ],
+  "year": 2009,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-politics-presidents-make",
+  "title": "The Politics Presidents Make",
+  "authors": [
+   "Stephen Skowronek"
+  ],
+  "year": 1993,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "power-without-persuasion",
+  "title": "Power without Persuasion",
+  "authors": [
+   "William G. Howell"
+  ],
+  "year": 2003,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-federal-courts-and-the-federal-system",
+  "title": "The Federal Courts and the Federal System",
+  "authors": [
+   "Henry M. Hart Jr.",
+   "Herbert Wechsler"
+  ],
+  "year": 1953,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "delegating-powers",
+  "title": "Delegating Powers",
+  "authors": [
+   "David Epstein",
+   "Sharyn O'Halloran"
+  ],
+  "year": 1999,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "building-a-new-american-state",
+  "title": "Building a New American State",
+  "authors": [
+   "Stephen Skowronek"
+  ],
+  "year": 1982,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-constitution-and-the-conduct-of-foreign-poli",
+  "title": "The Constitution and the Conduct of Foreign Policy",
+  "authors": [
+   "Louis Henkin"
+  ],
+  "year": 1972,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "foreign-affairs-and-the-united-states-constituti",
+  "title": "Foreign Affairs and the United States Constitution",
+  "authors": [
+   "Louis Henkin"
+  ],
+  "year": 1996,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-price-of-federalism",
+  "title": "The Price of Federalism",
+  "authors": [
+   "Paul E. Peterson"
+  ],
+  "year": 1995,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "separation-of-powers-and-good-government",
+  "title": "Separation of Powers and Good Government",
+  "authors": [
+   "Bradford P. Wilson"
+  ],
+  "year": 1994,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "executive-privilege",
+  "title": "Executive Privilege: A Constitutional Myth",
+  "authors": [
+   "Raoul Berger"
+  ],
+  "year": 1974,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "unchecked-and-unbalanced",
+  "title": "Unchecked and Unbalanced",
+  "authors": [
+   "Frederick A. O. Schwarz Jr.",
+   "Aziz Z. Huq"
+  ],
+  "year": 2007,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "lincoln-and-the-court",
+  "title": "Lincoln and the Court",
+  "authors": [
+   "Brian McGinty"
+  ],
+  "year": 2008,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "the-age-of-deference",
+  "title": "The Age of Deference",
+  "authors": [
+   "David Rudenstine"
+  ],
+  "year": 2016,
+  "cat": "Structure & Powers",
+  "essential": false
+ },
+ {
+  "id": "free-speech-in-the-united-states",
+  "title": "Free Speech in the United States",
+  "authors": [
+   "Zechariah Chafee Jr."
+  ],
+  "year": 1941,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "free-speech",
+  "title": "Free Speech: A Philosophical Enquiry",
+  "authors": [
+   "Frederick Schauer"
+  ],
+  "year": 1982,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "democracy-and-the-problem-of-free-speech",
+  "title": "Democracy and the Problem of Free Speech",
+  "authors": [
+   "Cass R. Sunstein"
+  ],
+  "year": 1993,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "constitutional-domains",
+  "title": "Constitutional Domains",
+  "authors": [
+   "Robert C. Post"
+  ],
+  "year": 1995,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-soul-of-the-first-amendment",
+  "title": "The Soul of the First Amendment",
+  "authors": [
+   "Floyd Abrams"
+  ],
+  "year": 2017,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "hate",
+  "title": "Hate: Why We Should Resist It with Free Speech, Not Censorship",
+  "authors": [
+   "Nadine Strossen"
+  ],
+  "year": 2018,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-harm-in-hate-speech",
+  "title": "The Harm in Hate Speech",
+  "authors": [
+   "Jeremy Waldron"
+  ],
+  "year": 2012,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "free-speech-in-its-forgotten-years",
+  "title": "Free Speech in Its Forgotten Years",
+  "authors": [
+   "David M. Rabban"
+  ],
+  "year": 1997,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-tolerant-society",
+  "title": "The Tolerant Society",
+  "authors": [
+   "Lee C. Bollinger"
+  ],
+  "year": 1986,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-system-of-freedom-of-expression",
+  "title": "The System of Freedom of Expression",
+  "authors": [
+   "Thomas I. Emerson"
+  ],
+  "year": 1970,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "minnesota-rag",
+  "title": "Minnesota Rag",
+  "authors": [
+   "Fred W. Friendly"
+  ],
+  "year": 1981,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "foreordained-failure",
+  "title": "Foreordained Failure",
+  "authors": [
+   "Steven D. Smith"
+  ],
+  "year": 1995,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "religion-and-the-constitution",
+  "title": "Religion and the Constitution",
+  "authors": [
+   "Kent Greenawalt"
+  ],
+  "year": 2006,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "religious-freedom-and-the-constitution",
+  "title": "Religious Freedom and the Constitution",
+  "authors": [
+   "Christopher L. Eisgruber",
+   "Lawrence G. Sager"
+  ],
+  "year": 2007,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-establishment-clause",
+  "title": "The Establishment Clause",
+  "authors": [
+   "Leonard W. Levy"
+  ],
+  "year": 1986,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "religion-and-the-american-constitutional-experim",
+  "title": "Religion and the American Constitutional Experiment",
+  "authors": [
+   "John Witte Jr."
+  ],
+  "year": 2000,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "defending-american-religious-neutrality",
+  "title": "Defending American Religious Neutrality",
+  "authors": [
+   "Andrew Koppelman"
+  ],
+  "year": 2013,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-godless-constitution",
+  "title": "The Godless Constitution",
+  "authors": [
+   "Isaac Kramnick",
+   "R. Laurence Moore"
+  ],
+  "year": 1996,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "race-crime-and-the-law",
+  "title": "Race, Crime, and the Law",
+  "authors": [
+   "Randall Kennedy"
+  ],
+  "year": 1997,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "silent-covenants",
+  "title": "Silent Covenants",
+  "authors": [
+   "Derrick Bell"
+  ],
+  "year": 2004,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-color-of-law",
+  "title": "The Color of Law",
+  "authors": [
+   "Richard Rothstein"
+  ],
+  "year": 2017,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-new-jim-crow",
+  "title": "The New Jim Crow",
+  "authors": [
+   "Michelle Alexander"
+  ],
+  "year": 2010,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "covering",
+  "title": "Covering: The Hidden Assault on Our Civil Rights",
+  "authors": [
+   "Kenji Yoshino"
+  ],
+  "year": 2006,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "reasoning-from-race",
+  "title": "Reasoning from Race",
+  "authors": [
+   "Serena Mayeri"
+  ],
+  "year": 2011,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "justice-at-war",
+  "title": "Justice at War",
+  "authors": [
+   "Peter Irons"
+  ],
+  "year": 1983,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "critical-race-theory",
+  "title": "Critical Race Theory: The Key Writings That Formed the Movement",
+  "authors": [
+   "Kimberlé Crenshaw"
+  ],
+  "year": 1995,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "for-discrimination",
+  "title": "For Discrimination: Race, Affirmative Action, and the Law",
+  "authors": [
+   "Randall Kennedy"
+  ],
+  "year": 2013,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-schoolhouse-gate",
+  "title": "The Schoolhouse Gate",
+  "authors": [
+   "Justin Driver"
+  ],
+  "year": 2018,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "unfinished-business",
+  "title": "Unfinished Business: Racial Equality in American History",
+  "authors": [
+   "Michael J. Klarman"
+  ],
+  "year": 2007,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "brown-v-board-of-education",
+  "title": "Brown v. Board of Education: A Civil Rights Milestone and Its Troubled Legacy",
+  "authors": [
+   "James T. Patterson"
+  ],
+  "year": 2001,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "liberty-and-sexuality",
+  "title": "Liberty and Sexuality",
+  "authors": [
+   "David J. Garrow"
+  ],
+  "year": 1994,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "before-roe-v-wade",
+  "title": "Before Roe v. Wade",
+  "authors": [
+   "Linda Greenhouse",
+   "Reva B. Siegel"
+  ],
+  "year": 2010,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "after-roe",
+  "title": "After Roe",
+  "authors": [
+   "Mary Ziegler"
+  ],
+  "year": 2015,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "dollars-for-life",
+  "title": "Dollars for Life",
+  "authors": [
+   "Mary Ziegler"
+  ],
+  "year": 2022,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "from-the-closet-to-the-altar",
+  "title": "From the Closet to the Altar",
+  "authors": [
+   "Michael J. Klarman"
+  ],
+  "year": 2012,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "love-wins",
+  "title": "Love Wins",
+  "authors": [
+   "Debbie Cenziper",
+   "Jim Obergefell"
+  ],
+  "year": 2016,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "understanding-privacy",
+  "title": "Understanding Privacy",
+  "authors": [
+   "Daniel J. Solove"
+  ],
+  "year": 2008,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "speak-now",
+  "title": "Speak Now: Marriage Equality on Trial",
+  "authors": [
+   "Kenji Yoshino"
+  ],
+  "year": 2015,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "a-well-regulated-militia",
+  "title": "A Well-Regulated Militia",
+  "authors": [
+   "Saul Cornell"
+  ],
+  "year": 2006,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "to-keep-and-bear-arms",
+  "title": "To Keep and Bear Arms",
+  "authors": [
+   "Joyce Lee Malcolm"
+  ],
+  "year": 1994,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "that-every-man-be-armed",
+  "title": "That Every Man Be Armed",
+  "authors": [
+   "Stephen P. Halbrook"
+  ],
+  "year": 1984,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "chokehold",
+  "title": "Chokehold",
+  "authors": [
+   "Paul Butler"
+  ],
+  "year": 2017,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "unwarranted",
+  "title": "Unwarranted: Policing Without Permission",
+  "authors": [
+   "Barry Friedman"
+  ],
+  "year": 2017,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "miranda",
+  "title": "Miranda: Crime, Law, and Politics",
+  "authors": [
+   "Liva Baker"
+  ],
+  "year": 1983,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-death-penalty",
+  "title": "The Death Penalty: An American History",
+  "authors": [
+   "Stuart Banner"
+  ],
+  "year": 2002,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "peculiar-institution",
+  "title": "Peculiar Institution",
+  "authors": [
+   "David Garland"
+  ],
+  "year": 2010,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "just-mercy",
+  "title": "Just Mercy",
+  "authors": [
+   "Bryan Stevenson"
+  ],
+  "year": 2014,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "charged",
+  "title": "Charged",
+  "authors": [
+   "Emily Bazelon"
+  ],
+  "year": 2019,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "economic-liberties-and-the-constitution",
+  "title": "Economic Liberties and the Constitution",
+  "authors": [
+   "Bernard H. Siegan"
+  ],
+  "year": 1980,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "rehabilitating-lochner",
+  "title": "Rehabilitating Lochner",
+  "authors": [
+   "David E. Bernstein"
+  ],
+  "year": 2011,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-constitution-besieged",
+  "title": "The Constitution Besieged",
+  "authors": [
+   "Howard Gillman"
+  ],
+  "year": 1993,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-grasping-hand",
+  "title": "The Grasping Hand",
+  "authors": [
+   "Ilya Somin"
+  ],
+  "year": 2015,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "little-pink-house",
+  "title": "Little Pink House",
+  "authors": [
+   "Jeff Benedict"
+  ],
+  "year": 2009,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-guardian-of-every-other-right",
+  "title": "The Guardian of Every Other Right",
+  "authors": [
+   "James W. Ely Jr."
+  ],
+  "year": 1992,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "shielded",
+  "title": "Shielded: How the Police Became Untouchable",
+  "authors": [
+   "Joanna Schwartz"
+  ],
+  "year": 2023,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "americans-in-waiting",
+  "title": "Americans in Waiting",
+  "authors": [
+   "Hiroshi Motomura"
+  ],
+  "year": 2006,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "citizenship-without-consent",
+  "title": "Citizenship Without Consent",
+  "authors": [
+   "Peter H. Schuck",
+   "Rogers M. Smith"
+  ],
+  "year": 1985,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "civic-ideals",
+  "title": "Civic Ideals",
+  "authors": [
+   "Rogers M. Smith"
+  ],
+  "year": 1997,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "feminism-unmodified",
+  "title": "Feminism Unmodified",
+  "authors": [
+   "Catharine A. MacKinnon"
+  ],
+  "year": 1987,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "sexual-harassment-of-working-women",
+  "title": "Sexual Harassment of Working Women",
+  "authors": [
+   "Catharine A. MacKinnon"
+  ],
+  "year": 1979,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "no-constitutional-right-to-be-ladies",
+  "title": "No Constitutional Right to Be Ladies",
+  "authors": [
+   "Linda K. Kerber"
+  ],
+  "year": 1998,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "enemy-aliens",
+  "title": "Enemy Aliens",
+  "authors": [
+   "David Cole"
+  ],
+  "year": 2003,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "all-the-laws-but-one",
+  "title": "All the Laws but One",
+  "authors": [
+   "William H. Rehnquist"
+  ],
+  "year": 1998,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-original-meaning-of-the-fourteenth-amendment",
+  "title": "The Original Meaning of the Fourteenth Amendment",
+  "authors": [
+   "Randy E. Barnett",
+   "Evan D. Bernick"
+  ],
+  "year": 2021,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "privacy-and-freedom",
+  "title": "Privacy and Freedom",
+  "authors": [
+   "Alan F. Westin"
+  ],
+  "year": 1967,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-alchemy-of-race-and-rights",
+  "title": "The Alchemy of Race and Rights",
+  "authors": [
+   "Patricia J. Williams"
+  ],
+  "year": 1991,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "engines-of-liberty",
+  "title": "Engines of Liberty",
+  "authors": [
+   "David Cole"
+  ],
+  "year": 2016,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "brown-at-50",
+  "title": "Brown at 50",
+  "authors": [
+   "Derrick Bell"
+  ],
+  "year": 2004,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "kill-all-the-lawyers",
+  "title": "Kill All the Lawyers",
+  "authors": [
+   "Robert C. Post"
+  ],
+  "year": 2001,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-fourth-amendment",
+  "title": "The Fourth Amendment: Its History and Interpretation",
+  "authors": [
+   "Thomas K. Clancy"
+  ],
+  "year": 2008,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "equal-protection",
+  "title": "Equal Protection: Race and Gender",
+  "authors": [
+   "Kenneth L. Karst"
+  ],
+  "year": 1989,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "belonging-to-america",
+  "title": "Belonging to America",
+  "authors": [
+   "Kenneth L. Karst"
+  ],
+  "year": 1989,
+  "cat": "Rights & Liberties",
+  "essential": false
+ },
+ {
+  "id": "the-voting-wars",
+  "title": "The Voting Wars",
+  "authors": [
+   "Richard L. Hasen"
+  ],
+  "year": 2012,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "plutocrats-united",
+  "title": "Plutocrats United",
+  "authors": [
+   "Richard L. Hasen"
+  ],
+  "year": 2016,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "election-meltdown",
+  "title": "Election Meltdown",
+  "authors": [
+   "Richard L. Hasen"
+  ],
+  "year": 2020,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "the-law-of-democracy",
+  "title": "The Law of Democracy",
+  "authors": [
+   "Samuel Issacharoff",
+   "Pamela S. Karlan",
+   "Richard H. Pildes"
+  ],
+  "year": 1998,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "give-us-the-ballot",
+  "title": "Give Us the Ballot",
+  "authors": [
+   "Ari Berman"
+  ],
+  "year": 2015,
+  "cat": "Democracy & Elections",
+  "essential": true
+ },
+ {
+  "id": "one-person-no-vote",
+  "title": "One Person, No Vote",
+  "authors": [
+   "Carol Anderson"
+  ],
+  "year": 2018,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "colorblind-injustice",
+  "title": "Colorblind Injustice",
+  "authors": [
+   "J. Morgan Kousser"
+  ],
+  "year": 1999,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "the-tyranny-of-the-majority",
+  "title": "The Tyranny of the Majority",
+  "authors": [
+   "Lani Guinier"
+  ],
+  "year": 1994,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "whose-votes-count",
+  "title": "Whose Votes Count?",
+  "authors": [
+   "Abigail M. Thernstrom"
+  ],
+  "year": 1987,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "citizens-divided",
+  "title": "Citizens Divided",
+  "authors": [
+   "Robert C. Post"
+  ],
+  "year": 2014,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "corruption-in-america",
+  "title": "Corruption in America",
+  "authors": [
+   "Zephyr Teachout"
+  ],
+  "year": 2014,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "let-the-people-pick-the-president",
+  "title": "Let the People Pick the President",
+  "authors": [
+   "Jesse Wegman"
+  ],
+  "year": 2020,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "why-do-we-still-have-the-electoral-college",
+  "title": "Why Do We Still Have the Electoral College?",
+  "authors": [
+   "Alexander Keyssar"
+  ],
+  "year": 2020,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "how-democracies-die",
+  "title": "How Democracies Die",
+  "authors": [
+   "Steven Levitsky",
+   "Daniel Ziblatt"
+  ],
+  "year": 2018,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "how-to-save-a-constitutional-democracy",
+  "title": "How to Save a Constitutional Democracy",
+  "authors": [
+   "Tom Ginsburg",
+   "Aziz Z. Huq"
+  ],
+  "year": 2018,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "how-democratic-is-the-american-constitution",
+  "title": "How Democratic Is the American Constitution?",
+  "authors": [
+   "Robert A. Dahl"
+  ],
+  "year": 2001,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "the-fight-to-vote",
+  "title": "The Fight to Vote",
+  "authors": [
+   "Michael Waldman"
+  ],
+  "year": 2016,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "too-close-to-call",
+  "title": "Too Close to Call",
+  "authors": [
+   "Jeffrey Toobin"
+  ],
+  "year": 2001,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "supreme-injustice",
+  "title": "Supreme Injustice",
+  "authors": [
+   "Alan M. Dershowitz"
+  ],
+  "year": 2001,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "breaking-the-deadlock",
+  "title": "Breaking the Deadlock",
+  "authors": [
+   "Richard A. Posner"
+  ],
+  "year": 2001,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "bush-v-gore",
+  "title": "Bush v. Gore: The Question of Legitimacy",
+  "authors": [
+   "Bruce Ackerman"
+  ],
+  "year": 2002,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "the-semisovereign-people",
+  "title": "The Semisovereign People",
+  "authors": [
+   "E. E. Schattschneider"
+  ],
+  "year": 1960,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "tyranny-of-the-minority",
+  "title": "Tyranny of the Minority",
+  "authors": [
+   "Steven Levitsky",
+   "Daniel Ziblatt"
+  ],
+  "year": 2023,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "ratf-ked",
+  "title": "Ratf**ked",
+  "authors": [
+   "David Daley"
+  ],
+  "year": 2016,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "gerrymandering-in-america",
+  "title": "Gerrymandering in America",
+  "authors": [
+   "Anthony J. McGann"
+  ],
+  "year": 2016,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "bending-toward-justice",
+  "title": "Bending Toward Justice",
+  "authors": [
+   "Gary May"
+  ],
+  "year": 2013,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "quiet-revolution-in-the-south",
+  "title": "Quiet Revolution in the South",
+  "authors": [
+   "Chandler Davidson",
+   "Bernard Grofman"
+  ],
+  "year": 1994,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "democracy-and-its-critics",
+  "title": "Democracy and Its Critics",
+  "authors": [
+   "Robert A. Dahl"
+  ],
+  "year": 1989,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "the-unprecedented-2000-election",
+  "title": "The Unprecedented 2000 Election",
+  "authors": [
+   "Howard Gillman"
+  ],
+  "year": 2001,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "faithless-elector",
+  "title": "Faithless Elector",
+  "authors": [
+   "Robert Alexander"
+  ],
+  "year": 2019,
+  "cat": "Democracy & Elections",
+  "essential": false
+ },
+ {
+  "id": "the-dynamic-constitution",
+  "title": "The Dynamic Constitution",
+  "authors": [
+   "Richard H. Fallon Jr."
+  ],
+  "year": 2004,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "the-words-we-live-by",
+  "title": "The Words We Live By",
+  "authors": [
+   "Linda R. Monk"
+  ],
+  "year": 2003,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "the-annotated-u-s-constitution-and-declaration-o",
+  "title": "The Annotated U.S. Constitution and Declaration of Independence",
+  "authors": [
+   "Jack N. Rakove"
+  ],
+  "year": 2009,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "constitutional-myths",
+  "title": "Constitutional Myths",
+  "authors": [
+   "Ray Raphael"
+  ],
+  "year": 2013,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "the-heritage-guide-to-the-constitution",
+  "title": "The Heritage Guide to the Constitution",
+  "authors": [
+   "Edwin Meese III"
+  ],
+  "year": 2005,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "why-the-constitution-matters",
+  "title": "Why the Constitution Matters",
+  "authors": [
+   "Mark Tushnet"
+  ],
+  "year": 2010,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "the-u-s-constitution",
+  "title": "The U.S. Constitution: A Very Short Introduction",
+  "authors": [
+   "David J. Bodenhamer"
+  ],
+  "year": 2018,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "a-more-perfect-constitution",
+  "title": "A More Perfect Constitution",
+  "authors": [
+   "Larry J. Sabato"
+  ],
+  "year": 2007,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "the-constitution-today",
+  "title": "The Constitution Today",
+  "authors": [
+   "Akhil Reed Amar"
+  ],
+  "year": 2016,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "understanding-the-constitution",
+  "title": "Understanding the Constitution",
+  "authors": [
+   "Jack W. Peltason"
+  ],
+  "year": 1949,
+  "cat": "Introductions & Primers",
+  "essential": false
+ },
+ {
+  "id": "the-american-supreme-court",
+  "title": "The American Supreme Court",
+  "authors": [
+   "Robert G. McCloskey"
+  ],
+  "year": 1960,
+  "cat": "The Supreme Court",
+  "essential": true
+ }
 ]

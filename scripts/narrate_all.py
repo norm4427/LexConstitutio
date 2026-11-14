@@ -15,7 +15,7 @@ from narration_sections import sections, R2_DIR
 
 VOICE = 'am_michael'
 # Public base URL of the Cloudflare R2 bucket that serves ../audio-r2/ (set once the bucket exists).
-R2_BASE = os.environ.get('LC_AUDIO_BASE', '')
+R2_BASE = os.environ.get('LC_AUDIO_BASE', 'https://pub-089c6ee41cc346d297cba419495a243c.r2.dev')
 
 
 def manifest():

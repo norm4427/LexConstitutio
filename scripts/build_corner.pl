@@ -195,6 +195,53 @@ push @sources, { id => 'statutes', name => 'Acts of the First Congresses (Statut
 for (@{ $sources[-1]{paras} }) { $_->{loc} =~ s/^1th/1st/; $_->{loc} =~ s/^2th/2nd/; $_->{loc} =~ s/^3th/3rd/ }
 printf "%-10s %5d acts\n", 'statutes', scalar @statutes;
 
+# ------------------------------------------------------------------ more commentaries (constitution.org transcriptions of public-domain texts)
+# William Rawle, A View of the Constitution of the United States (2d ed. 1829)
+{
+  my @paras;
+  for my $f (sort glob "$R/rawle/rawle_*.htm") {
+    my $h = utf8dec(slurp($f));
+    my ($title) = $h =~ /<title>[^<]*?(Chapter [^<]+|Introduction[^<]*)<\/title>/i;
+    next unless $title;
+    $title =~ s/\s+/ /g;
+    my ($n) = $f =~ /rawle_(\d+)/;
+    push @paras, map { { loc => $title, t => $_, url => "https://constitution.org/2-Authors/wr/rawle_$n.htm" } } paras_from_html($h);
+  }
+  push @sources, { id => 'rawle', name => 'Rawle, A View of the Constitution of the United States', author => 'William Rawle', year => '1825; 2d ed. 1829',
+    desc => 'An early systematic commentary by a Philadelphia lawyer who knew many of the framers; often cited on the original understanding.', url => 'https://constitution.org/2-Authors/wr/rawle-00.htm', paras => \@paras };
+  printf "%-10s %5d paragraphs\n", 'rawle', scalar @paras;
+}
+# Thomas M. Cooley, The General Principles of Constitutional Law in the United States (3d ed. 1898)
+{
+  my $h = utf8dec(slurp("$R/cooley/pcl.htm"));
+  my (@paras, $chap);
+  while ($h =~ /<p\b[^>]*>(.*?)<\/p>|<h\d[^>]*>(.*?)<\/h\d>/gis) {
+    my $t = dehtml($1 // $2);
+    if (defined $2 || $t =~ /^CHAPTER [IVXL]+\.?\s/) { $chap = $t if $t =~ /CHAPTER|SECTION/i; next }
+    next if length($t) < 60 || $t =~ /\.{6,}/;
+    push @paras, { loc => ($chap // 'General Principles'), t => $t, url => 'https://constitution.org/1-Constitution/cmt/tmc/pcl.htm' };
+  }
+  push @sources, { id => 'cooley', name => 'Cooley, The General Principles of Constitutional Law', author => 'Thomas M. Cooley', year => '1880; 3d ed. 1898',
+    desc => "The leading late-nineteenth-century treatise by the Michigan chief justice, author of Constitutional Limitations.", url => 'https://constitution.org/1-Constitution/cmt/tmc/pcl.htm', paras => \@paras };
+  printf "%-10s %5d paragraphs\n", 'cooley', scalar @paras;
+}
+# The Anti-Federalists: Brutus, the Federal Farmer, Centinel, Cato
+{
+  my %SERIES = (brutus => 'Brutus', fedfar => 'Federal Farmer', centin => 'Centinel', cato_ => 'Cato');
+  my @paras;
+  for my $s (qw(brutus fedfar centin cato_)) {
+    for my $f (sort glob "$R/antifederalist/$s\[0-9][0-9]*.htm") {
+      my ($n) = $f =~ /(\d+)\.htm$/;
+      next if $n == 0;
+      (my $base = $f) =~ s{.*/}{};
+      push @paras, map { { loc => "$SERIES{$s} No. " . ($n + 0), t => $_, url => "https://constitution.org/1-Constitution/afp/$base" } } paras_from_html(slurp($f));
+    }
+  }
+  push @sources, { id => 'antifederalist', name => 'The Anti-Federalists: Brutus, the Federal Farmer, Centinel and Cato', author => 'Various (pseudonymous)', year => '1787–1788',
+    desc => 'The leading essays against ratification, which pressed the case for a bill of rights and limited federal power.', url => 'https://constitution.org/afp.htm', paras => \@paras };
+  printf "%-10s %5d paragraphs\n", 'antifed', scalar @paras;
+}
+
 # ------------------------------------------------------------------ passage selection
 # Score each paragraph per topic: strong-phrase hits count triple; require >= 3 points (or a strong phrase).
 my (%passages, %index, %srcRank, $pid);

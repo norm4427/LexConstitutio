@@ -95,12 +95,22 @@ for my $c (@cases) {
 @pool = sort { $b->[0] <=> $a->[0] } @pool;
 my @chosen = @pool[0 .. ($#pool < $TARGET - 1 ? $#pool : $TARGET - 1)];
 
+# ---- The Basics: 100 core cases = the Beginner's Guide landmarks first, then the most-cited (later Supreme Court citations)
+my $impact = eval { load('docs/data/case_impact.js')->{c} } || {};
+my %guideCase; for my $t (@{ $G->{topics} }) { $guideCase{ $_->{id} } = 1 for grep { $_->{id} } @{ $t->{cases} } }
+my @basicsOrder = sort { ($guideCase{ $b->[1]{id} } ? 1 : 0) <=> ($guideCase{ $a->[1]{id} } ? 1 : 0) || (($impact->{ $b->[1]{id} } // [0, 0, -1])->[2] <=> ($impact->{ $a->[1]{id} } // [0, 0, -1])->[2]) } @chosen;
+my %basics = map { $_->[1]{id} => 1 } @basicsOrder[0 .. ($#basicsOrder < 99 ? $#basicsOrder : 99)];
+$_->[2] = [ 'basics', @{ $_->[2] } ] for grep { $basics{ $_->[1]{id} } } @chosen;
+unshift @decks, { id => 'basics', title => 'The Basics: 100 essential cases', group => 'The Basics' };
+
 # ---- cards
 sub tidy { my $s = shift // ''; $s =~ s/\s+/ /g; $s =~ s/^\s+|\s+$//g; $s =~ s/&/&amp;/g; $s =~ s/</&lt;/g; $s =~ s/>/&gt;/g; $s }
 sub holding_text {
   my $c = shift; my $s = tidy($c->{ds} // '');
   $s =~ s/^A case in which the Court (held|decided|ruled|found|concluded|considered|addressed|examined|determined|established)/The Court $1/i;
-  $s =~ s/^A case (?:that|in which)\s*/The Court /i;
+  $s =~ s/^A case (?:that|in which) the Court (?:that\s+)?(?=(?:the|a|an|he|she|both|[A-Z])\b)/The Court held that /;   # Oyez dropped the verb
+  $s =~ s/^A case (?:that|in which) the Court that\s+/The Court held that /i;
+  $s =~ s/^A case (?:that|in which) (?:the Court )?/The Court /i;
   return $s;
 }
 sub mask_parties {

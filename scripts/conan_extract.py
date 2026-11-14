@@ -10,7 +10,7 @@ Requires: pip install pymupdf
 import glob, html, json, re
 import pymupdf
 
-ID_RX = re.compile(r'^(?:Art[IVX]+(?:\.S\d+)?(?:\.C\d+)?|Amdt\d+(?:\.S\d+)?|Intro|Preamble)(?:\.\d+)*$')
+ID_RX = re.compile(r'^(?:Art[IVX]+(?:\.S\d+)?(?:\.C\d+)?|Amdt\d+(?:\.S\d+)?|Intro|Preamble|Pre)(?:\.\d+)*$')
 LABEL_RX = re.compile(r'^(Article [IVX]+(, Section \d+)?(, Clause \d+)?|[A-Z][a-z]+(-[A-Z]?[a-z]+)? Amendment(, Section \d+)?|Preamble):\s*$')
 RUNNING_RX = re.compile(r'^(ARTICLE [IVX]+|[A-Z\-]+ AMENDMENT|PREAMBLE|INTRODUCTION)\b')
 

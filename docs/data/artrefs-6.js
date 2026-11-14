@@ -1,0 +1,1 @@
+window.ARTREFS_6={};

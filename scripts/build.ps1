@@ -1,6 +1,7 @@
 # Parses the raw harvest in data/raw/, keeps constitutional-law articles,
 # tags them with the topic taxonomy, and writes docs/data/articles.js.
-# Usage: powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+# Usage: powershell -ExecutionPolicy Bypass -File scripts/build.ps1 [-SourcesFile scripts/sources.tsv] [-OutFile docs/data/articles.js]
+param([string]$SourcesFile = 'scripts/sources.tsv', [string]$OutFile = 'docs/data/articles.js')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
@@ -17,6 +18,8 @@ $taxonomy = @(
   @{ id='method';     name='Interpretive Method & Precedent'; parent='theory'; re='constitutional interpretation|interpretive (method|theory)|textualis|stare decisis|precedent|liquidation|constitutional (theory|meaning)|tradition' }
   @{ id='history';    name='Constitutional History';       parent='theory'; re='founding|framers|ratification|constitutional convention|reconstruction|federalist (papers|no)|antebellum|anti-?federalist|eighteenth[- ]century|nineteenth[- ]century|legal history' }
   @{ id='amendment';  name='Amendment & Popular Constitutionalism'; parent='theory'; re='popular constitutionalism|article v\b|constitutional amendment|amendment process|departmentalism|constitutional politics|constitutional change' }
+  @{ id='jurisprudence'; name='Jurisprudence & Legal Philosophy'; parent='theory'; re='jurisprudential|philosophy of law|general jurisprudence|analytic jurisprudence|legal (philosophy|theory|positivism|realism|process)|natural (law|rights)|positivis|\bmorality\b|moral (theory|philosophy|reading)|philosoph|\bdworkin|\brawls|h\.\s?l\.\s?a\.\s?hart|liberalism|republicanism|political theory|theory of justice' }
+  @{ id='democratic'; name='Constitutionalism & Democratic Theory'; parent='theory'; re='democra(cy|tic theory|tic legitimacy)|legitimacy|constitutionalism|rule of law|popular sovereignty|self-government|consent of the governed|social contract|constitutional (culture|order|design|failure|crisis|crises|norms|hardball|rot)' }
   @{ id='general';    name='General Theory & Doctrine';    parent='theory'; re='constitutional (law|norms|legitimacy|values|order|culture|doctrine|adjudication)|legitimacy|jurisprudence|rule of law|constitutionalism|judicial (restraint|activism|role)|balancing|levels of scrutiny|tiers of scrutiny' }
 
   @{ id='structure';  name='Structure & Powers';           parent=$null; desc='The allocation of power among the branches and between the nation and the states.' }
@@ -25,6 +28,7 @@ $taxonomy = @(
   @{ id='congress';   name='Congressional Power';          parent='structure'; re='commerce clause|spending (clause|power)|necessary and proper|enumerated powers?|taxing power|congressional power|legislative power|section 5\b|enforcement power|congress' }
   @{ id='admin';      name='Administrative State';         parent='structure'; re='administrative (state|law|agenc)|\bagenc(y|ies)\b|chevron|loper bright|nondelegation|major questions|rulemaking|independent agenc' }
   @{ id='federalism'; name='Federalism & State Sovereignty'; parent='structure'; re='federalism|state sovereignty|tenth amendment|anti-?commandeering|commandeering|sovereign immunity|eleventh amendment|preemption|dormant commerce|states.? rights|interstate' }
+  @{ id='econreg'; name='Taxation & Economic Regulation'; parent='structure'; re='\btax(es|ation|ing|payers?)?\b|income tax|public utilit|\butility rates?\b|\binsurance\b|\blicens(e|es|ing)\b|price (control|fixing|regulation)|minimum wage|\bwages?\b|labor (law|union|dispute|relations)|\bunions?\b|railroad|\bmonopol|antitrust|economic regulation|police power|business regulation|chain stores?|trading stamps|occupational' }
   @{ id='article3';   name='Judicial Power & Justiciability'; parent='structure'; re='article iii|\bstanding\b|justiciab|political question|jurisdiction[- ]stripping|judicial power|mootness|ripeness|case or controversy|cases or controversies|universal (injunction|remed)|nationwide injunction|federal courts?' }
   @{ id='court';      name='Supreme Court & Judicial Review'; parent='structure'; re='supreme court|judicial review|judicial supremacy|court[- ]packing|shadow docket|emergency docket|interim docket|equity docket|\bjustices?\b|marbury|countermajoritarian|judicial (selection|appointment|nomination)' }
 
@@ -56,12 +60,13 @@ $leaves = $taxonomy | Where-Object { $_.parent }
 $conlawRx = New-Rx ('constitution|first amendment|second amendment|fourth amendment|fifth amendment|sixth amendment|eighth amendment|ninth amendment|tenth amendment|eleventh amendment|thirteenth amendment|fourteenth amendment|fifteenth amendment|bill of rights|equal protection|due process|establishment clause|free exercise|commerce clause|spending clause|separation of powers|supreme court|judicial review|article iii|article ii\b|federalism|free speech|freedom of speech|takings clause|originalis|nondelegation|appointments clause|war powers|habeas|qualified immunity|section 1983|state action|gerrymander|voting rights|unitary executive|anticommandeering|sovereign immunity|justiciab|political question')
 $junkRx = New-Rx '^(front matter|back matter|table of contents|masthead|contents|index|issue information|editorial board|errata|erratum|in memoriam|dedication|foreword|preface|announcement|staff|cover|title page|annual index|board of editors|volume information|books received|notes on contributors|recent publications|books recently published)\b|^volume \d+.*(index|contents)'
 
-$conlawJournals = @('concomm','hclq','wmborj')
+$conlawJournals = @('concomm','hclq','wmborj','djclpp','scr')
 
 function Clean([string]$s) {
   if (-not $s) { return '' }
   $s = [System.Web.HttpUtility]::HtmlDecode(($s -replace '<[^>]+>', ' '))
-  $s = $s -replace '\[(&hellip;|…|\.\.\.)\]', '…' -replace '\s+', ' '
+  $ell = [string][char]0x2026   # an ellipsis; written as a code point because Windows PowerShell reads this file as Windows-1252
+  $s = $s -replace ('\[(&hellip;|' + $ell + '|\.\.\.)\]'), $ell -replace '\s+', ' '
   $s.Trim()
 }
 function FlipName([string]$n) {
@@ -75,7 +80,7 @@ function FlipName([string]$n) {
   $n
 }
 
-$sources = Get-Content scripts/sources.tsv | Where-Object { $_.Trim() } | ForEach-Object {
+$sources = Get-Content $SourcesFile | Where-Object { $_.Trim() } | ForEach-Object {
   $f = $_ -split "`t"; [pscustomobject]@{ id=$f[0]; kind=$f[1]; host=$f[2]; set=$f[3]; name=$f[4] }
 }
 
@@ -133,10 +138,12 @@ function Add-Article($src, $title, $authors, $abstract, $date, $url, $pdf, $subj
   $topics = @($scores.GetEnumerator() | Sort-Object Value -Descending | Where-Object { $_.Value -ge 2 } | Select-Object -First 4 | ForEach-Object { $_.Key })
   if ($topics.Count -eq 0 -and $scores.Count) { $topics = @($scores.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 1 | ForEach-Object { $_.Key }) }
   if ($topics.Count -eq 0) { $topics = @('general') }
+  # 'general' matches phrases like "Constitutional Law" in thousands of note titles: keep it only when nothing more specific applies
+  if ($topics.Count -gt 1 -and $topics -contains 'general') { $topics = @($topics | Where-Object { $_ -ne 'general' }) }
 
   $year = $null
   if ($date -match '(\d{4})') { $year = [int]$Matches[1] }
-  if ($abstract.Length -gt 1100) { $abstract = $abstract.Substring(0, 1100) -replace '\s+\S*$', '' ; $abstract += '…' }
+  if ($abstract.Length -gt 1100) { $abstract = $abstract.Substring(0, 1100) -replace '\s+\S*$', '' ; $abstract += [string][char]0x2026 }
   $kw = @($subjects | Where-Object { $src.kind -ne 'openalex' } | Where-Object { $_ -and $_.Length -lt 60 } | Select-Object -Unique -First 8)
 
   $o = [ordered]@{ id = ('{0}-{1}' -f $src.id, $articles.Count); t = $title; a = @($authors | Where-Object { $_ } | ForEach-Object { FlipName $_ }); y = $year; j = $src.id; ab = $abstract; u = $url }
@@ -252,7 +259,7 @@ $payload = [ordered]@{
 }
 New-Item -ItemType Directory -Force docs/data | Out-Null
 $json = $payload | ConvertTo-Json -Depth 6 -Compress
-[IO.File]::WriteAllText((Join-Path $root 'docs/data/articles.js'), "window.CL_DATA=$json;", (New-Object Text.UTF8Encoding $false))
+[IO.File]::WriteAllText((Join-Path $root $OutFile), "window.CL_DATA=$json;", (New-Object Text.UTF8Encoding $false))
 [IO.File]::WriteAllLines((Join-Path $root 'data/wp_needed.txt'), [string[]]$wpNeeded)
 Write-Host ("Wrote {0} articles; {1} WordPress articles still need bylines (run scripts/enrich.sh)" -f $articles.Count, $wpNeeded.Count)
 $journals | Format-Table name, count -AutoSize | Out-String | Write-Host

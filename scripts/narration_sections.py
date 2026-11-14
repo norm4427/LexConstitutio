@@ -2,7 +2,8 @@
 
 Each section: {'id', 'kind', 'title', 'paras': [html strings], 'pidx': [page element index per para] (optional), 'out': path}.
 Paragraph indexes in the audio's timing file refer to positions in 'paras':
-  guide/<topic>       0 title, 1 tagline, 2 the Wikipedia overview ("The short version")  -> docs/audio/guide/<topic>
+  guide/<topic>       0 title, 1 tagline, then the foundations section (basics, clauses, Constitution Annotated overview);
+                      each piece points at its page element (see the comment in sections())    -> docs/audio/guide/<topic>
   doctrine/<section>  0 title, then n+1 for the n-th element matching "p, li, .testbox-h" in the section body, in page
                       order (a list item's own text and its sub-items are separate pieces; both point at their element)
                                                                                            -> docs/audio/doctrine/<section>
@@ -60,11 +61,40 @@ def blocks(html):
 def sections(kinds=('guide', 'doctrine', 'conan')):
     out = []
     if 'guide' in kinds:
+        F = load('foundations')['topics']
+        K = {c['id']: c for c in load('constitution')['clauses']}
         for t in load('guide')['topics']:
-            wiki = [((t.get('wiki') or {}).get('text') or '').strip()]   # the page shows the overview as one paragraph
-            wiki = [w for w in wiki if w]
+            # the page's foundations section, in page order; element n+2 is the n-th "h2, h3, p:not(.attrib), .found-clause"
+            # inside section.found (0 is the title, 1 the tagline); see renderGuideTopic in docs/app.js
+            paras, pidx, n = [t['title'] + '.', t.get('tagline') or ''], [0, 1], 1
+            def add(text, count=True):
+                nonlocal n
+                n += 1
+                text = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', text or '')).strip()
+                if text:
+                    paras.append(text if re.search(r'[.!?:;]["”)]?$', text) else text + '.'); pidx.append(n)
+            f = F.get(t['id'])
+            if f:
+                if f['basics']:
+                    add('The basics')
+                    for sec in f['basics']:
+                        if sec.get('h'):
+                            add(sec['h'])
+                        for p in sec['paras']:
+                            add(p)
+                cls = [K[c] for c in f.get('clauses') or [] if c in K]
+                if cls:
+                    add('In the Constitution')
+                    for c in cls:
+                        hl = c['hl'] if len(c['hl']) <= 420 else re.sub(r'\s+\S*$', '', c['hl'][:420])
+                        add(f"{c['loc']}, {c['name']}: {hl}")
+                ov = next((c['conan']['overview'] for c in cls if (c.get('conan') or {}).get('overview')), None)
+                if ov:
+                    add('How the Court has read it')
+                    for p in ov['paras'][:3]:
+                        add(p)
             out.append({'id': f"guide/{t['id']}", 'kind': 'guide', 'title': t['title'],
-                        'paras': [t['title'] + '.', t.get('tagline') or ''] + wiki, 'out': f"docs/audio/guide/{t['id']}"})
+                        'paras': paras, 'pidx': pidx, 'out': f"docs/audio/guide/{t['id']}"})
     if 'doctrine' in kinds:
         for p in load('advanced')['parts']:
             for s in p['sections']:

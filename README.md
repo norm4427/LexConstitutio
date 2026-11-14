@@ -11,7 +11,14 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 - **Beginner's Guide:** 20 beginner topics (overview, Wex link, explainer videos, landmark cases, starter books and articles), followed by an advanced doctrine section in 14 parts and 52 sections. The advanced section has original doctrinal summaries, black-letter tests, 179 linked cases, and excerpts from the opinions (`scripts/advanced/*.md`).
 - **Originalist's Corner:** 37 topics with passages from Blackstone, Tucker, Story, Kent, Vattel, Locke, The Federalist, Madison's Notes, founding documents and the acts of the first five Congresses, plus an on-site library of full texts.
 - **Quizzes:** 5 multiple-choice questions at the end of each beginner topic, and 4–8 Socratic-style case questions at the end of each advanced part (`scripts/quizzes/*.txt` → `build_quizzes.pl`). Answers show explanations, and the best score is kept in the browser.
-- **Quiz Me!:** 1,794 spaced-repetition flashcards for 560 essential Supreme Court cases in 20 topic decks. Cards are graded Again / Hard / Good / Easy (Anki-style SM-2 scheduling), with daily limits, sibling burying and per-profile progress in localStorage (export/import to move devices), plus a stats view. "What did the Court decide?" answers have three parts: Background (Oyez facts of the case, including what the law at issue says), Ruling (Oyez description and conclusion, plus the vote) and Importance (the advanced-section notes, the Constitution Annotated, and Congressional Research Service Legal Sidebars published after the decision; both public domain). Oyez text is CC BY-NC 4.0, so it is credited and linked on every card and the site must stay non-commercial.
+- **Statutes (in Supreme Court):** 137 federal statutes the Court has interpreted, each with a multi-paragraph summary (Wikipedia, CC BY-SA), its Congress, public law and Statutes at Large citation, a link to its text (uscode.house.gov, GovInfo or Wikisource), area tags, and the cases that turned on it (Supreme Court Database statute codes) or name it (case summaries and Oyez facts). Statute names in case summaries show a two-sentence description on hover and link to the statute page (`build_statutes.py`).
+- **Learning Center:** flashcards and games.
+  - *Flashcards:* "The Basics" (the 100 most important cases), the topic decks, and "Every case, term by term": a deck for each Term with every other decided case that has an Oyez summary, grouped by Chief Justice (`build_flashcards_terms.py`; loaded only when a Term deck is opened).
+  - *Games* (essential cases only): Match-up, Choose the Ruling (decoys are the ruling reversed plus other cases' rulings on the same subject, at least as long as the real answer), Overruled, Current Events (cases on the current docket), Who Wrote It?, and Timeline (`build_games.py`). Best scores are kept in the browser.
+- **Narration:** a Listen button on each guide topic and advanced section plays a Kokoro (open-weight) narration and highlights each paragraph as it is read; click a paragraph to jump to it. Names and terms are checked against Wikipedia, Wiktionary and the CMU dictionary first (`pron_scan.py`, `narrate_all.py`). Constitution Annotated narration is written to `../audio-r2/` and plays once a public bucket URL is set in `LC_AUDIO_BASE`.
+- **Annotated Constitution (Originalist's Corner):** every clause opens a panel with an overview, the Constitution Annotated commentary, leading cases by impact, scholarship, founding-era commentary and early statutes (`build_constitution.py`), and a word inspector with Johnson (1755), Webster (1828) and Bouvier (1856) definitions (`build_dictionaries.py`).
+- **Article pages:** a side pane lists the Supreme Court cases and indexed articles named in the article's title and abstract. The repositories serve full-text PDFs behind bot protection, so full text is not scanned.
+- **Topic flashcards (Learning Center):** 1,794 spaced-repetition flashcards for 560 essential Supreme Court cases in 20 topic decks. Cards are graded Again / Hard / Good / Easy (Anki-style SM-2 scheduling), with daily limits, sibling burying and per-profile progress in localStorage (export/import to move devices), plus a stats view. "What did the Court decide?" answers have three parts: Background (Oyez facts of the case, including what the law at issue says), Ruling (Oyez description and conclusion, plus the vote) and Importance (the advanced-section notes, the Constitution Annotated, and Congressional Research Service Legal Sidebars published after the decision; both public domain). Oyez text is CC BY-NC 4.0, so it is credited and linked on every card and the site must stay non-commercial.
 - **Books:** 76 curated major works (`scripts/books.json`) with covers, Goodreads ratings, matched law review book reviews, and Amazon, publisher, Goodreads and Open Library links. Guide topics link 1–2 introductory books each.
 - **My list:** a saved bibliography with Bluebook and BibTeX export.
 
@@ -31,6 +38,12 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 | Constitution Annotated (CRS / Library of Congress, GovInfo PDFs, public domain) | In-depth commentary in the advanced section | `conan_extract.py` (needs `pip install pymupdf`), `build_conan.pl`, `conan_map.tsv` |
 | Open Library API | Book covers, ISBNs, page counts | `books.sh` |
 | Goodreads search suggestions (unofficial; Goodreads has no public API) | Book ratings, descriptions | `books.sh` |
+| Open Library, Goodreads, Google Books, Amazon catalog images | The sharpest available cover for each book | `book_covers.py` |
+| Wikipedia (CC BY-SA), uscode.house.gov, GovInfo, Wikisource | Statute summaries and text links | `build_statutes.py` |
+| Wex (Cornell LII, CC BY-NC-SA) and the U.S. Courts glossary | Hover definitions in the Beginner's Guide | `build_glossary.py` |
+| OpenStax *American Government 3e* (CC BY 4.0) | The basics in each guide topic | `build_foundations.py` |
+| LEME (Johnson 1755, CC BY 4.0), Webster 1828 and Bouvier 1856 (public domain) | Founding-era word inspector | `build_dictionaries.py` |
+| National Archives transcription, Constitution Annotated | Annotated Constitution | `build_constitution.py`, `clauses.py` |
 
 `scripts/sources.tsv` lists the journals. `scripts/guide.json` defines the guide topics and their landmark cases. `scripts/yt_queries.tsv` defines the lecture searches.
 
@@ -63,6 +76,19 @@ perl scripts/build_flashcards.pl       # writes flashcards.js (run after build_e
 perl scripts/flag_reviews.pl           # confirms book reviews via Open Library so they leave the article rankings
 bash scripts/books_impact.sh && perl scripts/books_impact_merge.pl   # citation counts for books (Books tab only)
 bash scripts/docket.sh && perl scripts/build_docket.pl   # current docket, calendar, briefs (re-run weekly during the Term)
+python scripts/fix_citations.py         # real citations for "584 U.S. ___" placeholders; corrects mistyped S. Ct. volumes
+python scripts/oyez_fetch_all.py        # caches Oyez records for every case without a summary (slow; resumable)
+python scripts/build_flashcards_terms.py   # writes fc-terms.js and fc-court-*.js (term-by-term decks)
+python scripts/build_games.py           # writes games.js and essential.js
+python scripts/build_constitution.py    # writes constitution.js (annotated Constitution)
+python scripts/build_dictionaries.py    # writes founding-dict.js
+python scripts/build_glossary.py        # writes glossary.js
+python scripts/build_foundations.py     # writes foundations.js (OpenStax basics for each guide topic)
+python scripts/build_statutes.py        # writes statutes.js (Wikipedia is rate-limited; the script backs off and caches)
+python scripts/book_covers.py           # picks the sharpest cover for each book (cached)
+python scripts/pron_scan.py && python scripts/narrate_all.py guide doctrine   # narration (CPU; hours). Then: python scripts/narrate_all.py --manifest
+python scripts/fix_text.py              # LAST: repairs mojibake, adds ellipses to cut-off abstracts, drops non-abstracts, tidies text
+sh scripts/stamp.sh                     # version stamps so browsers load the new files
 ```
 
 OpenAlex works without an API key, but unkeyed requests share a small daily budget per IP address. If `openalex.sh` starts returning errors, wait a day or add `&api_key=…` to its URL.
@@ -104,3 +130,30 @@ python scripts/narrate_all.py guide doctrine   # docs/audio/ (in the repo)
 python scripts/narrate_all.py conan    # ../audio-r2/ (Constitution Annotated, for Cloudflare R2)
 ```
 Unverified words are listed in data/raw/pron/unverified.tsv; add corrections to scripts/pronounce_manual.tsv.
+
+## Post-build fixes and additions
+
+```
+python scripts/fix_titles.py           # ALL-CAPS article titles -> title case (after build.ps1)
+python scripts/retopic.py              # Jurisprudence, Democratic Theory, Taxation & Economic Regulation; "General" only as a fallback
+python scripts/fix_citations.py        # "584 U.S. ___" -> real page (SCDB) or the S. Ct. citation; then rebuild flashcards
+```
+
+### Additional journals (high-impact articles only)
+
+`scripts/sources_new.tsv` lists 39 more journals (Law Review Commons, WordPress sites, OpenAlex). Only articles whose
+OpenAlex citations reach the 75th percentile of the existing index for their decade (minimum 3) are added.
+
+```
+SOURCES=scripts/sources_new.tsv bash scripts/harvest.sh
+bash scripts/openalex.sh scr hjlpp uwlr utahlr smulr lcp jclc && perl scripts/openalex_flatten.pl
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -SourcesFile scripts/sources_new.tsv -OutFile data/raw/new_articles.js
+python scripts/cite_lookup.py          # title lookups, ~20 per request; re-run daily until done (or set OPENALEX_KEY)
+python scripts/merge_new.py            # re-runnable; replaces earlier merges of these journals
+```
+
+### Books
+
+`scripts/books.json` holds the curated essentials (`essential: true`) plus about 300 more (`python scripts/books_more.py`).
+`bash scripts/books.sh` fetches Open Library and Goodreads data; `perl scripts/build_books.pl` builds books.js and drops
+non-essential books that Open Library cannot verify; then `perl scripts/books_impact_merge.pl`.

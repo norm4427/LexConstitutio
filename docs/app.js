@@ -476,6 +476,7 @@
         ${rel.length ? `<h2>Related articles</h2><div class="cards">${rel.map(b => card(b)).join('')}</div>` : ''}
       </div>
       <aside>
+        <div class="panel" id="art-mentions" hidden><h4>Mentioned in this article</h4><div class="art-mentions-body"></div></div>
         <div class="panel"><h4>Details</h4>
           <dl class="kv">
             <dt>Journal</dt><dd>${esc(j?.name)}</dd>
@@ -508,6 +509,60 @@
       navigator.clipboard.writeText(mode === 'bb' ? plainCite(a) : bibtex(a)).then(() => toast('Citation copied'));
     });
     document.getElementById('save-article').addEventListener('click', e => { toggleSave(a.id); e.currentTarget.textContent = saved.has(a.id) ? '★ Saved' : '☆ Save to my list'; });
+    articleMentions(a);
+  }
+  // Supreme Court cases and indexed articles named in an article's title, abstract and keywords (the full text sits behind
+  // the repositories' download protection, so it is not scanned)
+  let artTitleIdx = null, landmarkShort = null;
+  const normWords = t => t.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean);
+  function articleMentions(a) {
+    const token = routeToken;
+    const text = [a.t, a.ab || '', (a.kw || []).join('; ')].join(' . ');
+    Promise.all([loadData('scotus', 'SCOTUS'), loadData('case_impact', 'CASE_IMPACT'), loadData('essential', 'ESSENTIAL')]).then(([S, I, E]) => {
+      if (token !== routeToken) return;
+      if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
+      const byCite = new Map(S.cases.filter(c => c.cit).map(c => [c.cit, c]));
+      const cases = new Map();
+      for (const m of text.matchAll(/\b(\d{1,3}) U\.\s?S\. (\d{1,4})\b/g)) { const c = byCite.get(`${m[1]} U.S. ${m[2]}`); if (c) cases.set(c.id, c); }
+      citedCases(S, text, null).forEach(c => cases.set(c.id, c));
+      // landmark cases are often named by one party alone ("After Dobbs", "post-Bruen")
+      if (!landmarkShort) {
+        const STOP = new Set('United States State Board City County Department Commission Federal National American New People Bank Company Corporation Ex Parte Re In The Town School Village Trustees Railroad Pennsylvania Virginia California Texas Ohio Florida Georgia Alabama Arizona Kansas Michigan Missouri Nebraska Louisiana Maryland Massachusetts Minnesota Mississippi Montana Nevada Oklahoma Oregon Tennessee Washington Wisconsin Colorado Connecticut Illinois Indiana Iowa Kentucky Carolina Jersey York Hampshire Island Dakota Mexico Arkansas Delaware Hawaii Idaho Maine Utah Vermont Wyoming Alaska Thomas Kennedy Jackson Harlan Marshall Stevens Scalia Roberts Alito Gorsuch Kavanaugh Barrett Sotomayor Kagan Ginsburg Breyer Souter Brennan Rehnquist Burger Warren Black Douglas Frankfurter Holmes Brandeis Taft Story Taney Field Miller Johnson Smith Brown Jones Williams Davis Wilson Allen Martin Moore Hill Lee Young Clark Lewis White Gray Green Hall Wood Ward Ross Morgan'.split(' '));
+        const ess = new Set(E);
+        const top = S.cases.filter(c => /\sv\.\s/.test(c.n) && (ess.has(c.id) || I.c[c.id])).sort((x, y) => ess.has(y.id) - ess.has(x.id) || (I.c[y.id] || [0, 0, 0])[2] - (I.c[x.id] || [0, 0, 0])[2]).slice(0, ess.size + 200);
+        const count = new Map(), pick = new Map();
+        for (const c of top) {
+          // the petitioner's name, or the respondent's when the petitioner is generic ("New York State Rifle ... v. Bruen")
+          const ok = w => w && (w.length >= 4 || w === 'Roe') && !STOP.has(w);
+          const [p1, p2] = c.n.replace(/\s*\(\d\)$/, '').split(/\s+v\.\s+/).map(x => (x.replace(/^(?:The|In re|Ex parte)\s+/, '').match(/^([A-Z][a-z’']+)/) || [])[1]);
+          const w = ok(p1) ? p1 : ok(p2) && c.n.split(/\s+v\.\s+/)[1].trim().split(/\s+/).length <= 2 ? p2 : null;
+          if (!w) continue;
+          count.set(w, (count.get(w) || 0) + 1);
+          if (!pick.has(w)) pick.set(w, c);
+        }
+        landmarkShort = [...pick].filter(([w]) => count.get(w) === 1).map(([w, c]) => [new RegExp(String.raw`(?<!Justice |Judge |Professor )\b` + w + String.raw`(?![\w’'-]| v\.)`), c]);
+      }
+      const authors = (a.a || []).join(' ');
+      for (const [rx, c] of landmarkShort) if (!cases.has(c.id) && rx.test(text) && !rx.test(authors)) cases.set(c.id, c);
+      if (!artTitleIdx) {
+        artTitleIdx = new Map();
+        for (const b of articles) {
+          const w = normWords(b.t);
+          if (w.length < 5 || w.filter(x => !/^(a|an|the|of|and|in|on|to|for|is|as|at|by|or|from|with)$/.test(x)).length < 3) continue;
+          const k = w.slice(0, 4).join(' ');
+          if (!artTitleIdx.has(k)) artTitleIdx.set(k, []);
+          artTitleIdx.get(k).push([w, b]);
+        }
+      }
+      const words = normWords(a.ab || ''), arts = new Map();
+      for (let i = 0; i + 4 <= words.length; i++) for (const [w, b] of artTitleIdx.get(words.slice(i, i + 4).join(' ')) || []) if (b !== a && w.every((x, k) => words[i + k] === x)) arts.set(b.id, b);
+      const el = document.getElementById('art-mentions');
+      if (!el || (!cases.size && !arts.size)) return;
+      el.hidden = false;
+      el.querySelector('.art-mentions-body').innerHTML = (cases.size ? `<div class="prec-h">Supreme Court cases</div><ul class="mini-list">${[...cases.values()].map(precedentItem).join('')}</ul>` : '')
+        + (arts.size ? `<div class="prec-h" style="margin-top:10px">Law review articles</div><ul class="mini-list">${[...arts.values()].map(b => `<li><a class="t" href="${articleHref(b)}">${esc(b.t)}</a><div class="m">${esc(journalById[b.j]?.name || '')}${b.y ? ' · ' + b.y : ''}</div></li>`).join('')}</ul>` : '')
+        + '<p class="muted-line" style="font-size:12px;margin:10px 0 0">Found in the title and abstract.</p>';
+    }).catch(() => {});
   }
 
   function viewAuthor(key, params) {
@@ -799,7 +854,7 @@
   }
   /* ---- current docket */
   function scotusTabs(active) {
-    return `<div class="subtabs"><a href="#/docket" class="${active === 'docket' ? 'on' : ''}">Current docket</a><a href="#/scotus" class="${active === 'decided' ? 'on' : ''}">Decided cases</a><a href="#/justices" class="${active === 'justices' ? 'on' : ''}">Justices</a></div>`;
+    return `<div class="subtabs"><a href="#/docket" class="${active === 'docket' ? 'on' : ''}">Current docket</a><a href="#/scotus" class="${active === 'decided' ? 'on' : ''}">Decided cases</a><a href="#/justices" class="${active === 'justices' ? 'on' : ''}">Justices</a><a href="#/statutes" class="${active === 'statutes' ? 'on' : ''}">Statutes</a></div>`;
   }
   const todayIso = () => new Date().toISOString().slice(0, 10);
   function docketStatus(e) {
@@ -1081,6 +1136,7 @@
         d.conclusion ? `<h2>Conclusion</h2><div class="prose-sm">${htmlParas(d.conclusion)}</div>` : ''
       ].join('') || '<p class="muted-line">Oyez has no written summary for this case.</p>';
       live.insertAdjacentHTML('beforeend', '<p class="attrib">Summary text © Oyez (oyez.org), used under <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>.</p>');
+      statutify([app.querySelector('.article .abstract'), app.querySelector('.article .callout'), live]);
       // precedents named in Oyez's summary, plus Oyez's own related-case links
       const plain = [d.facts_of_the_case, d.question, d.conclusion].map(h => h ? new DOMParser().parseFromString(h, 'text/html').body.textContent : '').join(' ');
       const cited = citedCases(S, plain, c.id);
@@ -1103,6 +1159,7 @@
     }).catch(() => {
       if (token !== routeToken) return;
       document.getElementById('case-live').innerHTML = `${c.q ? `<h2>Question</h2><div class="prose-sm"><p>${esc(c.q)}</p></div>` : ''}<p class="muted-line">${pend ? 'Oyez has not published a summary of this case yet.' : 'Live details from Oyez are unavailable right now.'} <a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Open on Oyez ↗</a></p>`;
+      statutify([app.querySelector('.article .abstract'), app.querySelector('.article .callout'), document.getElementById('case-live')]);
       courtAudioFallback();
     });
     // the Court posts argument audio within days; Oyez's synced versions follow later
@@ -1121,6 +1178,28 @@
     const tabs = el.querySelectorAll('[data-m]');
     tabs.forEach(b => b.addEventListener('click', () => { tabs.forEach(x => x.classList.toggle('on', x === b)); loadMedia(media[+b.dataset.m]); }));
     loadMedia(media[0]);
+    // A second recording on the same announcement day is a justice reading a separate opinion from the bench
+    // (usually a dissent). Oyez titles both "Opinion Announcement", so name the speaker and say which it was.
+    const seenDay = new Set();
+    media.forEach((m, i) => {
+      if (m.kind !== 'Opinion announcement' || !m.href) return;
+      const day = m.title || '';
+      if (!seenDay.has(day)) { seenDay.add(day); return; }
+      fetch(m.href).then(r => r.ok ? r.json() : null).then(d => {
+        const turns = ((d && d.transcript && d.transcript.sections) || []).flatMap(s => s.turns || []);
+        const who = turns.map(t => t.speaker && t.speaker.name).find(Boolean);
+        if (!who || !tabs[i]) return;
+        const last = who.replace(/,?\s+(Jr|Sr)\.?$/, '').split(' ').pop().toLowerCase();
+        return loadData('votes', 'VOTES').catch(() => null).then(V => {
+          const r = V && c && V.c[c.id];
+          const inMinority = r && r[3].some(([j]) => (V.j[j][0] || '').toLowerCase().split(' ').pop() === last);
+          const label = inMinority ? 'Dissent read from the bench' : 'Statement from the bench';
+          tabs[i].querySelector('small').textContent = label;
+          m.kind = label;
+          tabs[i].lastChild.textContent = `${who.replace(/,?\s+Jr\.?$/, '')} · ${day.replace(/^Opinion Announcement\s*-\s*/i, '')}`;
+        });
+      }).catch(() => {});
+    });
     function loadMedia(m) {
       const body = document.getElementById('player-body');
       const old = body.querySelector('audio'); if (old) old.pause();
@@ -1367,7 +1446,7 @@
       <div class="commentary-h"><div><h3>In depth: how the doctrine has developed</h3>
         <p>${essays.length} essay${essays.length === 1 ? '' : 's'} from the <i>Constitution Annotated</i> tracing the history, the leading cases and how the Court has applied this doctrine (${fmt(Math.round(total / 230))} min read).</p></div>
         <button class="btn btn-ghost btn-sm" data-expand-all>Expand all</button></div>
-      ${essays.map((e, i) => `<details class="essay" style="--d:${depth(e.id)}" ${i === 0 ? 'open' : ''}>
+      ${essays.map((e, i) => `<details class="essay" data-essay="${esc(e.id)}" style="--d:${depth(e.id)}" ${i === 0 ? 'open' : ''}>
         <summary><span class="essay-id">${esc(e.id)}</span><b>${esc(e.title)}</b><em>${Math.max(1, Math.round(words(e) / 230))} min</em></summary>
         <div class="essay-body">${e.p.map(p => `<p>${p}</p>`).join('')}</div>
       </details>`).join('')}
@@ -1417,6 +1496,7 @@
     app.querySelectorAll('[data-sec]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', `#/doctrine/${p.id}/${a.dataset.sec}`); go(a.dataset.sec); }));
     app.querySelector('[data-adv]').addEventListener('click', e => { e.preventDefault(); location.hash = '#/guide'; setTimeout(() => document.getElementById('advanced')?.scrollIntoView(), 300); });
     if (Q) mountQuiz(app, 'doctrine:' + p.id, Q.doctrine[p.id] || []);
+    mountDoctrineNarration();
     app.querySelectorAll('[data-expand-all]').forEach(b => b.addEventListener('click', () => {
       const ds = b.closest('.commentary').querySelectorAll('details.essay');
       const open = [...ds].some(d => !d.open);
@@ -1429,8 +1509,8 @@
     for (const p of A.parts) if (p.sections.some(s => s.id === secId)) return { href: `#/doctrine/${p.id}/${secId}`, title: p.sections.find(s => s.id === secId).title, part: p.title };
     return null;
   }
-  function viewGuideTopic(id) { withData([['guide', 'GUIDE'], ['scotus', 'SCOTUS'], ['books', 'BOOKS'], ['advanced', 'ADVANCED'], ['quizzes', 'QUIZZES']], (G, S, B, A, Q) => renderGuideTopic(G, S, id, B, A, Q)); }
-  function renderGuideTopic(G, S, id, B, A, Q) {
+  function viewGuideTopic(id) { withData([['guide', 'GUIDE'], ['scotus', 'SCOTUS'], ['books', 'BOOKS'], ['advanced', 'ADVANCED'], ['quizzes', 'QUIZZES'], ['foundations', 'FOUNDATIONS'], ['constitution', 'CONSTITUTION']], (G, S, B, A, Q, F, K) => renderGuideTopic(G, S, id, B, A, Q, F, K)); }
+  function renderGuideTopic(G, S, id, B, A, Q, F, K) {
     if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
     const i = G.topics.findIndex(t => t.id === id);
     const t = G.topics[i];
@@ -1443,11 +1523,24 @@
         <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/guide">Beginner's Guide</a><span>/</span><span>${esc(t.group)}</span></div>
         <div class="guide-title">${guideIcon(t.id)}<h1>${esc(t.title)}</h1></div>
         <p class="guide-tagline">${esc(t.tagline)}</p>
-        ${t.wiki ? `<div class="explainer">
-          <div class="explainer-h"><span>The short version</span><a href="${esc(t.wiki.url)}" target="_blank" rel="noopener">Wikipedia: ${esc(t.wiki.title)} ↗</a></div>
-          <p>${esc(t.wiki.text)}</p>
-          <div class="explainer-f">Text from Wikipedia, licensed CC BY-SA 4.0.${t.wex ? ` For a legal-dictionary definition, see <a href="${esc(t.wex)}" target="_blank" rel="noopener">Cornell LII Wex ↗</a>` : ''}</div>
-        </div>` : ''}
+        ${(() => {
+          const f = F && F.topics[t.id];
+          if (!f) return '';
+          const cls = (f.clauses || []).map(cid => K && K.clauses.find(c => c.id === cid)).filter(Boolean);
+          const ovClause = cls.find(c => c.conan && c.conan.overview);
+          const ov = ovClause && ovClause.conan.overview;
+          const [, secIds] = GUIDE_LINKS[t.id] || [[], []];
+          const adv = secIds.map(x => doctrineHref(A, x)).filter(Boolean);
+          const clip = q => q.length > 420 ? q.slice(0, 420).replace(/\s+\S*$/, '') + '…' : q;
+          return `<section class="found glossable">
+            ${f.basics.length ? `<h2>The basics</h2>${f.basics.map(sec => `${sec.h ? `<h3>${esc(sec.h)}</h3>` : ''}${sec.paras.map(p => `<p>${esc(p)}</p>`).join('')}`).join('')}
+            <p class="attrib">Adapted from OpenStax, <i>American Government 3e</i>: ${f.src.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join('; ')}. Licensed CC BY 4.0; access for free at openstax.org.</p>` : ''}
+            ${cls.length ? `<h2>In the Constitution</h2><div class="found-clauses">${cls.map(c => `<a class="found-clause" href="#/corner/constitution?c=${esc(c.id)}"><span>${esc(c.loc)} · ${esc(c.name)}</span><q>${esc(clip(c.hl))}</q><em>Open the annotation →</em></a>`).join('')}</div>` : ''}
+            ${ov ? `<h2>How the Court has read it</h2>${ov.paras.slice(0, 3).map(p => `<p>${p}</p>`).join('')}
+            <p class="attrib">From the <i>Constitution Annotated</i> (Congressional Research Service), “${esc(ov.title)}”; public domain. <a href="#/corner/constitution?c=${esc(ovClause.id)}">Read the full annotation, the leading cases and founding-era commentary →</a></p>` : ''}
+            ${adv.length ? `<div class="found-next"><span class="f-icon">§</span><div><b>Ready for more? Continue in the advanced section</b><ul>${adv.map(x => `<li><a href="${x.href}">${esc(x.title)}</a> <span>${esc(x.part || '')}</span></li>`).join('')}</ul></div></div>` : ''}
+          </section>`;
+        })()}
         ${main ? `<h2>Watch</h2>
           <div class="vcarousel" id="vcarousel">
             <div class="vc-stage"></div>
@@ -1497,6 +1590,277 @@
     </div></div>`;
     if (Q) mountQuiz(app, 'guide:' + t.id, Q.guide[t.id] || []);
     mountCarousel(t.videos, t.id);
+    glossify(app.querySelectorAll('.glossable p, .guide-tagline'));
+    mountGuideNarration(id);
+  }
+
+  /* ------------------------------------------------------------ glossary: hover definitions for legal terms */
+  let glossRx = null, glossTerms = null;
+  function glossify(nodes) {
+    loadData('glossary', 'GLOSSARY').then(GL => {
+      if (!glossRx) {
+        glossTerms = Object.keys(GL.terms).sort((a, b) => b.length - a.length);
+        const pat = glossTerms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|');
+        glossRx = new RegExp('\\b(' + pat + ')(?:s|es)?\\b', 'gi');
+      }
+      const done = new Set();
+      nodes.forEach(node => {
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement.closest('a, .gloss, h1, h2, h3') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+        const texts = [];
+        while (walker.nextNode()) texts.push(walker.currentNode);
+        for (const tn of texts) {
+          const txt = tn.nodeValue;
+          let m, frag = null, last = 0;
+          glossRx.lastIndex = 0;
+          while ((m = glossRx.exec(txt))) {
+            const key = glossTerms.find(t => t.toLowerCase() === m[1].toLowerCase().replace(/\s+/g, ' '));
+            if (!key || done.has(key)) continue;
+            done.add(key);
+            frag = frag || document.createDocumentFragment();
+            frag.append(txt.slice(last, m.index));
+            const sp = document.createElement('span');
+            sp.className = 'gloss'; sp.dataset.g = key; sp.tabIndex = 0; sp.textContent = m[0];
+            frag.append(sp);
+            last = m.index + m[0].length;
+          }
+          if (frag) { frag.append(txt.slice(last)); tn.replaceWith(frag); }
+        }
+      });
+      let tip = document.getElementById('gloss-tip');
+      if (!tip) { tip = document.createElement('div'); tip.id = 'gloss-tip'; tip.className = 'gloss-tip'; tip.hidden = true; document.body.append(tip); }
+      let hideT;
+      const show = el => {
+        const g = GL.terms[el.dataset.g];
+        if (!g) return;
+        clearTimeout(hideT);
+        tip.innerHTML = `<b>${esc(el.dataset.g)}</b><p>${esc(g.s)}</p><a href="${esc(g.url)}" target="_blank" rel="noopener">${g.src === 'wex' ? 'Full entry on Cornell LII Wex' : 'U.S. Courts glossary'} ↗</a><small>${g.src === 'wex' ? 'Wex, Legal Information Institute (CC BY-NC-SA)' : 'United States Courts'}</small>`;
+        tip.hidden = false;
+        const r = el.getBoundingClientRect();
+        tip.style.left = Math.min(Math.max(10, r.left + scrollX), document.documentElement.clientWidth - tip.offsetWidth - 10) + 'px';
+        tip.style.top = (r.bottom + scrollY + 6) + 'px';
+      };
+      const hide = () => { hideT = setTimeout(() => { tip.hidden = true; }, 180); };
+      document.querySelectorAll('.gloss').forEach(el => {
+        el.addEventListener('mouseenter', () => show(el)); el.addEventListener('focus', () => show(el));
+        el.addEventListener('mouseleave', hide); el.addEventListener('blur', hide);
+      });
+      tip.onmouseenter = () => clearTimeout(hideT);
+      tip.onmouseleave = hide;
+    }).catch(() => {});
+  }
+
+
+  /* ------------------------------------------------------------ statutes in the Supreme Court */
+  const STAT_TAGS = { labor: 'Labor & Employment', business: 'Business & Antitrust', environment: 'Environment & Energy', tax: 'Taxation', benefits: 'Social Welfare Programs',
+    education: 'Education', health: 'Health', tech: 'Technology & Communications', ip: 'Intellectual Property' };
+  const statTagName = t => STAT_TAGS[t] || topicById[t]?.name || t;
+  function viewStatutes(id, params) {
+    withData([['statutes', 'STATUTES'], ['scotus', 'SCOTUS'], ['case_impact', 'CASE_IMPACT']], (ST, S, I) => {
+      if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
+      if (id) return renderStatutePage(ST, decodeURIComponent(id), I, params);
+      renderStatuteIndex(ST, params);
+    });
+  }
+  function renderStatuteIndex(ST, params) {
+    const tag = params.get('tag') || '', q = (params.get('q') || '').trim().toLowerCase();
+    const tags = [...new Set(ST.statutes.flatMap(s => s.tags))].sort((a, b) => statTagName(a).localeCompare(statTagName(b)));
+    const list = ST.statutes.filter(s => (!tag || s.tags.includes(tag)) && (!q || (s.n + ' ' + s.blurb).toLowerCase().includes(q)));
+    const sort = params.get('sort') || 'cases';
+    if (sort === 'cases') list.sort((a, b) => b.cases.length - a.cases.length);
+    app.innerHTML = `<div class="fade-in"><div class="page-head">
+        <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a><span>/</span><span>Statutes</span></div>
+        <h1>Statutes</h1>
+        <p>${ST.statutes.length} federal statutes the Supreme Court has interpreted or reviewed, each with a summary, a link to its text, and the cases on this site that turned on it or discuss it. Hover over a statute's name in a case summary to see a short description.</p>${scotusTabs('statutes')}</div>
+      <section class="section" style="padding-top:22px">
+        <form class="stat-search" data-stat-search><input type="search" name="q" value="${esc(params.get('q') || '')}" placeholder="Find a statute, e.g. Voting Rights Act" aria-label="Find a statute"></form>
+        <div class="suggest" data-keep-scroll style="margin:14px 0 6px"><a class="chip ${!tag ? 'on' : ''}" href="${hashFor('statutes', { sort, q: q || undefined })}">All · ${ST.statutes.length}</a>${tags.map(t => `<a class="chip ${tag === t ? 'on' : ''}" href="${hashFor('statutes', { tag: t, sort, q: q || undefined })}">${esc(statTagName(t))} · ${ST.statutes.filter(s => s.tags.includes(t)).length}</a>`).join('')}</div>
+        <div class="seg stat-sort" data-keep-scroll role="group" aria-label="Sort"><a class="${sort === 'cases' ? 'on' : ''}" href="${hashFor('statutes', { tag: tag || undefined, q: q || undefined, sort: 'cases' })}">Most cases</a><a class="${sort === 'az' ? 'on' : ''}" href="${hashFor('statutes', { tag: tag || undefined, q: q || undefined, sort: 'az' })}">A–Z</a></div>
+        <div class="stat-grid">${list.map(s => `<a class="stat-card" href="#/statutes/${esc(s.id)}"><b>${esc(s.n)}</b><p>${esc(s.blurb)}</p><span>${s.cases.length ? `${fmt(s.cases.length)} case${s.cases.length === 1 ? '' : 's'}` : 'No cases on the site yet'} · ${s.tags.map(statTagName).map(esc).join(', ')}</span></a>`).join('') || '<p class="muted-line">No statutes match.</p>'}</div>
+        <p class="attrib" style="margin-top:24px">${esc(ST.src)}</p>
+      </section></div>`;
+    app.querySelector('[data-stat-search]').addEventListener('submit', e => { e.preventDefault(); location.hash = hashFor('statutes', { tag: tag || undefined, sort, q: e.target.q.value.trim() || undefined }); });
+  }
+  function renderStatutePage(ST, id, I, params) {
+    const s = ST.statutes.find(x => x.id === id);
+    if (!s) return viewNotFound();
+    const all = params.get('all') === '1';
+    const cs = s.cases.map(cid => caseById.get(cid)).filter(Boolean);
+    const shown = all ? cs : cs.slice(0, 25);
+    let lastH = null;
+    const body = s.paras.map(p => { const h = p.h && p.h !== lastH ? `<h3>${esc(p.h)}</h3>` : ''; lastH = p.h; return h + `<p>${esc(p.p)}</p>`; }).join('');
+    const related = ST.statutes.filter(x => x.id !== s.id && x.tags.some(t => s.tags.includes(t))).sort((a, b) => b.tags.filter(t => s.tags.includes(t)).length - a.tags.filter(t => s.tags.includes(t)).length || b.cases.length - a.cases.length).slice(0, 8);
+    app.innerHTML = `<div class="fade-in"><div class="article">
+      <div>
+        <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a><span>/</span><a href="#/statutes">Statutes</a></div>
+        <h1>${esc(s.n)}</h1>
+        <div class="publine">${[s.enacted && `Enacted by the ${s.enacted}`, s.publaw && `Pub. L. ${s.publaw.replace(/^Pub\.?\s*L\.?\s*(No\.)?\s*/i, '')}`, s.stat].filter(Boolean).map(esc).join(' · ') || 'Federal statute'}</div>
+        <div class="abstract plain">${esc(s.blurb)}</div>
+        <div class="actions">${s.link ? `<a class="btn btn-primary" href="${esc(s.link.url)}" target="_blank" rel="noopener">Read the statute ↗</a>` : ''}${s.wiki.url ? `<a class="btn btn-ghost" href="${esc(s.wiki.url)}" target="_blank" rel="noopener">Wikipedia ↗</a>` : ''}</div>
+        <h2>About the statute</h2>
+        <div class="prose-sm stat-body">${body}</div>
+        <p class="attrib">Text adapted from the Wikipedia article <a href="${esc(s.wiki.url)}" target="_blank" rel="noopener">“${esc(s.wiki.title)}”</a>, licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.${s.link ? ` Statute text: ${esc(s.link.label)}.` : ''}</p>
+        <h2>Supreme Court cases <small>(${fmt(cs.length)})</small></h2>
+        ${cs.length ? `<p class="muted-line" style="margin-top:-6px">Ranked by later citations. ${s.coded ? `${fmt(s.coded)} turned on this statute according to the Supreme Court Database; the rest name it in their summaries.` : 'Cases whose summaries name this statute.'}</p>
+          <ul class="stat-cases">${shown.map(c => { const m = I.c[c.id]; return `<li><a href="#/case/${esc(c.id)}"><b>${esc(c.n)}</b> <span>${esc(c.cit || '')}${c.y ? ` (${c.y})` : ''}</span></a>${c.ds ? `<p>${esc(c.ds.length > 220 ? c.ds.slice(0, 220).replace(/\s+\S*$/, '') + '…' : c.ds)}</p>` : ''}${m ? `<em>${fmt(m[2])} later citations</em>` : ''}</li>`; }).join('')}</ul>
+          ${!all && cs.length > 25 ? `<a class="btn btn-ghost" href="${hashFor('statutes/' + s.id, { all: 1 })}">Show all ${fmt(cs.length)} cases</a>` : ''}` : '<p class="muted-line">No cases on the site name this statute yet.</p>'}
+      </div>
+      <aside>
+        <div class="panel"><h4>Details</h4><dl class="kv">
+          ${s.enacted ? `<dt>Enacted by</dt><dd>${esc(s.enacted)}</dd>` : ''}
+          ${s.publaw ? `<dt>Public law</dt><dd>${esc(s.publaw)}</dd>` : ''}
+          ${s.stat ? `<dt>Statutes at Large</dt><dd>${esc(s.stat)}</dd>` : ''}
+          ${s.link ? `<dt>Text</dt><dd><a href="${esc(s.link.url)}" target="_blank" rel="noopener">${esc(s.link.label)}</a></dd>` : ''}
+          <dt>Areas</dt><dd>${s.tags.map(t => `<a class="tag" href="${hashFor('statutes', { tag: t })}">${esc(statTagName(t))}</a>`).join(' ')}</dd>
+        </dl></div>
+        ${related.length ? `<div class="panel"><h4>Related statutes</h4><ul class="mini-list">${related.map(x => `<li><a class="t" href="#/statutes/${esc(x.id)}">${esc(x.n)}</a><div class="m">${fmt(x.cases.length)} cases</div></li>`).join('')}</ul></div>` : ''}
+      </aside></div></div>`;
+  }
+  // hover blurbs: wrap the first mention of each statute in a link to its page with a two-sentence tooltip
+  let statRx = null;
+  function statutify(nodes) {
+    nodes = [...nodes].filter(Boolean);
+    if (!nodes.length) return;
+    loadData('statutes', 'STATUTES').then(ST => {
+      if (!statRx) statRx = ST.statutes.map(s => { try { return [s, new RegExp(s.rx.replace(/\(\?i\)/g, ''), 'g')]; } catch (e) { return null; } }).filter(Boolean);
+      const done = new Set();
+      nodes.forEach(node => {
+        if (!node.isConnected) return;
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement.closest('a, .stat-ref, .gloss, h1, h2, h3, button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+        const texts = [];
+        while (walker.nextNode()) texts.push(walker.currentNode);
+        for (const tn of texts) {
+          const txt = tn.nodeValue;
+          const hits = [];
+          for (const [s, rx] of statRx) {
+            if (done.has(s.id)) continue;
+            rx.lastIndex = 0;
+            const m = rx.exec(txt);
+            if (m && m[0].length > 2 && !hits.some(h => m.index < h.end && m.index + m[0].length > h.start)) hits.push({ s, start: m.index, end: m.index + m[0].length });
+          }
+          if (!hits.length) continue;
+          hits.sort((a, b) => a.start - b.start);
+          const frag = document.createDocumentFragment();
+          let last = 0;
+          for (const h of hits) {
+            done.add(h.s.id);
+            frag.append(txt.slice(last, h.start));
+            const a = document.createElement('a');
+            a.className = 'stat-ref'; a.href = '#/statutes/' + h.s.id; a.dataset.s = h.s.id; a.textContent = txt.slice(h.start, h.end);
+            frag.append(a);
+            last = h.end;
+          }
+          frag.append(txt.slice(last));
+          tn.replaceWith(frag);
+        }
+      });
+      let tip = document.getElementById('gloss-tip');
+      if (!tip) { tip = document.createElement('div'); tip.id = 'gloss-tip'; tip.className = 'gloss-tip'; tip.hidden = true; document.body.append(tip); }
+      let hideT;
+      const show = el => {
+        const s = ST.statutes.find(x => x.id === el.dataset.s);
+        if (!s) return;
+        clearTimeout(hideT);
+        tip.innerHTML = `<b style="text-transform:none">${esc(s.n)}</b><p>${esc(s.blurb)}</p><a href="#/statutes/${esc(s.id)}">Read more and see ${fmt(s.cases.length)} cases →</a><small>Summary from Wikipedia (CC BY-SA 4.0)</small>`;
+        tip.hidden = false;
+        const r = el.getBoundingClientRect();
+        tip.style.left = Math.min(Math.max(10, r.left + scrollX), document.documentElement.clientWidth - tip.offsetWidth - 10) + 'px';
+        tip.style.top = (r.bottom + scrollY + 6) + 'px';
+      };
+      const hide = () => { hideT = setTimeout(() => { tip.hidden = true; }, 180); };
+      nodes.forEach(n => n.querySelectorAll('.stat-ref:not([data-tip])').forEach(el => {
+        el.dataset.tip = 1;
+        el.addEventListener('mouseenter', () => show(el)); el.addEventListener('focus', () => show(el));
+        el.addEventListener('mouseleave', hide); el.addEventListener('blur', hide);
+        el.addEventListener('click', () => { tip.hidden = true; });
+      }));
+      tip.onmouseenter = () => clearTimeout(hideT);
+      tip.onmouseleave = hide;
+    }).catch(() => {});
+  }
+
+
+  /* ------------------------------------------------------------ narration (Kokoro voice, follow-along highlighting) */
+  // mountNarration(key, host, els): a Listen bar inserted after `host`; els[i] is the page element for timing index i
+  let narrScrolledAt = 0;   // the page stops following the narration for a few seconds after the reader scrolls
+  ['wheel', 'touchmove', 'keydown'].forEach(ev => addEventListener(ev, () => { narrScrolledAt = Date.now(); }, { passive: true }));
+  const fmtClock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  function mountNarration(key, host, els) {
+    if (!host) return;
+    loadData('narration', 'NARRATION').then(N => {
+      const it = N.items[key];
+      if (!it || (it.r2 && !N.r2) || !host.isConnected) return;
+      const base = (it.r2 ? N.r2.replace(/\/$/, '') + '/' : '') + it.p;
+      const bar = document.createElement('div');
+      bar.className = 'narr';
+      bar.innerHTML = `<button class="narr-play" aria-label="Listen to this section"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M8 5v14l11-7z"/><path class="i-pause" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg><span>Listen</span></button>
+        <div class="narr-track" hidden><div class="narr-bar"><i></i></div><span class="narr-time">0:00 / ${fmtClock(it.d)}</span><button class="narr-speed" title="Playback speed">1×</button></div>
+        <span class="narr-len">${Math.max(1, Math.round(it.d / 60))} min</span>
+        <audio preload="none" src="${esc(base)}.mp3"></audio>`;
+      host.insertAdjacentElement('afterend', bar);
+      const audio = bar.querySelector('audio'), play = bar.querySelector('.narr-play'), track = bar.querySelector('.narr-track');
+      const fill = bar.querySelector('.narr-bar i'), time = bar.querySelector('.narr-time'), speedBtn = bar.querySelector('.narr-speed');
+      let segs = null, cur = -1;
+      const SPEEDS = [1, 1.25, 1.5, 2, 0.75];
+      const loadSegs = () => segs ? Promise.resolve(segs) : fetch(base + '.json').then(r => r.json()).then(j => (segs = j.s));
+      const mark = i => {
+        if (i === cur) return;
+        if (cur >= 0 && els[cur]) els[cur].classList.remove('narr-on');
+        cur = i;
+        const el = els[i];
+        if (!el) return;
+        el.classList.add('narr-on');
+        const r = el.getBoundingClientRect();
+        if (Date.now() - narrScrolledAt > 5000 && (r.top < 80 || r.bottom > innerHeight - 40)) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+      audio.addEventListener('timeupdate', () => {
+        const t = audio.currentTime;
+        fill.style.width = (100 * t / (audio.duration || it.d)) + '%';
+        time.textContent = `${fmtClock(t)} / ${fmtClock(audio.duration || it.d)}`;
+        if (!segs) return;
+        let k = segs.findIndex(s => t < s[1]);
+        if (k < 0) k = segs.length - 1;
+        mark(segs[k][2]);
+      });
+      audio.addEventListener('play', () => { bar.classList.add('playing'); document.querySelectorAll('audio').forEach(a => a !== audio && a.pause()); });
+      audio.addEventListener('pause', () => bar.classList.remove('playing'));
+      audio.addEventListener('ended', () => { if (cur >= 0 && els[cur]) els[cur].classList.remove('narr-on'); cur = -1; });
+      play.addEventListener('click', () => {
+        if (!audio.paused) return audio.pause();
+        track.hidden = false; bar.classList.add('started');
+        loadSegs().catch(() => {}).finally(() => audio.play().catch(() => toast('The audio could not be played.')));
+      });
+      bar.querySelector('.narr-bar').addEventListener('click', e => {
+        const r = e.currentTarget.getBoundingClientRect();
+        audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (audio.duration || it.d);
+      });
+      speedBtn.addEventListener('click', () => {
+        const nx = SPEEDS[(SPEEDS.indexOf(audio.playbackRate) + 1) % SPEEDS.length];
+        audio.playbackRate = nx; speedBtn.textContent = nx + '×';
+      });
+      // click a paragraph while listening to jump to it
+      els.forEach((el, i) => el && el.addEventListener('click', e => {
+        if (!bar.classList.contains('started') || !segs || e.target.closest('a, button')) return;
+        const s = segs.find(x => x[2] === i);
+        if (s) { audio.currentTime = s[0] + 0.01; if (audio.paused) audio.play(); }
+      }));
+    }).catch(() => {});
+  }
+  function mountGuideNarration(id) {
+    const h1 = app.querySelector('.guide-title h1'), tag = app.querySelector('.guide-tagline');
+    const found = app.querySelector('section.found');
+    const els = [h1, tag, ...(found ? found.querySelectorAll('h2, h3, p:not(.attrib), .found-clause') : [])];
+    mountNarration('guide/' + id, tag || h1, els);
+  }
+  function mountDoctrineNarration() {
+    app.querySelectorAll('section.doc-sec').forEach(sec => {
+      const h = sec.querySelector('.doc-h'), body = sec.querySelector('.doc-body');
+      mountNarration('doctrine/' + sec.id.replace(/^sec-/, ''), h, [h, ...(body ? body.querySelectorAll('p, li, .testbox-h') : [])]);
+    });
+    // Constitution Annotated essays (audio on Cloudflare R2): 0 is the essay title, then its paragraphs
+    app.querySelectorAll('details.essay[data-essay]').forEach(d => {
+      const sum = d.querySelector('summary'), body = d.querySelector('.essay-body');
+      mountNarration('conan/' + d.dataset.essay, sum, [sum.querySelector('b'), ...(body ? body.querySelectorAll(':scope > p') : [])]);
+    });
   }
 
   /* ------------------------------------------------------------ books */
@@ -1519,23 +1883,32 @@
   }
   function viewBooks(params) { withData([['books', 'BOOKS']], B => renderBooks(B, params)); }
   function renderBooks(B, params) {
-    const st = { cat: params.get('cat') || '', sort: params.get('sort') || '', q: params.get('q') || '' };
+    const st = { cat: params.get('cat') || '', sort: params.get('sort') || '', q: params.get('q') || '', set: params.get('set') === 'all' ? 'all' : '' };
     const go = patch => { location.hash = hashFor('books', Object.assign({}, st, patch)); };
     const pq = parseQuery(st.q);
-    let list = B.books.filter(b => (!st.cat || b.cat === st.cat || (st.cat === 'Introductions & Primers' && b.intro)) &&
+    const pool = st.set === 'all' ? B.books : B.books.filter(b => b.essential !== false);
+    // influence: essentials first, then scholarly citations, then Goodreads readership
+    const influence = b => (b.essential !== false ? 1e7 : 0) + (b.cites?.n ?? 0) * 50 + Math.min(b.gr?.count ?? 0, 200000) / 20;
+    let list = pool.filter(b => (!st.cat || b.cat === st.cat || (st.cat === 'Introductions & Primers' && b.intro)) &&
       (!pq.terms.length || pq.terms.every(t => (b.title + ' ' + b.authors.join(' ') + ' ' + b.note).toLowerCase().includes(t))));
     if (st.sort === 'rating') list = list.slice().sort((a, b) => (b.gr?.rating ?? 0) - (a.gr?.rating ?? 0));
     else if (st.sort === 'popular') list = list.slice().sort((a, b) => (b.gr?.count ?? 0) - (a.gr?.count ?? 0));
     else if (st.sort === 'cited') list = list.slice().sort((a, b) => (b.cites?.n ?? -1) - (a.cites?.n ?? -1));
     else if (st.sort === 'year') list = list.slice().sort((a, b) => a.year - b.year);
+    else list = list.slice().sort((a, b) => influence(b) - influence(a));
     const grouped = !st.sort && !st.q && !st.cat;
+    const nEss = B.books.filter(b => b.essential !== false).length;
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Books</span></div>
-        <h1>Essential books</h1>
-        <p>${B.books.length} of the most important and influential books on American constitutional law, from founding-era classics to today's debates. Each book page links to law review book reviews, the publisher, and reader ratings.</p></div>
+        <h1>${st.set === 'all' ? 'Books' : 'Essential books'}</h1>
+        <p>${st.set === 'all' ? `${fmt(B.books.length)} influential books on American constitutional law, including the ${nEss} essentials.` : `${nEss} essential books on American constitutional law, from founding-era classics to today's debates.`} Each book page links to law review book reviews, the publisher, and reader ratings.</p></div>
       <div class="wrap" style="padding-top:22px">
         <div class="lec-filters">
           <form id="bk-form" class="lec-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="bk-q" type="search" placeholder="Search books or authors…" value="${esc(st.q)}"></form>
+          <div class="seg" role="group" aria-label="Collection">
+            <button data-set="" class="${st.set !== 'all' ? 'on' : ''}">Essential (${nEss})</button>
+            <button data-set="all" class="${st.set === 'all' ? 'on' : ''}">All books (${fmt(B.books.length)})</button>
+          </div>
           <div class="seg" role="group" aria-label="Sort">
             <button data-sort="" class="${!st.sort ? 'on' : ''}">By topic</button>
             <button data-sort="rating" class="${st.sort === 'rating' ? 'on' : ''}">Top rated</button>
@@ -1546,12 +1919,13 @@
         </div>
         <div class="suggest" style="margin:14px 0 26px"><button class="chip ${!st.cat ? 'on' : ''}" data-cat="">All</button>${B.categories.map(c => `<button class="chip ${st.cat === c ? 'on' : ''}" data-cat="${esc(c)}">${c === 'Introductions & Primers' ? '★ Good first reads' : esc(c)}</button>`).join('')}</div>
         ${grouped ? B.categories.map(c => {
-          const items = B.books.filter(b => b.cat === c);
-          return items.length ? `<section class="book-sec"><div class="section-head"><div><h2 style="font-size:26px">${esc(c)}</h2></div><span class="count" style="color:var(--ink-3);font-size:13px">${items.length} books</span></div><div class="bgrid">${items.map(bookTile).join('')}</div></section>` : '';
+          const items = list.filter(b => b.cat === c);
+          return items.length ? `<section class="book-sec"><div class="section-head"><div><h2 style="font-size:26px">${esc(c)}</h2></div><a class="link-arrow" data-scroll-top href="${hashFor('books', { cat: c, set: st.set })}">View all ${items.length} →</a></div><div class="bgrid one-row">${items.slice(0, 12).map(bookTile).join('')}</div></section>` : '';
         }).join('') : (list.length ? `<div class="bgrid">${list.map(bookTile).join('')}</div>` : '<div class="empty"><h3>No books match</h3></div>')}
         <p class="attrib" style="margin-top:30px">Covers and metadata from Open Library. Ratings from Goodreads, which has no public API, so ratings are refreshed when the index is rebuilt.</p>
       </div></div>`;
     document.getElementById('bk-form').addEventListener('submit', e => { e.preventDefault(); go({ q: document.getElementById('bk-q').value.trim() }); });
+    app.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click', () => go({ set: b.dataset.set })));
     app.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => go({ sort: b.dataset.sort })));
     app.querySelectorAll('[data-cat]').forEach(b => b.addEventListener('click', () => go({ cat: b.dataset.cat })));
   }
@@ -1610,7 +1984,117 @@
   }
 
   /* ------------------------------------------------------------ originalist's corner */
-  const SOURCE_ORDER = ['documents', 'madison', 'federalist', 'statutes', 'blackstone', 'tucker', 'story', 'kent', 'vattel', 'locke'];
+  const SOURCE_ORDER = ['documents', 'madison', 'federalist', 'antifederalist', 'statutes', 'blackstone', 'tucker', 'story', 'rawle', 'kent', 'cooley', 'vattel', 'locke'];
+  /* ------------------------------------------------------------ annotated Constitution (Originalist's Corner) */
+  const SRC_LABEL = { story: 'Story, Commentaries (1833)', rawle: 'Rawle, View of the Constitution (1829)', tucker: "Tucker's Blackstone (1803)", federalist: 'The Federalist',
+    madison: "Madison's Notes of Debates", kent: "Kent's Commentaries", cooley: "Cooley's General Principles", antifederalist: 'The Anti-Federalists', blackstone: "Blackstone's Commentaries",
+    documents: 'Founding documents', vattel: "Vattel's Law of Nations", locke: 'Locke, Two Treatises' };
+  function viewConstitution(params) {
+    withData([['constitution', 'CONSTITUTION'], ['scotus', 'SCOTUS'], ['case_impact', 'CASE_IMPACT']], (K, S, I) => renderConstitution(K, S, I, params));
+  }
+  function renderConstitution(K, S, I, params) {
+    if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
+    const sel = params.get('c') || '';
+    const mode = params.get('mode') === 'dict' ? 'dict' : 'clauses';
+    const clause = K.clauses.find(c => c.id === sel);
+    const byUnit = {};
+    for (const c of K.clauses) (byUnit[c.unit] = byUnit[c.unit] || []).push(c);
+    const go = patch => { const p = { c: sel, mode: mode === 'dict' ? 'dict' : '' }; Object.assign(p, patch); location.hash = hashFor('corner/constitution', p); };
+    // a unit's text with its clauses marked (or, in dictionary mode, every word clickable)
+    const unitHtml = u => {
+      const t = u.text;
+      if (mode === 'dict') return esc(t).replace(/[A-Za-z]+(?:'[a-z]+)?/g, w => `<span class="ac-w">${w}</span>`);
+      const marks = [];
+      for (const c of byUnit[u.id] || []) {
+        const at = t.indexOf(c.hl);
+        if (at >= 0 && !marks.some(m => at < m.end && at + c.hl.length > m.start)) marks.push({ start: at, end: at + c.hl.length, c });
+      }
+      marks.sort((a, b) => a.start - b.start);
+      let out = '', pos = 0;
+      for (const m of marks) {
+        out += esc(t.slice(pos, m.start)) + `<a class="ac-cl${m.c.id === sel ? ' on' : ''}" href="${hashFor('corner/constitution', { c: m.c.id })}" data-c="${esc(m.c.id)}" title="${esc(m.c.name)}">${esc(t.slice(m.start, m.end))}</a>`;
+        pos = m.end;
+      }
+      return out + esc(t.slice(pos));
+    };
+    const groups = [];
+    for (const u of K.units) { const g = groups[groups.length - 1]; if (!g || g.name !== u.group) groups.push({ name: u.group, units: [u] }); else g.units.push(u); }
+    const shortLabel = u => u.label.replace(/^(Article [IVX]+|Amendment [IVX]+), ?/, '').replace(/^Preamble$/, '');
+    const textHtml = groups.map(g => `<section class="ac-group"><h2>${esc(g.name)}</h2>${g.units.map(u => `<div class="ac-unit" id="u-${u.id}">
+        ${/^Amendment/.test(u.label) && !/Section/.test(u.label) || /Section 1$/.test(u.label) && /^Amendment/.test(u.label) ? `<h3>${esc(u.label.replace(/, Section \d+$/, ''))}</h3>` : ''}
+        ${shortLabel(u) ? `<span class="ac-loc">${esc(shortLabel(u))}</span>` : ''}<p>${unitHtml(u)}</p></div>`).join('')}</section>`).join('');
+    app.innerHTML = `<div class="fade-in">
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>The Annotated Constitution</span></div>
+        <h1>The Annotated Constitution</h1>
+        <p>${mode === 'dict' ? 'Select any word to see how founding-era dictionaries defined it: Johnson (1755), Webster (1828) and Bouvier\'s law dictionary (1856).' : `Select a highlighted clause to read what it means, how its interpretation has changed, the leading cases and scholarship, and what the founding generation wrote about it. ${K.clauses.length} clauses are annotated.`}</p>
+        <div class="ac-tools">
+          <div class="seg" role="group" aria-label="Mode"><button data-mode="clauses" class="${mode === 'clauses' ? 'on' : ''}">Clauses</button><button data-mode="dict" class="${mode === 'dict' ? 'on' : ''}">Founding-era dictionary</button></div>
+          ${mode === 'clauses' ? `<select id="ac-jump" class="input" aria-label="Jump to a clause"><option value="">Jump to a clause…</option>${K.clauses.map(c => `<option value="${esc(c.id)}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}
+        </div></div>
+      <div class="ac-layout ${clause ? 'open' : ''}">
+        <div class="ac-text ${mode === 'dict' ? 'dict' : ''}">${textHtml}<p class="attrib">Text: National Archives transcription, with original spelling and punctuation.</p></div>
+        ${clause ? `<aside class="ac-panel" id="ac-panel">${clausePanel(clause, I)}</aside>` : ''}
+      </div>
+      <div class="ac-pop" id="ac-pop" hidden></div>
+    </div>`;
+    app.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => go({ mode: b.dataset.mode === 'dict' ? 'dict' : '', c: b.dataset.mode === 'dict' ? '' : sel })));
+    const jump = document.getElementById('ac-jump');
+    if (jump) jump.addEventListener('change', () => { if (jump.value) go({ c: jump.value }); });
+    const close = document.getElementById('ac-close');
+    if (close) close.addEventListener('click', () => go({ c: '' }));
+    if (clause) {
+      const el = document.getElementById('u-' + clause.unit);
+      if (el) setTimeout(() => { const r = el.getBoundingClientRect(); if (r.top < 120 || r.bottom > innerHeight) el.scrollIntoView({ block: 'center' }); }, 180);   // after the router restores scroll
+      app.querySelectorAll('[data-sec]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.getElementById('acs-' + a.dataset.sec)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
+    }
+    if (mode === 'dict') mountWordInspector(K);
+  }
+  function clausePanel(c, I) {
+    const A = window.CL_DATA, artById = new Map((A ? A.articles : []).map(a => [a.id, a]));
+    const jname = id => (A && A.journals.find(j => j.id === id) || {}).name || '';
+    const secs = [];
+    if (c.wiki) secs.push(['overview', 'Overview', `${c.wiki.paras.map(p => `<p>${esc(p)}</p>`).join('')}<p class="attrib">From Wikipedia, <a href="${esc(c.wiki.url)}" target="_blank" rel="noopener">${esc(c.wiki.title)}</a> (CC BY-SA 4.0).</p>`]);
+    if (c.conan && c.conan.overview) secs.push(['commentary', 'Commentary', `<h5>${esc(c.conan.overview.title)}</h5>${c.conan.overview.paras.map(p => `<p>${p}</p>`).join('')}
+      ${c.conan.dev.length ? `<h5 style="margin-top:18px">How interpretation has developed</h5><div class="ac-dev">${c.conan.dev.map(d => `<details><summary>${esc(d.title)}</summary><p>${d.p}</p></details>`).join('')}</div>` : ''}
+      <p class="attrib">From the <i>Constitution Annotated</i> (Congressional Research Service, 2022 ed.), essays ${esc(c.conan.overview.id)}${c.conan.dev.length ? ' and following' : ''}; public domain.</p>`]);
+    if (c.cases.length) secs.push(['cases', `Leading cases <small>${c.nCases > c.cases.length ? `top ${c.cases.length} of ${fmt(c.nCases)}` : ''}</small>`, `<ol class="mini-list ranked">${c.cases.map(id => { const k = caseById.get(id); if (!k) return ''; const m = I.c[id]; return `<li><a class="t" href="#/case/${esc(id)}">${esc(k.n)}</a><div class="m">${esc(k.cit || '')}${k.y ? ' · ' + k.y : ''}${m ? ` · ${fmt(m[2])} later Supreme Court citations` : ''}</div></li>`; }).join('')}</ol>
+      <p class="attrib">Cases the Supreme Court Database classifies under this provision, ranked by how often later Supreme Court opinions cite them.</p>`]);
+    if (c.articles.length) secs.push(['scholarship', `Scholarship <small>${c.nArticles > c.articles.length ? `most cited ${c.articles.length} of ${fmt(c.nArticles)}` : ''}</small>`, `<ol class="mini-list ranked">${c.articles.map(id => { const a = artById.get(id); if (!a) return ''; return `<li><a class="t" href="${articleHref(a)}">${esc(a.t)}</a><div class="m">${esc((a.a || []).slice(0, 2).join(', '))}${a.a && a.a.length > 2 ? ' et al.' : ''} · ${esc(jname(a.j))}${a.y ? ' ' + a.y : ''}${a.c != null ? ` · ${fmt(a.c)} citations` : ''}</div></li>`; }).join('')}</ol>`]);
+    if (c.founding.length) secs.push(['founding', 'Founding-era commentary', c.founding.map(p => `<blockquote class="ac-q"><p>${esc(p.t)}</p><footer>${esc(SRC_LABEL[p.s] || p.s)}${p.loc ? ', ' + esc(p.loc) : ''}</footer></blockquote>`).join('')]);
+    if (c.statutes.length) secs.push(['statutes', 'Early statutes', `<p class="muted-line" style="margin:0 0 10px">Acts of the first Congresses that put the clause into practice or bear on its early meaning.</p>${c.statutes.map(p => `<blockquote class="ac-q"><p>${esc(p.t)}</p><footer>${esc(p.loc || 'Statutes at Large, vol. 1')}</footer></blockquote>`).join('')}<a class="link-arrow" href="#/library/statutes">All early statutes →</a>`]);
+    return `<div class="ac-panel-head"><div><span class="eyebrow">${esc(c.loc)}</span><h2>${esc(c.name)}</h2></div><button class="icon-btn" id="ac-close" aria-label="Close" title="Close">✕</button></div>
+      <blockquote class="ac-clause">“${esc(c.hl)}”</blockquote>
+      <nav class="ac-nav">${secs.map(([id, h]) => `<a href="#" data-sec="${id}">${h.replace(/<small>.*<\/small>/, '').trim()}</a>`).join('')}</nav>
+      ${secs.map(([id, h, body]) => `<section class="ac-sec" id="acs-${id}"><h4>${h}</h4>${body}</section>`).join('')}`;
+  }
+  function mountWordInspector(K) {
+    const pop = document.getElementById('ac-pop');
+    const text = app.querySelector('.ac-text');
+    const hide = () => { pop.hidden = true; text.querySelectorAll('.ac-w.on').forEach(x => x.classList.remove('on')); };
+    loadData('founding-dict', 'FOUNDING_DICT').then(Dct => {
+      text.addEventListener('click', e => {
+        const w = e.target.closest('.ac-w');
+        if (!w) return hide();
+        hide(); w.classList.add('on');
+        const word = w.textContent.toLowerCase();
+        const unit = w.closest('.ac-unit');
+        const near = unit ? unit.textContent.toLowerCase() : '';
+        const phrase = Object.keys(Dct.phrases).filter(ph => ph.split(' ').includes(word) && near.includes(ph)).sort((a, b) => b.length - a.length)[0];
+        const rec = Dct.words[word] || {};
+        const block = (key, label, r) => r ? `<div class="ac-def"><h5>${label}</h5>${r.e.map(e => `<p>${r.hw !== word ? `<b>${esc(r.hw)}</b> ` : ''}${e.pos ? `<i>${esc(e.pos)}</i> ` : ''}${esc(e.t)}</p>`).join('')}</div>` : '';
+        const body = (phrase ? block('p', `Bouvier, “${phrase}”`, Dct.phrases[phrase]) : '') + block('j', 'Johnson, 1755', rec.j) + block('w', 'Webster, 1828', rec.w) + block('b', 'Bouvier, Law Dictionary, 1856', rec.b);
+        pop.innerHTML = `<div class="ac-pop-head"><b>${esc(w.textContent)}</b><button class="icon-btn" aria-label="Close">✕</button></div>${body || '<p class="muted-line">No entry in these dictionaries (often a proper name).</p>'}
+          <p class="attrib">Johnson: LEME transcription, CC BY 4.0. Webster: OCR of the 1828 edition, may contain errors. Bouvier: 6th ed., public domain.</p>`;
+        pop.hidden = false;
+        const r = w.getBoundingClientRect();
+        const left = Math.min(Math.max(12, r.left + scrollX - 40), document.documentElement.clientWidth - pop.offsetWidth - 12);
+        pop.style.left = left + 'px';
+        pop.style.top = (r.bottom + scrollY + 8) + 'px';
+        pop.querySelector('button').addEventListener('click', hide);
+      });
+    });
+  }
+
   function viewCorner() { withData([['corner', 'CORNER']], C => renderCorner(C)); }
   function renderCorner(C) {
     const srcs = SOURCE_ORDER.map(id => C.sources.find(s => s.id === id)).filter(Boolean);
@@ -1618,8 +2102,8 @@
       <section class="hero corner-hero"><div class="hero-inner" style="padding:64px 24px 54px">
         <span class="eyebrow">Originalist's Corner</span>
         <h1 style="max-width:16ch">What the founding generation <em>actually said.</em></h1>
-        <p class="lede">Choose a topic and read what Blackstone, the Convention debates, <i>The Federalist</i>, the acts of the first Congresses, Tucker, Story, Kent, Vattel and Locke said about it, side by side. The ${fmt(Object.keys(C.passages).length)} passages are drawn from the full texts of ${srcs.length} bodies of founding-era material.</p>
-        <div class="suggest" style="margin-top:22px"><a class="chip" href="#/library">Browse the library →</a></div>
+        <p class="lede">Choose a topic and read what Blackstone, the Convention debates, <i>The Federalist</i> and the Anti-Federalists, the acts of the first Congresses, Tucker, Story, Rawle, Kent, Cooley, Vattel and Locke said about it, side by side. The ${fmt(Object.keys(C.passages).length)} passages are drawn from the full texts of ${srcs.length} bodies of founding-era material.</p>
+        <div class="suggest" style="margin-top:22px"><a class="chip on" href="#/corner/constitution">The Annotated Constitution →</a><a class="chip" href="#/corner/constitution?mode=dict">Founding-era dictionary →</a><a class="chip" href="#/library">Browse the library →</a></div>
       </div></section>
       <section class="section" style="padding-top:44px">
         <div class="section-head"><div><h2>Topics</h2><p>Each topic gathers the most relevant passages from every source.</p></div></div>
@@ -1788,7 +2272,7 @@
     });
   }
 
-  /* ------------------------------------------------------------ Quiz Me! (spaced-repetition flashcards) */
+  /* ------------------------------------------------------------ Learning Center (spaced-repetition flashcards and games) */
   // Progress lives in this browser, per named profile: localStorage['cl-fc-profiles'] and ['cl-fc:<profile>'].
   const FC = {
     MIN: 60e3, DAY: 864e5,
@@ -1882,26 +2366,30 @@
     return soon;
   }
   const deckTitle = (F, id) => id === 'all' ? 'All decks' : (F.decks.find(d => d.id === id) || {}).title || id;
-  const deckIconHtml = id => id === 'all' ? `<span class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="13" height="15" rx="2"/><path d="M7 3h13v15"/></svg></span>` : guideIcon(id);
+  const deckIconHtml = id => id === 'all' ? `<span class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="13" height="15" rx="2"/><path d="M7 3h13v15"/></svg></span>`
+    : id === 'basics' ? `<span class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></span>`
+    : /^ot-/.test(id) ? `<span class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>` : guideIcon(id);
   function quizTabs(active) {
-    return `<div class="subtabs"><a href="#/quiz" class="${active === 'study' ? 'on' : ''}">Study</a><a href="#/quiz/decks" class="${active === 'decks' ? 'on' : ''}">Decks &amp; settings</a><a href="#/quiz/stats" class="${active === 'stats' ? 'on' : ''}">Stats</a></div>`;
+    return `<div class="subtabs"><a href="#/quiz" class="${active === 'study' ? 'on' : ''}">Flashcards</a><a href="#/quiz/games" class="${active === 'games' ? 'on' : ''}">Games</a><a href="#/quiz/decks" class="${active === 'decks' ? 'on' : ''}">Decks &amp; settings</a><a href="#/quiz/stats" class="${active === 'stats' ? 'on' : ''}">Stats</a></div>`;
   }
   function quizHead(active, sub) {
     const p = fcProfiles();
-    return `<div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Quiz Me!</span></div>
-      <div class="qm-head"><h1>Quiz Me!</h1><a class="qm-profile" href="#/quiz/decks" title="Switch profile"><span>Studying as</span><b>${esc(p.current)}</b></a></div>
+    return `<div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Learning Center</span></div>
+      <div class="qm-head"><h1>Learning Center</h1><a class="qm-profile" href="#/quiz/decks" title="Switch profile"><span>Studying as</span><b>${esc(p.current)}</b></a></div>
       <p>${sub}</p>${quizTabs(active)}</div>`;
   }
   function viewQuiz(seg) {
-    withData([['flashcards', 'FLASHCARDS']], F => {
+    if (seg[1] === 'games') return viewGames(seg[2] || '');
+    if (seg[1] === 'study' && /^ot-/.test(seg[2] || '')) return studyTermDeck(seg[2]);
+    withData([['flashcards', 'FLASHCARDS'], ['fc-terms', 'FC_TERMS']], (F, T) => {
       const sub = seg[1] || '';
       if (sub === 'study') return renderStudy(F, seg[2] || 'all');
       if (sub === 'decks') return renderQuizDecks(F);
       if (sub === 'stats') return renderQuizStats(F);
-      renderQuizHome(F);
+      renderQuizHome(F, T);
     });
   }
-  function renderQuizHome(F) {
+  function renderQuizHome(F, T) {
     const s = fcLoad();
     const total = fcCounts(F, s, 'all');
     const tile = id => { const c = fcCounts(F, s, id); const d = F.decks.find(x => x.id === id); return `<a class="qm-deck" href="#/quiz/study/${id}">
@@ -1914,7 +2402,8 @@
       <section class="section" style="padding-top:24px">
         <div class="qm-today"><div><b>${total.nw + total.learn + total.due}</b><span>cards to study today</span></div><div><b>${s.day.revDone + s.day.newDone}</b><span>studied today</span></div><div class="qm-legend"><i class="c-new"></i>New <i class="c-learn"></i>Learning <i class="c-due"></i>Due</div></div>
         <div class="qm-decks">${tile('all')}</div>
-        ${groups.map(g => `<div class="qm-group"><h3>${esc(g)}</h3><div class="qm-decks">${F.decks.filter(d => d.group === g).map(d => tile(d.id)).join('')}</div></div>`).join('')}
+        ${groups.map(g => `<div class="qm-group"><h3>${g === 'The Basics' ? 'Start here: the basics' : esc(g)}</h3><div class="qm-decks">${F.decks.filter(d => d.group === g).map(d => tile(d.id)).join('')}</div></div>`).join('')}
+        ${T ? termDeckHtml(T, s) : ''}
       </section></div>`;
   }
   function renderStudy(F, deck) {
@@ -1983,6 +2472,223 @@
     window.addEventListener('hashchange', stop);
     draw();
   }
+  /* ------------------------------------------------------------ Learning Center: term-by-term decks */
+  function termDeckHtml(T, s) {
+    return `<section class="qm-group qm-terms"><h3>Every case, term by term</h3>
+      <p class="muted-line" style="margin:-4px 0 12px">Flashcards for ${fmt(T.courts.reduce((n, c) => n + c.cases, 0))} more decided cases with a summary, one deck per Term, grouped by Chief Justice. These are kept out of the topic decks and the games.</p>
+      ${T.courts.map(c => `<details class="qm-court"><summary><b>${esc(c.name)}</b><span>${esc(c.years)} · ${fmt(c.cases)} cases · ${c.decks.length} term${c.decks.length === 1 ? '' : 's'}</span></summary>
+        <div class="qm-term-list">${c.decks.map(d => `<a href="#/quiz/study/${esc(d.id)}"><b>${esc(d.title)}</b><span>${d.cases} case${d.cases === 1 ? '' : 's'} · ${d.cards} cards</span></a>`).join('')}</div></details>`).join('')}
+    </section>`;
+  }
+  function studyTermDeck(deck) {
+    withData([['fc-terms', 'FC_TERMS']], T => {
+      const court = T.courts.find(c => c.decks.some(d => d.id === deck));
+      if (!court) return viewNotFound();
+      withData([['fc-court-' + court.id, 'FC_COURT_' + court.id.toUpperCase()]], C => {
+        renderStudy({ decks: court.decks.map(d => ({ id: d.id, title: `${d.title} (${court.name})`, group: court.name })), cases: C.cases, cards: C.cards }, deck);
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------ Learning Center: games (essential cases only) */
+  const GAME_LIST = [
+    ['match', 'Match-up', 'Pair five cases with what they decided. Clear the board in as few misses as you can.'],
+    ['ruling', 'Choose the Ruling', 'Read the question the Court faced and pick its actual ruling from four convincing options.'],
+    ['overruled', 'Overruled', 'See a precedent and its holding, then name the case that later overruled it.'],
+    ['docket', 'Current Events', 'Identify a case on the Court’s current docket from clues revealed one at a time. Fewer clues, more points.'],
+    ['author', 'Who Wrote It?', 'Name the justice who wrote the opinion of the Court in a landmark case.'],
+    ['timeline', 'Timeline', 'Put four landmark cases in the order they were decided.'],
+  ];
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const gameBest = (g, v) => { let b = {}; try { b = JSON.parse(localStorage.getItem('cl-games') || '{}'); } catch (e) {} if (v != null && v > (b[g] || 0)) { b[g] = v; localStorage.setItem('cl-games', JSON.stringify(b)); } return b[g] || 0; };
+  const plainText = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return d.textContent.replace(/\s+/g, ' ').trim(); };
+  const caseHolding = c => (c && c.ds || '').replace(/^A case in which the Court (held|decided|ruled|found|concluded|considered|addressed|examined|determined|established)/i, 'The Court $1').replace(/^A case (?:that|in which) the Court (?:that\s+)?(?=(?:the|a|an|he|she|both|[A-Z])\b)/, 'The Court held that ').replace(/^A case (?:that|in which) the Court that\s+/i, 'The Court held that ').replace(/^A case (?:that|in which) (?:the Court )?/i, 'The Court ');
+  function viewGames(game) {
+    withData([['flashcards', 'FLASHCARDS'], ['scotus', 'SCOTUS'], ['games', 'GAMES'], ['votes', 'VOTES'], ['docket', 'DOCKET']], (F, S, GM, V, K) => {
+      if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
+      if (!game) return renderGameHub();
+      const fn = { match: gameMatch, ruling: gameRuling, overruled: gameOverruled, docket: gameDocket, author: gameAuthor, timeline: gameTimeline }[game];
+      if (!fn) return viewNotFound();
+      fn(F, GM, V, K);
+    });
+  }
+  function renderGameHub() {
+    app.innerHTML = `<div class="fade-in">${quizHead('games', 'Games for learning the essential cases. Each draws only on the essential-case decks, not the term-by-term decks.')}
+      <section class="section" style="padding-top:24px"><div class="game-grid">${GAME_LIST.map(([id, name, desc]) => `<a class="game-card" href="#/quiz/games/${id}"><b>${esc(name)}</b><span>${esc(desc)}</span><em>${gameBest(id) ? `Best: ${gameBest(id)}` : 'Play →'}</em></a>`).join('')}</div></section></div>`;
+  }
+  // a game of N multiple-choice rounds: round(i) returns {prompt html, options [{html, ok}], after html}
+  function mcGame(id, title, rounds, intro) {
+    let i = 0, score = 0, streak = 0;
+    const draw = () => {
+      if (i >= rounds.length) {
+        const best = gameBest(id, score);
+        app.innerHTML = `<div class="fade-in">${quizHead('games', title)}<div class="qm-study"><div class="qm-done"><h2>${score} / ${rounds.length}</h2><p>${score === best ? 'A new best score.' : `Your best is ${best}.`}</p>
+          <div class="actions" style="justify-content:center"><a class="btn btn-primary" href="#/quiz/games/${id}" data-replay>Play again</a><a class="btn btn-ghost" href="#/quiz/games">All games</a></div></div></div></div>`;
+        app.querySelector('[data-replay]').addEventListener('click', e => { e.preventDefault(); route(); });
+        return;
+      }
+      const r = rounds[i];
+      const opts = shuffle(r.options);
+      app.innerHTML = `<div class="fade-in">${quizHead('games', intro)}<div class="qm-study">
+        <div class="qm-bar"><a href="#/quiz/games" class="link-arrow">← Games</a><span class="game-score">Round ${i + 1} of ${rounds.length} · Score ${score}${streak > 1 ? ` · Streak ${streak}` : ''}</span></div>
+        <div class="qm-card"><div class="qm-card-top"><span>${esc(title)}</span></div><div class="game-prompt">${r.prompt}</div>
+          <div class="game-opts">${opts.map((o, k) => `<button class="game-opt" data-k="${k}">${o.html}</button>`).join('')}</div>
+          <div class="game-after" hidden>${r.after || ''}<button class="btn btn-primary game-next">${i + 1 < rounds.length ? 'Next' : 'See score'}</button></div></div></div></div>`;
+      app.querySelectorAll('.game-opt').forEach(b => b.addEventListener('click', () => {
+        if (app.querySelector('.game-opt.done')) return;
+        const o = opts[+b.dataset.k];
+        app.querySelectorAll('.game-opt').forEach((x, k) => { x.classList.add('done'); if (opts[k].ok) x.classList.add('right'); });
+        if (o.ok) { score++; streak++; } else { b.classList.add('wrong'); streak = 0; }
+        app.querySelector('.game-after').hidden = false;
+      }));
+      app.querySelector('.game-next').addEventListener('click', () => { i++; draw(); window.scrollTo(0, 0); });
+    };
+    draw();
+  }
+  const caseLabel = id => { const c = caseById.get(id); return c ? `<i>${esc(c.n.replace(/\s*\(\d\)$/, ''))}</i> (${c.y})` : ''; };
+  const caseLink = id => `<a class="link-arrow" href="#/case/${esc(id)}" target="_blank">Read about ${caseLabel(id)} →</a>`;
+  function gameRuling(F, GM) {
+    const rounds = shuffle(GM.ruling).slice(0, 10).map(r => ({
+      prompt: `<p class="game-case">${caseLabel(r.c)}</p><p class="game-q"><b>The question:</b> ${esc(r.q)}</p><p class="muted-line">What did the Court decide?</p>`,
+      options: [{ html: esc(r.a), ok: true }, ...r.d.map(d => ({ html: esc(d), ok: false }))],
+      after: caseLink(r.c),
+    }));
+    mcGame('ruling', 'Choose the Ruling', rounds, 'Read the question the Court faced and choose its actual ruling.');
+  }
+  function gameOverruled(F, GM) {
+    const newer = [...new Set(GM.overruled.map(o => o.new))];
+    const rounds = shuffle(GM.overruled).slice(0, 10).map(o => {
+      const old = caseById.get(o.old), nw = caseById.get(o.new);
+      const decoys = shuffle(newer.filter(x => x !== o.new && (caseById.get(x).y || 0) > (old.y || 0))).slice(0, 3);
+      while (decoys.length < 3) { const x = shuffle(Object.keys(F.cases)).find(id => id !== o.new && !decoys.includes(id) && (caseById.get(id) || {}).y > old.y); if (!x) break; decoys.push(x); }
+      return {
+        prompt: `<p class="game-case">${caseLabel(o.old)}</p><p class="game-q">${esc(caseHolding(old) || 'The Court decided this case on the question presented.')}</p><p class="muted-line">Which later case overruled it?</p>`,
+        options: [{ html: caseLabel(o.new), ok: true }, ...decoys.map(d => ({ html: caseLabel(d), ok: false }))],
+        after: `<p>${caseLabel(o.new)} overruled ${caseLabel(o.old)}.</p>${caseLink(o.new)}`,
+      };
+    });
+    mcGame('overruled', 'Overruled', rounds, 'Name the case that overruled the precedent.');
+  }
+  function gameAuthor(F, GM, V) {
+    const pool = Object.keys(F.cases).filter(id => V.c[id] && V.c[id][2].some(([, f]) => f === 1));
+    const rounds = shuffle(pool).slice(0, 10).map(id => {
+      const r = V.c[id];
+      const author = r[2].find(([, f]) => f === 1)[0];
+      const others = shuffle([...r[2], ...r[3]].map(([j]) => j).filter(j => j !== author)).slice(0, 3);
+      return {
+        prompt: `<p class="game-case">${caseLabel(id)}</p><p class="game-q">${esc(caseHolding(caseById.get(id)))}</p><p class="muted-line">Who wrote the opinion of the Court?</p>`,
+        options: [{ html: esc(V.j[author][0]), ok: true }, ...others.map(j => ({ html: esc(V.j[j][0]), ok: false }))],
+        after: `<p>${esc(V.j[author][0])} wrote for the Court, ${r[0]}–${r[1]}.</p>${caseLink(id)}`,
+      };
+    });
+    mcGame('author', 'Who Wrote It?', rounds, 'Choose the justice who wrote the opinion of the Court.');
+  }
+  function gameMatch(F) {
+    const which = F.cards.filter(c => c.k === 'which');
+    let board = 0, misses = 0, total = 0;
+    const draw = () => {
+      if (board >= 3) {
+        const score = Math.max(0, 15 - misses), best = gameBest('match', score);
+        app.innerHTML = `<div class="fade-in">${quizHead('games', 'Match-up')}<div class="qm-study"><div class="qm-done"><h2>${total} matched, ${misses} miss${misses === 1 ? '' : 'es'}</h2><p>Score ${score} of 15. ${score === best ? 'A new best.' : `Your best is ${best}.`}</p>
+          <div class="actions" style="justify-content:center"><a class="btn btn-primary" href="#" data-replay>Play again</a><a class="btn btn-ghost" href="#/quiz/games">All games</a></div></div></div></div>`;
+        app.querySelector('[data-replay]').addEventListener('click', e => { e.preventDefault(); route(); });
+        return;
+      }
+      const picks = shuffle(which).filter((c, i, a) => a.findIndex(x => x.c === c.c) === i).slice(0, 5);
+      const names = shuffle(picks), descs = shuffle(picks);
+      app.innerHTML = `<div class="fade-in">${quizHead('games', 'Pair each case with what it decided.')}<div class="qm-study wide">
+        <div class="qm-bar"><a href="#/quiz/games" class="link-arrow">← Games</a><span class="game-score">Board ${board + 1} of 3 · Misses ${misses}</span></div>
+        <div class="match-board"><div class="match-col">${names.map(c => `<button class="match-item" data-c="${esc(c.c)}">${caseLabel(c.c)}</button>`).join('')}</div>
+        <div class="match-col">${descs.map(c => `<button class="match-item desc" data-c="${esc(c.c)}">${esc(plainText(c.f).replace(/^Which case\?\s*/, ''))}</button>`).join('')}</div></div></div></div>`;
+      let sel = null, left = 5;
+      app.querySelectorAll('.match-item').forEach(b => b.addEventListener('click', () => {
+        if (b.classList.contains('matched')) return;
+        if (!sel || sel.classList.contains('desc') === b.classList.contains('desc')) { app.querySelectorAll('.match-item.sel').forEach(x => x.classList.remove('sel')); sel = b; b.classList.add('sel'); return; }
+        if (sel.dataset.c === b.dataset.c) { sel.classList.add('matched'); b.classList.add('matched'); sel.classList.remove('sel'); total++; left--; if (!left) setTimeout(() => { board++; draw(); }, 600); }
+        else { misses++; b.classList.add('wrong'); sel.classList.add('wrong'); const a = sel; setTimeout(() => { a.classList.remove('wrong', 'sel'); b.classList.remove('wrong'); }, 500); app.querySelector('.game-score').textContent = `Board ${board + 1} of 3 · Misses ${misses}`; }
+        sel = null;
+      }));
+    };
+    draw();
+  }
+  function gameTimeline(F) {
+    const ids = Object.keys(F.cases).filter(id => caseById.get(id) && caseById.get(id).y);
+    let round = 0, score = 0;
+    const draw = () => {
+      if (round >= 5) {
+        const best = gameBest('timeline', score);
+        app.innerHTML = `<div class="fade-in">${quizHead('games', 'Timeline')}<div class="qm-study"><div class="qm-done"><h2>${score} / 5</h2><p>${score === best ? 'A new best.' : `Your best is ${best}.`}</p><div class="actions" style="justify-content:center"><a class="btn btn-primary" href="#" data-replay>Play again</a><a class="btn btn-ghost" href="#/quiz/games">All games</a></div></div></div></div>`;
+        app.querySelector('[data-replay]').addEventListener('click', e => { e.preventDefault(); route(); });
+        return;
+      }
+      let four;
+      do { four = shuffle(ids).slice(0, 4); } while (new Set(four.map(id => caseById.get(id).y)).size < 4);
+      const order = four.slice().sort((a, b) => caseById.get(a).y - caseById.get(b).y);
+      const picked = [];
+      app.innerHTML = `<div class="fade-in">${quizHead('games', 'Select the cases from earliest to latest.')}<div class="qm-study">
+        <div class="qm-bar"><a href="#/quiz/games" class="link-arrow">← Games</a><span class="game-score">Round ${round + 1} of 5 · Score ${score}</span></div>
+        <div class="qm-card"><div class="game-opts">${four.map(id => `<button class="game-opt" data-c="${esc(id)}"><span class="tl-n"></span>${esc(caseById.get(id).n.replace(/\s*\(\d\)$/, ''))}</button>`).join('')}</div>
+        <div class="game-after" hidden><p class="tl-answer"></p><button class="btn btn-primary game-next">Next</button></div></div></div></div>`;
+      app.querySelectorAll('.game-opt').forEach(b => b.addEventListener('click', () => {
+        if (picked.includes(b.dataset.c) || picked.length === 4) return;
+        picked.push(b.dataset.c); b.querySelector('.tl-n').textContent = picked.length; b.classList.add('sel');
+        if (picked.length === 4) {
+          const ok = picked.every((id, k) => id === order[k]);
+          if (ok) score++;
+          app.querySelectorAll('.game-opt').forEach(x => { x.classList.add('done'); x.classList.add(order.indexOf(x.dataset.c) === picked.indexOf(x.dataset.c) ? 'right' : 'wrong'); });
+          app.querySelector('.tl-answer').innerHTML = (ok ? 'Correct. ' : 'The order: ') + order.map(id => `${esc(caseById.get(id).n.replace(/\s*\(\d\)$/, ''))} (${caseById.get(id).y})`).join(' → ');
+          app.querySelector('.game-after').hidden = false;
+        }
+      }));
+      app.querySelector('.game-next').addEventListener('click', () => { round++; draw(); });
+    };
+    draw();
+  }
+  function gameDocket(F, GM, V, K) {
+    const pool = K.cases.filter(e => e.q && e.n);
+    if (pool.length < 4) { app.innerHTML = `<div class="fade-in">${quizHead('games', 'Current Events')}<div class="qm-study"><p>Not enough cases on the current docket yet.</p></div></div>`; return; }
+    let round = 0, score = 0;
+    const N = Math.min(8, pool.length);
+    const order = shuffle(pool).slice(0, N);
+    const maskName = (txt, n) => n.split(/\s+v\.\s+/).flatMap(p => p.match(/[A-Z][a-z][\w'-]{3,}/g) || []).filter(w => !/^(United|States|County|Department|Commission|Board|Corporation|Company)$/.test(w)).reduce((t, w) => t.replace(new RegExp('\\b' + w + '\\b', 'g'), '———'), txt);
+    const draw = () => {
+      if (round >= N) {
+        const best = gameBest('docket', score);
+        app.innerHTML = `<div class="fade-in">${quizHead('games', 'Current Events')}<div class="qm-study"><div class="qm-done"><h2>${score} points</h2><p>out of ${N * 3} possible. ${score === best ? 'A new best.' : `Your best is ${best}.`}</p><div class="actions" style="justify-content:center"><a class="btn btn-primary" href="#" data-replay>Play again</a><a class="btn btn-ghost" href="#/docket">See the docket</a></div></div></div></div>`;
+        app.querySelector('[data-replay]').addEventListener('click', e => { e.preventDefault(); route(); });
+        return;
+      }
+      const e = order[round];
+      const opts = shuffle([e, ...shuffle(pool.filter(x => x !== e)).slice(0, 3)]);
+      const initials = e.n.split(/\s+v\.\s+/).map(p => p.replace(/^(The|In re)\s+/, '').split(/\s+/)[0]).map(w => w[0] + '_'.repeat(Math.max(2, Math.min(8, w.length - 1)))).join(' v. ');
+      const amici = (e.amici || []).length;
+      const clues = [
+        `The question: ${esc(maskName(e.q, e.n))}`,
+        `Cert granted ${e.granted ? fmtDate(e.granted) : 'this Term'}${e.argued ? `; argued ${fmtDate(e.argued)}` : e.sched ? `; argument set for ${fmtDate(e.sched)}` : '; not yet argued'}. ${amici ? `${amici} amicus brief${amici === 1 ? '' : 's'} filed so far.` : 'No amicus briefs filed yet.'}`,
+        `The parties: ${esc(initials)}`,
+      ];
+      let shown = 1, done = false;
+      const paint = () => {
+        app.innerHTML = `<div class="fade-in">${quizHead('games', 'Identify the pending case from the clues. A correct guess after one clue earns 3 points, after two 2, after three 1.')}<div class="qm-study">
+          <div class="qm-bar"><a href="#/quiz/games" class="link-arrow">← Games</a><span class="game-score">Case ${round + 1} of ${N} · ${score} points</span></div>
+          <div class="qm-card"><div class="qm-card-top"><span>Current Events · this Term’s docket</span></div>
+            <ol class="dd-clues">${clues.slice(0, shown).map(c => `<li>${c}</li>`).join('')}</ol>
+            ${!done && shown < 3 ? '<button class="btn btn-ghost btn-sm dd-more">Reveal another clue</button>' : ''}
+            <div class="game-opts">${opts.map((o, k) => `<button class="game-opt ${done ? 'done' : ''} ${done && o === e ? 'right' : ''}" data-k="${k}">${esc(o.n)}</button>`).join('')}</div>
+            <div class="game-after" ${done ? '' : 'hidden'}><a class="link-arrow" href="#/case/${esc(e.id)}" target="_blank">Open the case page →</a><button class="btn btn-primary game-next">Next</button></div></div></div></div>`;
+        const more = app.querySelector('.dd-more'); if (more) more.addEventListener('click', () => { shown++; paint(); });
+        app.querySelectorAll('.game-opt').forEach(b => b.addEventListener('click', () => {
+          if (done) return; done = true;
+          if (opts[+b.dataset.k] === e) score += 4 - shown; else b.classList.add('wrong');
+          const wrong = b.classList.contains('wrong'); paint(); if (wrong) app.querySelectorAll('.game-opt')[+b.dataset.k].classList.add('wrong');
+        }));
+        const nx = app.querySelector('.game-next'); if (nx) nx.addEventListener('click', () => { round++; draw(); });
+      };
+      paint();
+    };
+    draw();
+  }
+
   function renderQuizDecks(F) {
     const s = fcLoad(), p = fcProfiles();
     const now = Date.now();
@@ -2139,10 +2845,11 @@
 
   /* ------------------------------------------------------------ router */
   /* Scroll handling: filters, sorts and sub-tabs keep the reader's place; real navigation and paging go to the top. */
-  let lastRoute = { path: null, params: new URLSearchParams() }, keepScrollOnce = false, pendingScroll = null;
+  let lastRoute = { path: null, params: new URLSearchParams() }, keepScrollOnce = false, forceTopOnce = false, pendingScroll = null;
   document.addEventListener('click', e => {
     const a = e.target.closest('a[href^="#/"]');
     if (a && a.closest('.subtabs, .seg, .chip-row, .filters, [data-keep-scroll]')) keepScrollOnce = true;
+    if (a && a.closest('[data-scroll-top]')) forceTopOnce = true;
   }, true);
   function sameViewToggle(path, params) {
     if (path !== lastRoute.path) return false;
@@ -2153,7 +2860,8 @@
     const raw = location.hash.replace(/^#\/?/, '');
     const [path, qs] = raw.split('?');
     const params = new URLSearchParams(qs || '');
-    const keepScroll = keepScrollOnce || sameViewToggle(path, params);
+    const keepScroll = !forceTopOnce && (keepScrollOnce || sameViewToggle(path, params));
+    forceTopOnce = false;
     const y = window.scrollY;
     keepScrollOnce = false; lastRoute = { path, params };
     const seg = path.split('/');
@@ -2176,6 +2884,7 @@
       case 'docket': viewDocket(params); break;
       case 'justices': viewJustices(); break;
       case 'justice': viewJustice(decodeURIComponent(seg[1] || '')); break;
+      case 'statutes': viewStatutes(seg[1], params); break;
       case 'case': viewCase(decodeURIComponent(seg.slice(1).join('/'))); break;
       case 'lectures': viewLectures(params); break;
       case 'books': viewBooks(params); break;
@@ -2183,7 +2892,7 @@
       case 'guide': seg[1] ? viewGuideTopic(seg[1]) : viewGuide(); break;
       case 'doctrine': viewDoctrine(seg[1], seg[2]); break;
       case 'quiz': viewQuiz(seg); break;
-      case 'corner': seg[1] ? viewCornerTopic(seg[1], params) : viewCorner(); break;
+      case 'corner': seg[1] === 'constitution' ? viewConstitution(params) : seg[1] ? viewCornerTopic(seg[1], params) : viewCorner(); break;
       case 'library': viewLibrary(seg, params); break;
       case 'about': viewAbout(); break;
       default: viewNotFound();
