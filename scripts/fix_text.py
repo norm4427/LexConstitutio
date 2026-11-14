@@ -5,9 +5,13 @@
   3. not-abstracts: JSTOR citation lines ("..., Harvard Law Review, Vol. 112, No. 4 (Feb., 1999), pp. 988-993") and tables
      of contents scraped as abstracts are dropped (the page then says no abstract is available); an abstract that
      starts with the article's own title has the title removed
+  4. excerpts of longer sources (founding-era passages, early statutes, library documents) lose scraped attributions and
+     page navigation glued to their ends, and one that stops mid-sentence is marked with an ellipsis
+  5. a book "description" that only repeats the title is dropped; one cut mid-word ends at a sentence or whole word
+  6. dictionary entries and flashcard backs shortened mid-sentence end at their last full sentence when one is near
 Run from the repo root:  python scripts/fix_text.py
 """
-import glob, json, re
+import glob, json, os, re
 
 # a run of characters that cp1252-encodes to valid multi-byte UTF-8
 CP = 'ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ'
@@ -61,6 +65,38 @@ def tidy(s, key):
     return s
 
 
+CONTINUES = {   # file -> keys of source passages that are excerpts of longer texts (shown with an ellipsis if cut mid-sentence)
+    'corner.js': {'t'}, 'constitution.js': {'t'}, 'statutes.js': {'p'},
+}
+WHOLE_TEXTS = {   # complete documents shown paragraph by paragraph: a paragraph ending in a comma continues in the next one, so
+    'library-documents.js': {'paras'}, 'library-statutes.js': {'paras'}, 'library-federalist.js': {'paras'},   # junk only
+}
+
+
+def tidy_excerpt(s, mark=True):
+    """a passage cut from a longer source: drop scraped attributions and page navigation glued to its end, then mark a
+    passage that stops mid-sentence ("... the State is therefore left to fix these qualifica-") with an ellipsis."""
+    t = re.sub(r'\s*"[^"]{3,90}," in Wikipedia, the Free Encyclopedia\.?$', '', s.rstrip())
+    t = re.sub(r'(?<=[.;:])\s+(?:Back|Next|Previous|Top|Return to [\w ]+)$', '', t)
+    if mark and len(t) > 80 and re.search(r'[A-Za-z0-9,\-–—(]$', t):
+        t = re.sub(r'\s+\S+-$', '', t)                      # a word broken at the source's line end
+        t = re.sub(r'[\s,;:\-–—(]+$', '', t) + ' …'
+    return t
+
+
+SENTENCE_END = {'founding-dict.js': {'t'}, 'flashcards.js': {'f', 'b'}}   # plus every fc-court-*.js deck: {'f', 'b'}
+
+
+def end_at_sentence(s):
+    """text shortened to a fixed length and ended with "…" mid-sentence: end it at its last full sentence when one is
+    near the end (within the last 45%), so it reads as complete."""
+    if not s.endswith('…'):
+        return s
+    body = s[:-1].rstrip()
+    ends = [m.end() for m in re.finditer(r'(?<!\bv)(?<!\b[A-Z])(?<!\bNo)(?<!\bSt)(?<!\bMr)(?<!\bJ)(?<!\bU\.S)[.!?]["”’)]?(?=\s)', body)]
+    return body[:ends[-1]] if ends and ends[-1] > 0.55 * len(body) else s
+
+
 def walk(x, fn, key=None):
     if isinstance(x, str):
         return fn(x, key)
@@ -84,13 +120,40 @@ def main():
             continue
         changed = [0]
 
+        cont = CONTINUES.get(os.path.basename(path), set())
+        whole = WHOLE_TEXTS.get(os.path.basename(path), set())
+        sent = SENTENCE_END.get(os.path.basename(path)) or ({'f', 'b'} if os.path.basename(path).startswith('fc-court-') else set())
+
         def fn(s, key):
             t = tidy(unmojibake(s), key)
+            if key in cont:
+                t = tidy_excerpt(t)
+            elif key in whole:
+                t = tidy_excerpt(t, mark=False)
+            if key in sent:
+                t = end_at_sentence(t)
             if t != s:
                 changed[0] += 1
             return t
         data = walk(data, fn)
         ell = drop = 0
+        if path.endswith('books.js'):       # a "description" that is only the book's title repeated is not a description
+            nrm = lambda x: re.sub(r'\W+', ' ', x or '').strip().lower()
+            for b in data.get('books', []):
+                bl = b.get('blurb')
+                if not bl:
+                    continue
+                if nrm(bl) in nrm(b.get('title')) or (nrm(b.get('title')) in nrm(bl) and len(bl) < len(b.get('title', '')) + 25):
+                    b.pop('blurb'); changed[0] += 1
+                    continue
+                # a description cut at a fixed length mid-word ("... of polit…"): end it at its last full sentence, or at
+                # least at a whole word
+                if bl.endswith('…') and re.search(r'[A-Za-z]…$', bl):
+                    body = bl[:-1]
+                    ends = [m.end() for m in re.finditer(r'[.!?]["”’)]?(?=\s)', body)]
+                    cut = body[:ends[-1]] if ends and ends[-1] > 0.5 * len(body) else re.sub(r'\s+\S*$', '', body).rstrip(',;:—– ') + ' …'
+                    if cut != bl:
+                        b['blurb'] = cut; changed[0] += 1
         if path.endswith('articles.js'):
             for a in data.get('articles', []):
                 ab = (a.get('ab') or '').rstrip()

@@ -22,6 +22,20 @@ RAW = 'data/raw/constitution'
 ROMAN = {v: i for i, v in enumerate('I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI XVII XVIII XIX XX XXI XXII XXIII XXIV XXV XXVI XXVII'.split(), 1)}
 
 
+def clip(text, n):
+    """text cut to about n characters at the end of a sentence (never mid-word), with an ellipsis when something was cut;
+    an <em>/<i> left open by the cut is closed."""
+    if len(text) <= n:
+        return text
+    ends = [m.end() for m in re.finditer(r'(?<!\bv)(?<!\b[A-Z])(?<!\bNo)(?<!\bSt)(?<!\bMr)(?<!\bU\.S)(?<!\bId)(?<!\bJr)(?<!\bCo)(?<!\bArt)(?<!\bcl)'
+                                         r'[.!?][”’"\')\]]?(?:</em>|</i>)?(?=\s+[“"(\[]?[A-Z<])', text[:n + 200])]
+    good = [e for e in ends if e <= n] or ends[:1]
+    out = text[:good[-1]] if good and good[-1] >= 0.4 * n else re.sub(r'\s+\S*$', '', text[:n])
+    for tag in ('em', 'i'):
+        out += f'</{tag}>' * max(0, out.count(f'<{tag}>') - out.count(f'</{tag}>'))
+    return out.rstrip() + ('' if len(out) >= len(text) else ' …')
+
+
 def load_js(name):
     s = open(f'docs/data/{name}.js', encoding='utf-8').read()
     return json.loads(s[s.index('=') + 1:].rstrip().rstrip(';'))
@@ -236,7 +250,8 @@ def main():
         rec['hl'] = (m.group(0) if m and c['hl'] != '.*' else u['text']).strip()
         w = wiki.get(c['wiki']) or {}
         if w.get('text'):
-            paras = [p.strip() for p in w['text'].split('\n') if len(p.strip()) > 60][:4]
+            # (a paragraph that led into a list Wikipedia's summary dropped ends in a comma or colon: left out)
+            paras = [p.strip() for p in w['text'].split('\n') if len(p.strip()) > 60 and not re.search(r'[,:;]$', p.strip())][:4]
             rec['wiki'] = {'title': w['title'], 'url': w['url'], 'paras': paras}
         # Constitution Annotated
         ids = [k for k in ess if any(k == p or k.startswith(p + '.') for p in c['conan'])]
@@ -246,7 +261,7 @@ def main():
             for k in ids:
                 if k == ov or not ess[k][1] or ess[k][0].lower().startswith('overview'):
                     continue
-                dev.append({'id': k, 'title': re.sub(r'\s+[A-Z][a-z]+ Amendment:$|\s+(Article|Amendment) [IVX]+.*$', '', ess[k][0]), 'p': ess[k][1][0][:900]})
+                dev.append({'id': k, 'title': re.sub(r'\s+[A-Z][a-z]+ Amendment:$|\s+(Article|Amendment) [IVX]+.*$', '', ess[k][0]), 'p': clip(ess[k][1][0], 2500)})
             if len(dev) > 16:   # sample the history evenly so later doctrine is not cut off
                 dev = [dev[round(i * (len(dev) - 1) / 15)] for i in range(16)]
             rec['conan'] = {'overview': {'id': ov, 'title': ess[ov][0], 'paras': ess[ov][1][:6]} if ov else None, 'dev': dev}
@@ -283,7 +298,7 @@ def main():
                     if not p or pid in seen or not kw.search(p['t']):
                         continue
                     seen.add(pid)
-                    (stat if src == 'statutes' else found).append({'id': pid, 's': src, 'loc': p.get('loc'), 't': p['t'][:1100]})
+                    (stat if src == 'statutes' else found).append({'id': pid, 's': src, 'loc': p.get('loc'), 't': clip(p['t'], 1100)})
         order = ['story', 'rawle', 'tucker', 'federalist', 'madison', 'kent', 'cooley', 'antifederalist', 'blackstone', 'documents', 'vattel', 'locke']
         found.sort(key=lambda p: (order.index(p['s']) if p['s'] in order else 99, -len(kw.findall(p['t']))))
         per = collections.Counter()
