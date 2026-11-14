@@ -6,7 +6,7 @@
   const DATA = window.CL_DATA;
   const app = document.getElementById('app');
   if (!DATA) {
-    app.innerHTML = '<div class="prose"><h1>No data yet</h1><p>Run <code>scripts/harvest.sh</code> and <code>scripts/build.ps1</code> to generate <code>site/data/articles.js</code>.</p></div>';
+    app.innerHTML = '<div class="prose"><h1>No data yet</h1><p>The article index could not be loaded. Please try again later.</p></div>';
     return;
   }
 
@@ -672,7 +672,7 @@
       <table><thead><tr><th>Journal</th><th>Articles</th></tr></thead><tbody>
         ${journals.slice().sort((a, b) => b.count - a.count).map(j => `<tr><td>${esc(j.name)}</td><td>${fmt(j.count)}</td></tr>`).join('')}
       </tbody></table>
-      <p>The <em>Harvard</em>, <em>Yale</em>, <em>Columbia</em>, <em>Virginia</em>, <em>California</em>, <em>Penn</em>, <em>Stanford</em>, and <em>Georgetown</em> law reviews block automated access to their own websites. Their articles are indexed from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> metadata instead, and link to the article through its DOI (usually JSTOR) or the journal's site. Coverage of Georgetown in OpenAlex is thin. Older volumes may lack abstracts. Index last rebuilt ${esc(DATA.generated)}.</p>
+      <p>The <em>Harvard</em>, <em>Yale</em>, <em>Columbia</em>, <em>Virginia</em>, <em>California</em>, <em>Penn</em>, <em>Stanford</em>, and <em>Georgetown</em> law reviews block automated access to their own websites. Their articles are indexed from <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> metadata instead, and link to the article through its DOI (usually JSTOR) or the journal's site. Coverage of Georgetown in OpenAlex is thin. Older volumes may lack abstracts. Index last updated ${esc(DATA.generated)}.</p>
       <h2>Citations and impact</h2>
       <p>Citation counts come from OpenAlex and are available for ${fmt(citedCount)} articles. The percentile compares an article with others in the index published in the same decade. OpenAlex sometimes credits a reviewed book's citations to its review. Titles that appear in more than one journal are treated as book reviews and left unranked. Law review citation data is less complete than in the sciences, so treat the counts as a rough guide.</p>
       <h2>Advanced doctrine</h2>
