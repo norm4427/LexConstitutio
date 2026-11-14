@@ -78,7 +78,7 @@ def main():
         if t != a['t']:
             a['t'] = t; a['rv'] = 1; retitled += 1
     bad = [a for a in arts if any(h in (a.get('u') or '') for h in BAD) or any(h in (a.get('pdf') or '') for h in BAD)]
-    fixed, dropped = [], []
+    fixed, dropped, unchecked = [], [], []
     for a in bad:
         if a.get('pdf') and any(h in a['pdf'] for h in BAD):
             a.pop('pdf')
@@ -86,7 +86,11 @@ def main():
             continue
         q = urllib.parse.urlencode({'search': a['t'][:120], 'filter': f"publication_year:{(a.get('y') or 0) - 1}-{(a.get('y') or 0) + 1}",
                                     'per-page': 10, 'select': 'title,doi,publication_year,authorships,locations,primary_location'})
-        res = (get('https://api.openalex.org/works?' + q, cache) or {}).get('results') or []
+        resp = get('https://api.openalex.org/works?' + q, cache)
+        if resp is None:            # lookup failed (rate limit, network): leave the article for the next run, never drop it
+            unchecked.append(a)
+            continue
+        res = resp.get('results') or []
         surnames = {norm(n).split()[-1] for n in a['a'] if norm(n)}
         new = None
         for w in res:
@@ -119,7 +123,7 @@ def main():
     drop_ids = {a['id'] for a in dropped}
     data['articles'] = [a for a in arts if a['id'] not in drop_ids]
     open('docs/data/articles.js', 'w', encoding='utf-8').write(raw.split('=', 1)[0] + '=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
-    print(f'book-review titles cleaned: {retitled}; aggregator links: {len(bad)}; replaced with direct links: {len(fixed)}; articles removed: {len(dropped)}')
+    print(f"book-review titles cleaned: {retitled}; aggregator links: {len(bad)}; replaced with direct links: {len(fixed)}; articles removed: {len(dropped)}; not checked (lookup failed, left as is): {len(unchecked)}")
     for a in fixed:
         print('  fixed  ', a['id'], a['t'][:60], '->', a['u'])
     for a in dropped:

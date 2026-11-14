@@ -7,7 +7,7 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 - **Most influential (in Articles):** OpenAlex citation counts with a percentile within each decade, a "Most cited" sort, and rankings by topic, decade and journal.
 - **Supreme Court:** about 29,100 cases: about 8,500 from Oyez, plus every other Supreme Court Database case (1791–2025) with a name, citation, date and recorded vote (about 20,600, mostly before 1955; `add_scdb_cases.py`). Those show the citation, date, each justice's vote, and links to the opinion in the *United States Reports* (Library of Congress) and on Justia. The Oyez cases have a summary, the official one-line holding (recent terms), and an opinion PDF (supremecourt.gov or Library of Congress). Argument and opinion-announcement audio plays on the page with a synced, click-to-seek transcript.
 - **Justice ratings (Justices):** each justice's page shows a liberal–conservative score (share of liberal votes as coded by the Supreme Court Database, the same measured against the colleagues in the same cases, and Martin–Quinn scores through the 2021 Term) and an institutionalism score (voting with the majority, not writing separately, not concurring only in the judgment, not joining overrulings of precedent or decisions striking down laws, each measured against colleagues). The method is described on the page (`build_ratings.py`).
-- **Vote prediction (Justices):** for each sitting justice, a model of their vote (for the petitioner or the respondent) trained on SCDB variables known before the decision, tested on the most recent 20% of their votes against constant-guess baselines, with the main predictors and predicted votes in pending cases (`build_models.py`).
+- **Vote prediction (Justices):** for each sitting justice, a model of their vote (for the petitioner or the respondent) trained on SCDB variables known before the decision, tested on the most recent 20% of their votes against constant-guess baselines, with the main predictors and predicted votes in pending cases (`build_models.py`). Predictors include how much each justice questioned each side at oral argument (official transcripts, `build_arguments.py`). Each pending case's page ends with each justice's predicted vote and the chance of each vote split (9–0 … 5–4 either way).
 - **Statistics (in Supreme Court):** term-by-term tables after the *Harvard Law Review*'s annual "The Statistics" for every Term 1791–2025: opinions written, dissenting votes, agreement matrices, unanimity, vote splits, 5–4 coalitions, dispositions by lower court, subject matter, and every case classed by direction and by an institutionalism index (`build_stats.py`).
 - **Current docket:** undecided cases for the current Term with the Court's argument calendar, status, questions presented, merits and amicus briefs, transcript PDFs, and argument audio (Oyez, or the Court's own MP3 until Oyez posts it). Every case page has a Precedents panel listing cases named in the Oyez summary and the most closely related decisions.
 - **Lectures:** about 230 lectures and debates from law schools, universities and constitutional institutions, embedded from YouTube. There is no Lectures tab; the Beginner's Guide shows the ones that fit each topic under "Lectures and debates" (`scripts/guide_lectures.py`). The old `#/lectures` page still works for existing links.
@@ -50,6 +50,7 @@ A PhilPapers-style hub for constitutional law. It is a static site (`docs/`) bui
 | Supreme Court Database (Spaeth et al.), 2026 Release 01 and Legacy Release 07; its online codebook | Older cases, justice ratings, the Statistics tab, vote models | `scdb_codebook.py`, `add_scdb_cases.py`, `build_ratings.py`, `build_stats.py`, `build_models.py` |
 | Martin–Quinn scores (Martin & Quinn, 2021 release, mqscores.quantitative.emory.edu) | Ideal-point scores by term, 1937–2021 | `build_ratings.py` (CSV in `data/raw/mq/justices.csv`) |
 | supremecourt.gov docket pages | Lower court and counsel for pending cases (vote models) | `docket.sh` (cache), `build_models.py` |
+| supremecourt.gov oral argument transcripts (OT2004–) | Each justice's questioning of each side (vote models) | `transcripts_fetch.py`, `build_arguments.py` |
 
 `scripts/sources.tsv` lists the journals. `scripts/guide.json` defines the guide topics and their landmark cases. `scripts/yt_queries.tsv` defines the lecture searches.
 
@@ -89,6 +90,7 @@ python scripts/add_scdb_cases.py         # adds SCDB cases the site lacks to sco
 python scripts/build_votes.py            # again, so the added cases get their votes
 python scripts/build_ratings.py          # writes ratings.js (needs data/raw/mq/justices.csv from the Martin-Quinn site)
 python scripts/build_stats.py            # writes stats.js and stcases-<decade>.js (the Statistics tab)
+python scripts/transcripts_fetch.py && python scripts/build_arguments.py   # argument transcripts OT2004- (supremecourt.gov) -> questioning of each side per justice
 python scripts/build_models.py           # writes models.js: per-justice vote models + pending-case predictions (needs scikit-learn; re-run after docket.sh)
 python scripts/oyez_fetch_all.py        # caches Oyez records for every case without a summary (slow; resumable)
 python scripts/build_flashcards_terms.py   # writes fc-terms.js and fc-court-*.js (term-by-term decks)
@@ -100,6 +102,9 @@ python scripts/build_foundations.py     # writes foundations.js (OpenStax basics
 python scripts/build_statutes.py        # writes statutes.js (Wikipedia is rate-limited; the script backs off and caches)
 python scripts/book_covers.py           # picks the sharpest cover for each book (cached)
 python scripts/pron_scan.py && python scripts/narrate_all.py guide doctrine   # narration (CPU; hours). Then: python scripts/narrate_all.py --manifest
+python scripts/lii_links.py               # links each annotated clause to its Cornell LII Constitution Annotated page (verified)
+python scripts/fix_indirect_links.py     # replaces Dialnet/Questia links with confirmed direct ones (or drops the article); trims book-review titles
+python scripts/open_copies.py            # free repository copies for JSTOR-only articles (OpenAlex; ~1,000 lookups a day without an account, cached)
 python scripts/fix_text.py              # LAST: repairs mojibake, adds ellipses to cut-off abstracts, drops non-abstracts, tidies text
 sh scripts/stamp.sh                     # version stamps so browsers load the new files
 ```

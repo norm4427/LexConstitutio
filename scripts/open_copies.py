@@ -8,16 +8,17 @@ these hold, erring toward leaving a link out:
   - the OpenAlex record's title matches our title (after normalizing case and punctuation), its year is within one year
     of ours, and the first author's surname appears among its authors, so the DOI record is really this article;
   - the repository belongs to an institution one of the authors is affiliated with in OpenAlex (Yale's repository for a Yale
-    author), or is a general-purpose scholarly repository (SSRN, arXiv, PhilPapers, Zenodo), so a copy attached to the
+    author), so a copy attached to the
     record by mistake from an unrelated school is not used.
 Writes data/raw/open_copies.json {article id: {url, host, version}} (cached OpenAlex responses in data/raw/openalex_oa/),
 then sets `oa` (and `oav`, the version) on those articles in docs/data/articles.js.
-Run from the repo root after build.ps1 (and before fix_text.py):  python scripts/open_copies.py
+Run from the repo root after build.ps1 (and before fix_text.py):  python scripts/open_copies.py  [--cached]
+OpenAlex allows about 1,000 credits a day without an account; the lookups are cached, so the run can be repeated daily.
 """
-import json, os, re, time, unicodedata, urllib.parse, urllib.request
+import hashlib, json, os, re, sys, time, urllib.error, unicodedata, urllib.parse, urllib.request
 
 CACHE = 'data/raw/openalex_oa'
-GENERAL = ('ssrn.com', 'arxiv.org', 'philpapers.org', 'zenodo.org', 'papers.ssrn.com')
+GENERAL = ()   # general repositories (SSRN ...) are left out: their pages can't be checked here, so a mismatch would go unnoticed
 
 
 def norm(s):
@@ -30,24 +31,45 @@ def surname(name):
     return parts[-1] if parts else ''
 
 
+SEEN = None   # DOI -> OpenAlex work, from every cached response; DOIs looked up and not found map to None
+
+
 def fetch(dois):
+    """OpenAlex works for these DOIs, from the cache where possible (each response is stored in data/raw/openalex_oa/)."""
+    global SEEN
     os.makedirs(CACHE, exist_ok=True)
-    key = f'{CACHE}/{abs(hash(tuple(sorted(dois)))) % 10**12}.json'
-    if os.path.exists(key):
-        return json.load(open(key, encoding='utf-8'))
-    flt = 'doi:' + '|'.join(dois)
-    url = 'https://api.openalex.org/works?' + urllib.parse.urlencode({'filter': flt, 'per-page': 50,
-          'select': 'doi,title,publication_year,authorships,locations'})
-    for n in range(5):
-        try:
-            time.sleep(0.25 + 5 * n)
-            d = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'LexConstitutio/1.0 (static site build)'}), timeout=60))
-            json.dump(d['results'], open(key, 'w', encoding='utf-8'))
-            return d['results']
-        except Exception as e:
-            err = e
-    print('  OpenAlex failed:', err)
-    return []
+    if SEEN is None:
+        SEEN = {}
+        for f in os.listdir(CACHE):
+            body = json.load(open(os.path.join(CACHE, f), encoding='utf-8'))
+            asked, results = (body.get('asked', []), body.get('results', [])) if isinstance(body, dict) else ([], body)
+            for d in asked:
+                SEEN.setdefault(d, None)
+            for w in results:
+                SEEN[(w.get('doi') or '').replace('https://doi.org/', '').lower()] = w
+    missing = [d for d in dois if d not in SEEN]
+    if missing and '--cached' not in sys.argv:   # OpenAlex's free daily allowance is small; --cached uses only what is stored
+        url = 'https://api.openalex.org/works?' + urllib.parse.urlencode({'filter': 'doi:' + '|'.join(missing), 'per-page': 50,
+              'select': 'doi,title,publication_year,authorships,locations'})
+        for n in range(3):
+            try:
+                time.sleep(0.25 + 5 * n)
+                d = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'LexConstitutio/1.0 (static site build)'}), timeout=60))
+                key = hashlib.md5('|'.join(sorted(missing)).encode()).hexdigest()
+                json.dump({'asked': missing, 'results': d['results']}, open(f'{CACHE}/{key}.json', 'w', encoding='utf-8'))
+                for m in missing:
+                    SEEN.setdefault(m, None)
+                for w in d['results']:
+                    SEEN[(w.get('doi') or '').replace('https://doi.org/', '').lower()] = w
+                break
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    print('  OpenAlex daily allowance used up; rerun later (lookups so far are cached)')
+                    sys.argv.append('--cached')
+                    break
+            except Exception:
+                pass
+    return [SEEN[d] for d in dois if SEEN.get(d)]
 
 
 def inst_tokens(w):

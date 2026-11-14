@@ -11,17 +11,16 @@
   const SCDB = '<a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a>';
 
   /* ---------------------------------------------------------------- small chart helpers */
-  // Dot strip: every eligible justice as a dot along one axis; `hi` highlighted, `ring` outlined. Hover names each dot.
+  // Dot strip: every eligible justice as a dot along one axis; `hi` highlighted, `ring` outlined. HTML, not SVG, so the
+  // labels stay crisp at any width; each dot links to the justice's page and shows a tooltip on hover or focus.
   function strip(items, hi, ring, leftLabel, rightLabel, fmtV) {
-    const W = 640, H = 64, pad = 14;
     const vs = items.map(d => d.v), lo = Math.min(...vs), up = Math.max(...vs);
-    const x = v => pad + (W - 2 * pad) * (v - lo) / ((up - lo) || 1);
+    const x = v => 1.5 + 97 * (v - lo) / ((up - lo) || 1);
     const sorted = items.slice().sort((a, b) => (a.id === hi) - (b.id === hi) || ring.has(a.id) - ring.has(b.id));
-    return `<svg class="st-strip" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(leftLabel)} to ${esc(rightLabel)}">
-      <line x1="${pad}" x2="${W - pad}" y1="30" y2="30" class="st-axis"/>
-      ${sorted.map(d => `<g class="${d.id === hi ? 'hi' : ring.has(d.id) ? 'ring' : ''}"><circle cx="${x(d.v).toFixed(1)}" cy="30" r="${d.id === hi ? 7 : ring.has(d.id) ? 5 : 4}"/><circle class="hit" cx="${x(d.v).toFixed(1)}" cy="30" r="9"><title>${esc(d.name)}: ${esc(fmtV(d.v))}</title></circle></g>`).join('')}
-      <text x="${pad}" y="58" class="st-lab">${esc(leftLabel)}</text><text x="${W - pad}" y="58" class="st-lab" text-anchor="end">${esc(rightLabel)}</text>
-    </svg>`;
+    return `<div class="st-strip2" role="group" aria-label="${esc(leftLabel)} to ${esc(rightLabel)}"><div class="st-track">
+      ${sorted.map(d => { const p = x(d.v); const tip = `${d.name} · ${fmtV(d.v)}`;
+        return `<a class="st-dot ${d.id === hi ? 'hi' : ring.has(d.id) ? 'ring' : ''} ${p > 70 ? 'tip-l' : p < 30 ? 'tip-r' : ''}" style="left:${p.toFixed(2)}%" href="#/justice/${esc(d.id)}" aria-label="${esc(tip)}"><span class="st-tip"><b>${esc(d.name)}</b>${esc(fmtV(d.v))}<em>Open profile →</em></span></a>`; }).join('')}
+      </div><div class="st-ends"><span>${esc(leftLabel)}</span><span>${esc(rightLabel)}</span></div></div>`;
   }
   // One-series line chart over terms, optional band [lo, hi]; points carry hover titles.
   function line(points, opt) {
@@ -66,9 +65,9 @@
         <div><b>${Math.abs(r.libRel).toFixed(1)}</b><span>points ${r.libRel >= 0 ? 'more liberal' : 'more conservative'} than the colleagues in the same cases${r.libRank ? ` · ${ordinal(r.libRank)} most liberal of ${R.nElig}` : ''}</span></div>
         ${r.mq != null ? `<div><b>${r.mq.toFixed(2)}</b><span>career mean Martin–Quinn score (negative = liberal) · ${ordinal(r.mqRank)} most liberal of ${R.nMq}</span></div>` : ''}
       </div>
-      ${r.elig ? `<div class="st-sub">Every justice with ${R.minVotes}+ votes, by liberal votes relative to colleagues · <span class="st-key"><i class="k-hi"></i>${esc(j.last || j.name)}</span> <span class="st-key"><i class="k-ring"></i>current Court</span></div>${strip(libItems, j.id, sitting, '← more liberal than colleagues', 'more conservative than colleagues →', v => signed(-v) + ' pts liberal vs. colleagues')}` : ''}
+      ${r.elig ? `<div class="st-sub">Every justice with ${R.minVotes}+ votes, by liberal votes relative to colleagues · <span class="st-key"><i class="k-hi"></i>${esc(j.last || j.name)}</span> <span class="st-key"><i class="k-ring"></i>current Court</span></div>${strip(libItems, j.id, sitting, '← more liberal than colleagues', 'more conservative than colleagues →', v => Math.abs(v).toFixed(1) + (v <= 0 ? ' pts more liberal' : ' pts more conservative') + ' than colleagues')}` : ''}
       ${r.mqTerms ? `<div class="st-sub">Martin–Quinn score by term, with 95% interval (negative = liberal)</div>${line(r.mqTerms.map(t => [t[0], t[1], t[2], t[3]]), { ref: 0, label: 'Martin–Quinn score by term', fmtY: v => v.toFixed(1), fmtTip: p => p[1].toFixed(2) + ' (95% interval ' + p[2].toFixed(2) + ' to ' + p[3].toFixed(2) + ')' })}
-        <div class="st-sub">All justices with Martin–Quinn scores, by career mean</div>${strip(mqItems, j.id, sitting, '← liberal', 'conservative →', v => v.toFixed(2))}` : ''}
+        <div class="st-sub">All justices with Martin–Quinn scores, by career mean</div>${strip(mqItems, j.id, sitting, '← liberal', 'conservative →', v => 'career Martin–Quinn ' + v.toFixed(2))}` : ''}
       ${r.terms.length > 1 ? `<div class="st-sub">Share of votes in the liberal direction, by term (SCDB)</div>${line(r.terms.map(t => [t[0], t[1]]), { yMin: 0, yMax: 100, yTicks: [0, 50, 100], ref: 50, label: 'Liberal votes by term', fmtY: v => v + '%', fmtTip: p => pct(p[1]) })}` : ''}
     </div>`;
     // institutionalism
@@ -82,7 +81,7 @@
     const instItems = elig.map(([id, x]) => ({ id, name: nameOf[id], v: x.instRaw }));
     const inst = `<div class="panel st-panel"><h4>Institutionalism score</h4>${small}
       <div class="st-kpis"><div><b>${r.inst != null ? Math.round(r.inst) : '—'}</b><span>percentile among the ${R.nElig} justices with ${R.minVotes}+ votes${r.instRank ? ` · ranked ${ordinal(r.instRank)}` : ''} (100 = most institutionalist)</span></div></div>
-      ${r.elig ? strip(instItems, j.id, sitting, '← less institutionalist', 'more institutionalist →', v => 'index ' + v.toFixed(2)) : ''}
+      ${r.elig ? strip(instItems, j.id, sitting, '← less institutionalist', 'more institutionalist →', v => 'institutionalism index ' + v.toFixed(2)) : ''}
       <table class="st-table"><thead><tr><th>Component</th><th>Rate</th><th>vs. colleagues</th><th>More institutional if</th></tr></thead><tbody>
         ${comp.map(([lab, rate, rel, dir, n]) => `<tr><td>${esc(lab)}<div class="m">${esc(n)}</div></td><td>${pct(rate)}</td><td>${signed(rel)} pts</td><td>${dir}</td></tr>`).join('')}
       </tbody></table>
@@ -101,6 +100,7 @@
     const b = m.base;
     const accRows = [
       ['Model: all pre-decision predictors', m.full.acc * 100, m.full.model, 'hi', m.full.ci.map(x => x * 100)],
+      ...(m.fullOld ? [['Same, without the argument and lower-court-history predictors', m.fullOld.acc * 100, m.fullOld.model, 'mid']] : []),
       ['Model: docket predictors only', m.docket.acc * 100, m.docket.model, 'mid', m.docket.ci.map(x => x * 100)],
       [`Baseline: always the more common vote in training (${b.majorityLabel})`, b.majority * 100, '', 'base'],
       ['Baseline: always for the petitioner (reverse)', b.reverse * 100, '', 'base'],
@@ -123,7 +123,7 @@
       <div class="st-sub">Predicted votes in pending cases <span class="muted-line">(docket model, refitted on all ${fmt(m.n)} votes)</span></div>
       ${preds.length ? `<ul class="st-preds">${preds.map(({ c, p }) => `<li><a href="#/case/${esc(c.id)}">${esc(c.n)}</a><span class="muted-line">${esc(c.src)}${c.area ? ' · ' + esc(c.area) : ''}</span><span class="st-pill ${p >= 0.5 ? 'rev' : 'aff'}" title="Predicted probability of voting for the petitioner: ${pct(p * 100, 0)}">${p >= 0.5 ? 'Reverse' : 'Affirm'} · ${pct((p >= 0.5 ? p : 1 - p) * 100, 0)}</span></li>`).join('')}</ul>` : '<p class="muted-line">No pending cases.</p>'}
       <details class="st-method"><summary>About the model</summary>
-        <p>One model per justice, chosen by five-fold cross-validation on the training votes only (logistic regression at four penalty strengths, or gradient-boosted trees; this justice: <i>${esc(m.full.model)}</i> for the full model, <i>${esc(m.docket.model)}</i> for the docket model). Predictors are SCDB variables fixed before the decision: issue area and issue, law type, source and origin court, lower-court disposition and its ideological direction, the reason cert was granted, jurisdiction, petitioner and respondent type, agency involvement, three-judge court, a dissent below, and the term. A vote for the petitioner is a majority vote when the petitioner won, or a dissent when the petitioner lost.</p>
+        <p>One model per justice, chosen by five-fold cross-validation on the training votes only (logistic regression at four penalty strengths, or gradient-boosted trees; this justice: <i>${esc(m.full.model)}</i> for the full model, <i>${esc(m.docket.model)}</i> for the docket model). Predictors are SCDB variables fixed before the decision: issue area and issue, law type, source and origin court, lower-court disposition and its ideological direction, the reason cert was granted, jurisdiction, petitioner and respondent type, agency involvement, three-judge court, a dissent below, and the term; plus how much this justice, and the Court as a whole, questioned each side at oral argument (the Court's official transcripts, from the 2004 Term on, when they began naming the justice speaking; ${fmt(M.nArg || 0)} cases) and how often the Court has sided with petitioners from the same lower court in the previous five Terms. ${m.testArg != null ? `${pct(100 * m.testArg, 0)} of the test votes had a transcript.` : ''} A vote for the petitioner is a majority vote when the petitioner won, or a dissent when the petitioner lost.</p>
         <p>Pending cases have no SCDB coding yet, so the docket model uses only what can be read from the case: the lower court and the counsel for each side (Solicitor General, a state attorney general's office, a local government) from the supremecourt.gov docket page, and the issue area predicted from the question presented by a text classifier trained on decided cases (${pct(M.issueClf.acc * 100)} accurate on ${fmt(M.issueClf.nTest)} held-out cases, vs. ${pct(M.issueClf.base * 100)} for always guessing the commonest area). Probabilities near 50% mean the model has little to go on. Because the Court reverses most of the cases it hears, a model that has learned little predicts “reverse” almost everywhere.</p>
         <p>A model is said to beat the baselines only if it is at least 2 points more accurate than the best of them and the lower end of its 95% interval is also above it; with a small test set (a newer justice) even a large gap can fall inside the margin of error.</p>
         <p class="attrib">Computed by <code>scripts/build_models.py</code> on ${esc(M.generated)}. These are statistical predictions from past voting patterns, not forecasts by any expert.</p>
@@ -253,5 +253,41 @@
   }
   const app = () => document.getElementById('app');
 
-  window.LCX = { justiceRatings, viewStats };
+  /* ---------------------------------------------------------------- pending case: predicted votes and split odds */
+  function casePrediction(el, id, M, J) {
+    const c = M.cases.find(x => x.id === id || id.endsWith('/' + x.d));
+    if (!c || !c.dist) { el.innerHTML = ''; return; }
+    const byId = Object.fromEntries(J.justices.map(j => [j.id, j]));
+    const k = M.cases.indexOf(c);
+    const votes = M.order.map(jid => ({ j: byId[jid], p: M.j[jid].pred[k][1], m: M.j[jid] }));
+    const pRev = c.pRev, pAff = 1 - pRev, n = c.dist.length - 1;
+    const outcomes = [];
+    const emp = (M.calib && M.calib.emp) || [];
+    for (let r = n; r >= 0; r--) outcomes.push({ label: r * 2 > n ? `Reverse ${r}–${n - r}` : r * 2 < n ? `Affirm ${n - r}–${r}` : `Split ${r}–${n - r}`, side: r * 2 > n ? 'rev' : 'aff', p: c.dist[r], e: emp[r] });
+    const top = Math.max(...outcomes.map(o => o.p)), scale = Math.max(top, ...outcomes.map(o => o.e || 0));
+    const beatsEmp = M.calib && M.calib.ll > M.calib.llEmp;
+    const cal = M.calib, gm = x => pct(100 * Math.exp(x), 0);
+    const pc = x => (100 * x < 1 ? '<1' : Math.round(100 * x)) + '%';
+    el.innerHTML = `<section class="st-pred"><h2>Predicted outcome <small>(statistical model)</small></h2>
+      <div class="st-market">
+        <div class="st-mhead"><div><b>${pc(pRev)}</b><span>Reverse or vacate</span></div><div class="aff"><b>${pc(pAff)}</b><span>Affirm</span></div></div>
+        <div class="st-split" role="img" aria-label="Chance of reversal ${pc(pRev)}"><i style="width:${(100 * pRev).toFixed(1)}%"></i></div>
+        <div class="st-sub st-board-h"><span>Chance of each vote split</span><span>Model</span><span title="How often each split occurred in cases decided by these nine justices">Past</span></div>
+        <div class="st-board">${outcomes.map(o => `<div class="st-row ${o.side} ${o.p === top ? 'top' : ''}" title="${esc(o.label)}: model ${pct(100 * o.p, 1)}${o.e != null ? '; happened in ' + pct(100 * o.e, 1) + ' of cases decided by these nine justices' : ''}"><span class="lab">${esc(o.label)}</span><span class="track"><i style="width:${(100 * o.p / scale).toFixed(1)}%"></i>${o.e != null ? `<b class="past" style="left:${(100 * o.e / scale).toFixed(1)}%"></b>` : ''}</span><span class="val">${pc(o.p)}</span><span class="val past">${o.e != null ? pc(o.e) : ''}</span></div>`).join('')}</div>
+        <p class="st-note">The tick on each bar marks the “Past” share. ${beatsEmp ? '' : `<b>Be cautious:</b> on ${fmt(cal.n)} recent cases these split odds have not beaten simply using how often each split occurred (the past column), so treat the case-specific differences as weak.`}</p>
+      </div>
+      <div class="st-sub">How each justice is predicted to vote</div>
+      <div class="st-jv">${votes.map(v => `<a class="st-jrow" href="#/justice/${esc(v.j.id)}" title="${esc(v.j.name)}: ${pct(100 * v.p, 0)} chance of voting for the petitioner">
+        <span class="nm">${esc(v.j.name)}</span>
+        <span class="lean"><i class="mid"></i><i class="dot ${v.p >= 0.5 ? 'rev' : 'aff'}" style="left:${(100 * v.p).toFixed(1)}%"></i></span>
+        <span class="st-pill ${v.p >= 0.5 ? 'rev' : 'aff'}">${v.p >= 0.5 ? 'Reverse' : 'Affirm'} · ${pct(100 * Math.max(v.p, 1 - v.p), 0)}</span></a>`).join('')}
+        <div class="st-ends"><span>← affirm</span><span>reverse →</span></div></div>
+      <details class="st-method"><summary>How this is estimated, and how well it has worked</summary>
+        <p>Each justice's probability comes from that justice's docket model (see their profile), which uses the lower court, the side each party's counsel represents, the issue area predicted from the question presented, how often the Court has sided with petitioners from this lower court in the past five Terms${c.arg ? ', and how much each justice questioned each side at oral argument (from the Court\'s transcript)' : ''}. ${c.arg ? '' : 'This case has not been argued yet (or its transcript is not cached), so questioning at argument is not used. '}A vote for the petitioner means voting to reverse or vacate.</p>
+        <p>Justices' votes in a case move together, so the split odds are not computed as if the nine votes were independent: each justice's log-odds share a case-level shift whose average and spread (σ = ${cal.sigma}) was fitted on ${fmt(cal.n)} cases decided by these nine justices (${esc(cal.span[0] || '')} to ${esc(cal.span[1] || '')}), using predictions made without seeing each case. On those cases this method gave the actual split an average (geometric-mean) probability of ${gm(cal.ll)}, compared with ${gm(cal.llIndep)} if the votes were treated as independent and ${gm(cal.llEmp)} from simply using how often each split occurred. It called the winning side correctly in ${pct(100 * cal.hit, 0)} of them, against ${pct(100 * cal.revBase, 0)} for always picking the more common side. The shift's mean (${cal.mu}) and spread are fitted on the same cases, so these checks are, if anything, optimistic.</p>
+        <p class="attrib">Computed by <code>scripts/build_models.py</code> on ${esc(M.generated)} from the Supreme Court Database, supremecourt.gov docket pages and argument transcripts. This is a statistical estimate, not a betting market and not anyone's forecast; it ignores recusals.</p>
+      </details></section>`;
+  }
+
+  window.LCX = { justiceRatings, viewStats, casePrediction };
 })();

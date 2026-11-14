@@ -1145,6 +1145,7 @@
         <div id="case-live"><h2>Case summary</h2><p class="muted-line"><span class="spinner sm"></span> Loading facts, question and conclusion from Oyez…</p></div>
         <div id="case-audio"></div>
         ${relatedArticles.length ? `<h2>Law review articles discussing this case</h2><div class="cards">${relatedArticles.map(a => card(a)).join('')}</div>` : ''}
+        ${pend ? '<div id="case-prediction"></div>' : ''}
       </div>
       <aside>
         <div class="panel"><h4>Details</h4><dl class="kv">
@@ -1172,6 +1173,11 @@
       ve.innerHTML = voteHtml({ m: r[0], n: r[1], maj: r[2].map(([i, f]) => [V.j[i], f]), min: r[3].map(([i, f]) => [V.j[i], f]), eq: r[5] ? r[5].map(i => V.j[i]) : null },
         r[4] === 2 ? `<a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez</a>` : r[4] ? `the Court's opinion${c.pdf ? ` (<a href="${esc(c.pdf)}" target="_blank" rel="noopener">PDF</a>)` : ''}` : '<a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a>');
     }).catch(() => {});
+    if (pend) {   // pending case: per-justice predicted votes and split odds (app-stats.js, data/models.js)
+      Promise.all([ext(), loadData('models', 'MODELS'), loadData('justices', 'JUSTICES')])
+        .then(([X, M, J]) => { const el = document.getElementById('case-prediction'); if (token === routeToken && el) X.casePrediction(el, c.id, M, J); })
+        .catch(() => {});
+    }
     if (c.s === 1) {   // listed from the Supreme Court Database only; Oyez has no record of it
       document.getElementById('case-live').innerHTML = `<p class="muted-line">This case is listed from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Spaeth et al.), which records its name, citation, date and votes. No summary is available; read the opinion ${c.pdf ? 'in the <i>United States Reports</i> (Library of Congress) or ' : ''}on Justia.</p>`;
       if (c.arg && !hasArgAudio(c)) document.getElementById('case-audio').innerHTML = '<p class="muted-line">No argument recording exists: the Court began recording oral arguments in October 1955.</p>';
@@ -2012,8 +2018,8 @@
             </div>
           </div>
         </div>
-        <h2>Why it matters</h2>
-        <div class="callout">${esc(b.note)}</div>
+        ${b.note ? `<h2>Why it matters</h2>
+        <div class="callout">${esc(b.note)}</div>` : ''}
         ${b.blurb ? `<h2>About the book</h2><p class="book-blurb">${esc(b.blurb)}</p><p class="attrib">Description via Goodreads (truncated). <a href="${esc(b.gr.url)}" target="_blank" rel="noopener" style="color:var(--accent)">Full description ↗</a></p>` : ''}
         <h2>Law review book reviews</h2>
         ${revs.length ? `<div class="cards">${revs.map(a => card(a)).join('')}</div>` : '<p class="muted-line">No reviews of this book are in the index yet. Try the searches below.</p>'}
@@ -2132,6 +2138,7 @@
     if (c.statutes.length) secs.push(['statutes', 'Early statutes', `<p class="muted-line" style="margin:0 0 10px">Acts of the first Congresses that put the clause into practice or bear on its early meaning.</p>${c.statutes.map(p => `<blockquote class="ac-q"><p>${esc(p.t)}</p><footer>${esc(p.loc || 'Statutes at Large, vol. 1')}</footer></blockquote>`).join('')}<a class="link-arrow" href="#/library/statutes">All early statutes →</a>`]);
     return `<div class="ac-panel-head"><div><span class="eyebrow">${esc(c.loc)}</span><h2>${esc(c.name)}</h2></div><button class="icon-btn" id="ac-close" aria-label="Close" title="Close">✕</button></div>
       <blockquote class="ac-clause">“${esc(c.hl)}”</blockquote>
+      ${c.lii ? `<a class="ac-lii" href="${esc(c.lii)}" target="_blank" rel="noopener">Read the full Constitution Annotated for this clause at Cornell LII ↗</a>` : ''}
       <nav class="ac-nav">${secs.map(([id, h]) => `<a href="#" data-sec="${id}">${h.replace(/<small>.*<\/small>/, '').trim()}</a>`).join('')}</nav>
       ${secs.map(([id, h, body]) => `<section class="ac-sec" id="acs-${id}"><h4>${h}</h4>${body}</section>`).join('')}`;
   }

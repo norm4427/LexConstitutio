@@ -83,3 +83,57 @@
 .st-method { margin: 4px 0 18px; font-size: 13.5px; color: var(--ink-2); }
 .st-method summary { cursor: pointer; font-weight: 600; color: var(--ink); }
 .st-method p { max-width: 900px; }
+
+/* dot strip (HTML): dots link to justice pages, tooltip on hover/focus */
+.st-strip2 { margin: 6px 0 8px; }
+.st-track { position: relative; height: 34px; }
+.st-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
+.st-dot { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--ink-3); opacity: .45; }
+.st-dot::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }   /* bigger hit target */
+.st-dot.ring { width: 12px; height: 12px; margin: -6px 0 0 -6px; background: var(--bg-elev); border: 2px solid var(--navy); opacity: 1; z-index: 2; }
+.st-dot.hi { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; background: var(--accent); border: 2px solid var(--bg-elev); opacity: 1; z-index: 3; }
+.st-dot:hover, .st-dot:focus-visible { opacity: 1; z-index: 5; outline: 2px solid var(--accent); outline-offset: 2px; }
+.st-tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--bg-elev); color: var(--ink);
+  border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 12.5px; line-height: 1.35; white-space: nowrap; pointer-events: none; }
+.st-tip b { display: block; font-weight: 600; }
+.st-tip em { display: block; font-style: normal; color: var(--accent); font-size: 11.5px; margin-top: 2px; }
+.st-dot.tip-l .st-tip { left: auto; right: -6px; transform: none; }
+.st-dot.tip-r .st-tip { left: -6px; transform: none; }
+.st-dot:hover .st-tip, .st-dot:focus-visible .st-tip { display: block; }
+.st-ends { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+.st-line .st-lab { font-size: 15px; }
+
+/* pending case: predicted outcome (case page) */
+.st-pred { margin-top: 34px; padding-top: 8px; border-top: 1px solid var(--line); }
+.st-pred h2 small { font-size: 13px; font-weight: 400; color: var(--ink-3); font-family: var(--sans); }
+.st-market { background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin: 10px 0 18px; }
+.st-mhead { display: flex; justify-content: space-between; align-items: flex-end; }
+.st-mhead div { display: flex; flex-direction: column; }
+.st-mhead .aff { text-align: right; }
+.st-mhead b { font-family: var(--serif); font-size: 34px; font-weight: 500; line-height: 1; color: var(--accent); }
+.st-mhead .aff b { color: var(--ink-2); }
+.st-mhead span { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
+.st-split { height: 10px; border-radius: 5px; background: var(--bg-sunk); overflow: hidden; margin: 10px 0 4px; display: flex; }
+.st-split i { background: var(--accent); border-right: 2px solid var(--bg-elev); }
+.st-board { display: flex; flex-direction: column; gap: 4px; }
+.st-row { display: grid; grid-template-columns: 110px 1fr 48px; gap: 10px; align-items: center; font-size: 13px; padding: 3px 6px; border-radius: 6px; }
+.st-row.top { background: var(--bg-sunk); font-weight: 600; }
+.st-row .lab { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.st-row .track { height: 12px; position: relative; }
+.st-row .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--accent); }
+.st-row.aff .track i { background: var(--ink-3); opacity: .6; }
+.st-row .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.st-jv { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.st-jrow { display: grid; grid-template-columns: minmax(150px, 1fr) 2fr auto; gap: 12px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; }
+.st-jrow:hover { background: var(--bg-sunk); }
+.st-jrow .lean { position: relative; height: 14px; background: linear-gradient(90deg, var(--bg-sunk), var(--bg-sunk)); border-radius: 7px; }
+.st-jrow .lean .mid { position: absolute; left: 50%; top: -2px; bottom: -2px; border-left: 1px dashed var(--ink-3); opacity: .6; }
+.st-jrow .lean .dot { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--ink-3); border: 2px solid var(--bg-elev); }
+.st-jrow .lean .dot.rev { background: var(--accent); }
+.st-jv .st-ends { padding: 0 4px; }
+@media (max-width: 640px) { .st-jrow { grid-template-columns: 1fr auto; } .st-jrow .lean { grid-column: 1 / -1; grid-row: 2; } }
+.st-board-h { display: grid; grid-template-columns: 1fr 48px 48px; gap: 10px; padding: 0 6px; }
+.st-board-h span:not(:first-child) { text-align: right; font-weight: 500; color: var(--ink-3); }
+.st-row { grid-template-columns: 110px 1fr 48px 48px; }
+.st-row .val.past { color: var(--ink-3); font-weight: 400; }
+.st-row .track b.past { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); opacity: .55; }

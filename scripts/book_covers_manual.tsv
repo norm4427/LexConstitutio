@@ -1,0 +1,18 @@
+# Covers checked by eye (read by book_covers.py after its automatic pick). Columns: id <TAB> cover URL, or "none" to show
+# the site's placeholder when no image could be confirmed as this book's cover.
+# --- the automatic pick was another book's cover; replaced with an image showing this title and author
+packing-the-court	https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1438473784i/6447932.jpg
+the-fourth-amendment	https://images-na.ssl-images-amazon.com/images/P/1594604126.01._SCLZZZZZZZ_.jpg
+the-national-security-constitution	https://covers.openlibrary.org/b/isbn/9780300044928-L.jpg
+# --- the automatic pick was a blank library binding or a near-blank title page; replaced with the printed cover
+unitary-executive	https://images-na.ssl-images-amazon.com/images/P/0300145381.01._SCLZZZZZZZ_.jpg
+separation-of-church-and-state	https://covers.openlibrary.org/b/isbn/9780674007345-L.jpg
+louis-d-brandeis	https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1388617403i/6853896.jpg
+the-upside-down-constitution	https://images-na.ssl-images-amazon.com/images/P/0674061918.01._SCLZZZZZZZ_.jpg
+the-establishment-clause	https://images-na.ssl-images-amazon.com/images/P/0807844667.01._SCLZZZZZZZ_.jpg
+# --- only blank library bindings available: the cover can't be confirmed, so use the placeholder
+free-speech-meiklejohn	none
+the-fourteenth-amendment	none
+super-chief	none
+free-speech-in-the-united-states	none
+economic-liberties-and-the-constitution	none

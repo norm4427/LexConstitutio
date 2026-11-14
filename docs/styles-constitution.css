@@ -118,3 +118,5 @@ a.stat-ref:hover { color: var(--accent); }
 .ac-signer.pres { grid-column: 1 / -1; }
 .ac-signer.pres span { font-size: 17px; }
 .ac-signer span small { display: block; font: 400 12px/1.4 var(--sans); font-style: normal; color: var(--ink-3); margin-bottom: 4px; }
+.ac-lii { display: inline-block; margin: -4px 0 14px; font: 500 13px/1.4 var(--sans); color: var(--accent); }
+.ac-lii:hover { text-decoration: underline; }

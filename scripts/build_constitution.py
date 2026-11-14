@@ -56,7 +56,9 @@ def closing():
     s = s[s.index('<h2 id="7">'):]
     s = s[:s.index('<h2>On This Page')] if '<h2>On This Page' in s else s
     ps = [p for p in re.findall(r'<p>(.*?)</p>', s, re.S)]
-    notes = [clean(p) for p in ps[1:4] if not re.search(r'<a ', p)]
+    # the clerk's note on interlined and erased words (a record of corrections to the parchment, not text of the
+    # Constitution) is left out; the attestation and the "done in Convention" passage are kept
+    notes = [clean(p) for p in ps[1:4] if not re.search(r"<a ", p) and "interlined" not in p]
 
     def person(chunk):
         href = re.search(r'href="([^"]+)"', chunk)

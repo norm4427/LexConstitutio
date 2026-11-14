@@ -3,7 +3,7 @@
 Every candidate must belong to the book's own Open Library work (build_books.pl matches the work by title and whole-word
 author surname):
   * the ISBN is checked first: each ISBN of the work is looked up at openlibrary.org/isbn/<isbn>.json until one whose
-    edition belongs to the same work (or carries the same title) is found. That ISBN replaces the build's unchecked pick
+    edition carries the same title is found. That ISBN replaces the build's unchecked pick
     and drives the Amazon link; with none verified, the ISBN is dropped.
   * candidates: the work's own Open Library cover (from the build); Open Library's cover for the verified ISBN; Google
     Books' front cover for that ISBN when the Google volume has the same title and author; Amazon's catalog image for the
@@ -111,7 +111,7 @@ def isbn_edition(isbn, cache):
 
 
 def verified_isbn(b, cache):
-    """First ISBN of the book's Open Library work whose edition belongs to that work (or has the same title)."""
+    """First ISBN of the book's Open Library work whose edition carries the same title."""
     m = re.search(r'/works/(OL\d+W)', b.get('ol') or '')
     if not m:
         return None
@@ -129,7 +129,9 @@ def verified_isbn(b, cache):
         isbns.insert(0, b['isbn'])
     for i in isbns[:8]:
         e = isbn_edition(i, cache)
-        if e and (e.get('work') == work or same_title(e.get('title'), b['title'])):
+        # the edition's own title must match too: Open Library sometimes files another book's edition under a work
+        # (a "When China Rules the World" edition sits in the work for "Packing the Court")
+        if e and same_title(e.get('title'), b['title']):
             return i
     return None
 
