@@ -65,6 +65,17 @@ def tidy(s, key):
     return s
 
 
+HLR = 'https://harvardlawreview.org/'
+MOVED = {   # Harvard Law Review PDFs on its retired cdn.harvardlawreview.org host (now a Cloudflare DNS error) -> the article's
+            # page on harvardlawreview.org, found with the site's own search and matched by title and volume
+    'cdn.harvardlawreview.org/wp-content/uploads/2015/06/vol128_Schauer.pdf': HLR + 'forum/vol-128/out-of-range-on-patently-covered-speech/',
+    'cdn.harvardlawreview.org/wp-content/uploads/2015/11/vol129_Lazarus.pdf': HLR + 'forum/vol-129/back-to-business-at-the-supreme-court-the-administrative-side-of-chief-justice-roberts/',
+    'cdn.harvardlawreview.org/wp-content/uploads/2015/06/vol128_CalebNelson.pdf': HLR + 'forum/vol-128/avoiding-constitutional-questions-versus-avoiding-unconstitutionality/',
+    'cdn.harvardlawreview.org/wp-content/uploads/pdfs/vol126_karlan.pdf': HLR + 'print/vol-126/democracy-and-disdain/',
+    'cdn.harvardlawreview.org/wp-content/uploads/pdfs/skowronek.pdf': HLR + 'print/vol-122/the-conservative-insurgency-and-presidential-power-a-developmental-perspective-on-the-unitary-executive/',
+    'cdn.harvardlawreview.org/wp-content/uploads/pdfs/schauer.pdf': HLR + 'print/vol-120/the-courts-agenda-ae-and-the-nations/',
+}
+
 CONTINUES = {   # file -> keys of source passages that are excerpts of longer texts (shown with an ellipsis if cut mid-sentence)
     'corner.js': {'t'}, 'constitution.js': {'t'}, 'statutes.js': {'p'},
 }
@@ -156,6 +167,12 @@ def main():
                         b['blurb'] = cut; changed[0] += 1
         if path.endswith('articles.js'):
             for a in data.get('articles', []):
+                for k in ('u', 'pdf', 'oa'):
+                    v = re.sub(r'^https?://', '', a.get(k) or '')
+                    if v in MOVED:
+                        a[k] = MOVED[v]; changed[0] += 1
+                    elif v.startswith('cdn.harvardlawreview.org/'):     # a retired address not yet mapped: don't show a dead link
+                        print('  unmapped dead link', a['id'], a[k])
                 ab = (a.get('ab') or '').rstrip()
                 if ab and (CITE_LINE.search(ab) or TOC.search(ab[:400])):
                     a['ab'] = ''

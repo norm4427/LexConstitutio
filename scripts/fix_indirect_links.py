@@ -7,6 +7,8 @@ and year is searched for a direct copy, kept only when it is independently confi
   - a page on the journal's own site (harvardlawreview.org, stanfordlawreview.org, journals.law.harvard.edu ...) whose
     address contains the words of the title (these sites build page addresses from article titles);
   - an author's SelectedWorks page (works.bepress.com) only when its address names an author of the article.
+Harvard Law Review articles matched by hand to their page on harvardlawreview.org (data/hlr_pages.json: same volume, page
+heading identical to the title, first author on the page) use that page, with its heading as the title.
 An article with no confirmed direct link is removed from the index (err on the side of exclusion).
 Book-review titles that carry the reviewed book's bibliographic line ("TITLE. By Author. Cambridge, Mass.: Harvard
 University Press. 2018. Pp. xii, 221. $39.95.") are cut to the review's own title.
@@ -20,6 +22,7 @@ OWN_SITES = {'hlr': 'harvardlawreview.org', 'slr': 'stanfordlawreview.org', 'ylj
 JOURNAL_NAMES = {'hlr': 'harvard law review', 'slr': 'stanford law review', 'ylj': 'yale law journal',
                  'hjlpp': 'harvard journal of law', 'colr': 'columbia law review', 'valr': 'virginia law review'}
 CACHE = 'data/raw/indirect_links.json'
+HLR_PAGES = json.load(open('data/hlr_pages.json', encoding='utf-8'))['pages'] if os.path.exists('data/hlr_pages.json') else {}
 UA = {'User-Agent': 'LexConstitutio/1.0 (static site build)'}
 
 
@@ -85,6 +88,11 @@ def main():
         if a.get('pdf') and any(h in a['pdf'] for h in BAD):
             a.pop('pdf')
         if not any(h in (a.get('u') or '') for h in BAD):
+            continue
+        if a['id'] in HLR_PAGES:
+            a['u'] = HLR_PAGES[a['id']]['url']
+            a['t'] = HLR_PAGES[a['id']].get('title') or a['t']
+            fixed.append(a)
             continue
         q = urllib.parse.urlencode({'search': a['t'][:120], 'filter': f"publication_year:{(a.get('y') or 0) - 1}-{(a.get('y') or 0) + 1}",
                                     'per-page': 10, 'select': 'title,doi,publication_year,authorships,locations,primary_location'})

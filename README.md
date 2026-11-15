@@ -105,7 +105,10 @@ python scripts/book_covers.py           # picks the sharpest cover for each book
 python scripts/pron_scan.py && python scripts/narrate_all.py guide doctrine   # narration (CPU; hours). Then: python scripts/narrate_all.py --manifest
 python scripts/lii_links.py               # links each annotated clause to its Cornell LII Constitution Annotated page (verified)
 python scripts/fix_indirect_links.py     # replaces Dialnet/Questia links with confirmed direct ones (or drops the article); trims book-review titles
+python scripts/hlr_site.py               # Harvard Law Review pieces from harvardlawreview.org (vol. 120+), with direct links; cached
+python scripts/journal_sites.py          # same for Yale, Penn, Columbia, Virginia, California, Stanford, Harvard JLPP (their own sites)
 python scripts/open_copies.py            # free repository copies for JSTOR-only articles (OpenAlex; ~1,000 lookups a day without an account, cached)
+python scripts/lcp_copies.py             # free copies at Duke for Law and Contemporary Problems articles (run after open_copies.py)
 python scripts/fix_text.py              # LAST: repairs mojibake, adds ellipses to cut-off abstracts, drops non-abstracts, tidies text
 sh scripts/stamp.sh                     # version stamps so browsers load the new files
 ```

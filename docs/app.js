@@ -472,12 +472,13 @@
         <h1>${esc(a.t)}</h1>
         <div class="byline">${authorList(a)}</div>
         <div class="publine"><a href="${hashFor('search', { j: a.j })}">${esc(j?.name)}</a>${a.v ? ` · Volume ${a.v}` : ''}${a.i ? `, Issue ${a.i}` : ''}${a.y ? ` · ${a.y}` : ''}</div>
-        <h2>Abstract</h2>
-        ${a.ab ? `<div class="abstract">${esc(a.ab)}</div>` : '<p style="color:var(--ink-3)">No abstract is available for this article. Open the full text at the publisher.</p>'}
+        <h2>${a.abx ? 'Summary' : 'Abstract'}</h2>
+        ${a.ab ? `<div class="abstract">${esc(a.ab)}</div>${a.abx ? `<p class="attrib" style="color:var(--ink-3);font-size:13px">From the piece's page on ${esc(j?.name || 'the journal')}'s website.</p>` : ''}` : '<p style="color:var(--ink-3)">No abstract is available for this article. Open the full text at the publisher.</p>'}
         <div class="actions">
           ${a.pdf ? `<a class="btn btn-primary" href="${esc(a.pdf)}" target="_blank" rel="noopener">Read the PDF ↗</a>` : ''}
           ${!a.pdf && a.oa ? `<a class="btn btn-primary" href="${esc(a.oa)}" target="_blank" rel="noopener" title="${a.oav === 'publishedVersion' ? 'The published version' : 'An author\'s version (manuscript), which may differ from the published text'}">Free copy at ${esc(a.oa.replace(/^https?:\/\/(www\.)?/, '').split('/')[0])}${a.oav && a.oav !== 'publishedVersion' ? ' (author\'s version)' : ''} ↗</a>` : ''}
           <a class="btn ${a.pdf || a.oa ? 'btn-ghost' : 'btn-primary'}" href="${esc(a.u)}" target="_blank" rel="noopener">${/doi\.org\/10\.2307/.test(a.u) ? 'View on JSTOR' : /doi\.org/.test(a.u) ? 'View via DOI' : 'View at ' + esc(j?.name || 'publisher')} ↗</a>
+          ${a.pub ? `<a class="btn btn-ghost" href="${esc(a.pub)}" target="_blank" rel="noopener">View at ${esc(j?.name || 'the publisher')} ↗</a>` : ''}
           <button class="btn btn-ghost" id="save-article">${saved.has(a.id) ? '★ Saved' : '☆ Save to my list'}</button>
           <a class="btn btn-ghost" href="https://scholar.google.com/scholar?q=${encodeURIComponent('"' + a.t + '"')}" target="_blank" rel="noopener">Google Scholar ↗</a>
         </div>
