@@ -17,6 +17,8 @@ import json, os, re, time, unicodedata, urllib.parse, urllib.request
 BAD = ('dialnet.unirioja.es', 'questia.com', 'netdna-cdn.com', 'wpengine', 'semanticscholar.org', 'researchgate.net')
 OWN_SITES = {'hlr': 'harvardlawreview.org', 'slr': 'stanfordlawreview.org', 'ylj': 'yalelawjournal.org',
              'hjlpp': 'journals.law.harvard.edu', 'colr': 'columbialawreview.org', 'valr': 'virginialawreview.org'}
+JOURNAL_NAMES = {'hlr': 'harvard law review', 'slr': 'stanford law review', 'ylj': 'yale law journal',
+                 'hjlpp': 'harvard journal of law', 'colr': 'columbia law review', 'valr': 'virginia law review'}
 CACHE = 'data/raw/indirect_links.json'
 UA = {'User-Agent': 'LexConstitutio/1.0 (static site build)'}
 
@@ -106,8 +108,11 @@ def main():
                     continue
                 if 'doi.org/' in u:
                     cr = get('https://api.crossref.org/works/' + urllib.parse.quote(u.split('doi.org/', 1)[1]), cache)
-                    ct = ((cr or {}).get('message') or {}).get('title') or ['']
-                    if norm(ct[0]) == norm(a['t']):
+                    msg = (cr or {}).get('message') or {}
+                    ct = msg.get('title') or ['']
+                    jt = norm((msg.get('container-title') or [''])[0])
+                    # the DOI must be the article in this journal, not the book a review of the same title is about
+                    if norm(ct[0]) == norm(a['t']) and JOURNAL_NAMES.get(a['j'], '\0') in jt:
                         new = u; break
                 elif OWN_SITES.get(a['j']) and OWN_SITES[a['j']] in u and slug_ok(u, a['t']):
                     new = u; break

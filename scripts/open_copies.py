@@ -8,8 +8,8 @@ these hold, erring toward leaving a link out:
   - the OpenAlex record's title matches our title (after normalizing case and punctuation), its year is within one year
     of ours, and the first author's surname appears among its authors, so the DOI record is really this article;
   - the repository belongs to an institution one of the authors is affiliated with in OpenAlex (Yale's repository for a Yale
-    author), so a copy attached to the
-    record by mistake from an unrelated school is not used.
+    author; when the record gives an author no affiliation, the affiliations on that author's other records are used), so
+    a copy attached to the record by mistake from an unrelated school is not used.
 Writes data/raw/open_copies.json {article id: {url, host, version}} (cached OpenAlex responses in data/raw/openalex_oa/),
 then sets `oa` (and `oav`, the version) on those articles in docs/data/articles.js.
 Run from the repo root after build.ps1 (and before fix_text.py):  python scripts/open_copies.py  [--cached]
@@ -31,6 +31,7 @@ def surname(name):
     return parts[-1] if parts else ''
 
 
+AUTH = {}
 SEEN = None   # DOI -> OpenAlex work, from every cached response; DOIs looked up and not found map to None
 
 
@@ -82,6 +83,19 @@ def inst_tokens(w):
     return out
 
 
+def author_insts():
+    """OpenAlex author id -> institution words from every cached work by that author, for records that give an author no
+    affiliation ("Intratextualism" lists Amar with none, while his other records list Yale)."""
+    fetch([])
+    out = {}
+    for w in SEEN.values():
+        for a in (w or {}).get('authorships') or []:
+            aid = (a.get('author') or {}).get('id')
+            if aid and a.get('institutions'):
+                out.setdefault(aid, set()).update(inst_tokens({'authorships': [a]}))
+    return out
+
+
 def host_ok(host, toks):
     if any(host.endswith(g) for g in GENERAL):
         return True
@@ -103,6 +117,8 @@ def main():
     by_doi = {a['u'].split('doi.org/', 1)[1].lower(): a for a in todo}
     found, checked, rejected = {}, 0, {'title': 0, 'host': 0, 'none': 0}
     dois = list(by_doi)
+    global AUTH
+    AUTH = author_insts()
     for i in range(0, len(dois), 50):
         for w in fetch(dois[i:i + 50]):
             a = by_doi.get((w.get('doi') or '').replace('https://doi.org/', '').lower())
@@ -115,6 +131,8 @@ def main():
                 rejected['title'] += 1
                 continue
             toks = inst_tokens(w)
+            for au in w.get('authorships') or []:
+                toks |= AUTH.get((au.get('author') or {}).get('id'), set())
             best = None
             for l in w.get('locations') or []:
                 src = l.get('source') or {}
