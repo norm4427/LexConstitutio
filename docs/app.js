@@ -89,12 +89,37 @@
     localStorage.setItem(SAVE_KEY, JSON.stringify([...saved]));
     const el = document.getElementById('saved-count');
     el.textContent = saved.size; el.dataset.zero = saved.size ? '0' : '1';
+    const dd = document.getElementById('saved-count-dd');
+    if (dd) dd.textContent = saved.size;
   }
   function toggleSave(id) {
     if (saved.has(id)) { saved.delete(id); toast('Removed from your list'); }
     else { saved.add(id); toast('Saved to your list'); }
     persistSaved();
     document.querySelectorAll(`.save-btn[data-id="${CSS.escape(id)}"]`).forEach(b => b.classList.toggle('on', saved.has(id)));
+  }
+
+  /* ------------------------------------------------------------ read articles (newest first, in this browser) */
+  const READ_KEY = 'cl-read';
+  let readList = []; try { readList = JSON.parse(localStorage.getItem(READ_KEY) || '[]'); } catch (e) {}
+  let readSet = new Set(readList);
+  function persistRead() {
+    localStorage.setItem(READ_KEY, JSON.stringify(readList));
+    readSet = new Set(readList);
+    const el = document.getElementById('read-count');
+    if (el) el.textContent = readList.length;
+    const sc = document.getElementById('saved-count-dd');
+    if (sc) sc.textContent = saved.size;
+  }
+  function toggleRead(id) {
+    if (readSet.has(id)) { readList = readList.filter(x => x !== id); toast('Marked as unread'); }
+    else { readList = [id, ...readList]; toast('Marked as read'); }
+    persistRead();
+    document.querySelectorAll(`.read-btn[data-id="${CSS.escape(id)}"]`).forEach(b => {
+      b.classList.toggle('on', readSet.has(id));
+      b.title = b.ariaLabel = readSet.has(id) ? 'Mark as unread' : 'Mark as read';
+      const c = b.closest('.card'); if (c) c.classList.toggle('read', readSet.has(id));
+    });
   }
 
   /* ------------------------------------------------------------ helpers */
@@ -175,6 +200,7 @@
     const cset = st.clause && window.CLAUSE_ARTS ? new Set(window.CLAUSE_ARTS.ids[st.clause] || []) : null;
     const out = [];
     for (const a of articles) {
+      if (st.unread && readSet.has(a.id)) continue;
       if (jset && !jset.has(a.j)) continue;
       if (cset && !cset.has(a.id)) continue;
       if (tset && !a.tp.some(t => tset.has(t))) continue;
@@ -201,11 +227,14 @@
 
   /* ------------------------------------------------------------ components */
   const bookmarkSvg = '<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
+  const checkSvg = '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
   function card(a, pq) {
     const H = pq ? (s => highlight(s, pq)) : esc;
     const tags = a.tp.map(t => topicById[t] ? `<a class="tag" href="${hashFor('search', { topic: t })}">${esc(topicById[t].name)}</a>` : '').join('');
-    return `<article class="card">
+    const rd = readSet.has(a.id);
+    return `<article class="card${rd ? ' read' : ''}">
       <button class="save-btn ${saved.has(a.id) ? 'on' : ''}" data-id="${esc(a.id)}" title="Save to my list" aria-label="Save to my list">${bookmarkSvg}</button>
+      <button class="read-btn ${rd ? 'on' : ''}" data-id="${esc(a.id)}" title="${rd ? 'Mark as unread' : 'Mark as read'}" aria-label="${rd ? 'Mark as unread' : 'Mark as read'}">${checkSvg}</button>
       <div class="card-meta">${citeLine(a)}</div>
       <h3><a href="${articleHref(a)}">${H(a.t)}</a></h3>
       <div class="authors">${authorList(a)}</div>
@@ -313,6 +342,7 @@
       from: +params.get('from') || 0,
       to: +params.get('to') || 0,
       sort: params.get('sort') || '',
+      unread: params.get('unread') === '1' ? 1 : 0,
       page: Math.max(1, +params.get('page') || 1)
     };
   }
@@ -361,6 +391,7 @@
     if (clauseName) chips.push(`<button class="chip on" data-clear="clause">${esc(clauseName)} <span class="x">✕</span></button>`);
     if (t) chips.push(`<button class="chip on" data-clear="topic">${esc(t.name)} <span class="x">✕</span></button>`);
     for (const j of st.j) chips.push(`<button class="chip on" data-clear-j="${esc(j)}">${esc(journalById[j]?.name || j)} <span class="x">✕</span></button>`);
+    if (st.unread) chips.push(`<button class="chip on" data-clear="unread">Unread only <span class="x">✕</span></button>`);
     if (st.from || st.to) chips.push(`<button class="chip on" data-clear="years">${st.from || '…'}–${st.to || '…'} <span class="x">✕</span></button>`);
 
     app.innerHTML = `<div class="fade-in">
@@ -395,6 +426,7 @@
         <div>
           <div class="toolbar">
             <div class="count"><button class="btn btn-ghost btn-sm filter-toggle" id="filter-toggle">Filters</button> <b>${fmt(results.length)}</b> article${results.length === 1 ? '' : 's'}${results.length > PAGE_SIZE ? ` · page ${page} of ${Math.ceil(results.length / PAGE_SIZE)}` : ''}</div>
+            <label class="unread-toggle" title="Hide articles you have marked as read"><input type="checkbox" id="unread-only"${st.unread ? ' checked' : ''}> Unread only${readList.length ? '' : ' <span class="muted-line">(none marked read yet)</span>'}</label>
             <div class="seg" role="group" aria-label="Sort">
               ${hasQ ? `<button data-sort="relevance" class="${sort === 'relevance' ? 'on' : ''}">Relevance</button>` : ''}
               <button data-sort="newest" class="${sort === 'newest' ? 'on' : ''}">Newest</button>
@@ -415,7 +447,7 @@
       go({ j: st.j.includes(id) ? st.j.filter(x => x !== id) : [...st.j, id] });
     }));
     app.querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => {
-      const k = b.dataset.clear; go(k === 'years' ? { from: 0, to: 0 } : { [k]: '' });
+      const k = b.dataset.clear; go(k === 'years' ? { from: 0, to: 0 } : k === 'unread' ? { unread: 0 } : { [k]: '' });
     }));
     app.querySelectorAll('[data-clear-j]').forEach(b => b.addEventListener('click', () => go({ j: st.j.filter(x => x !== b.dataset.clearJ) })));
     app.querySelectorAll('[data-years]').forEach(b => b.addEventListener('click', () => { const [f, t2] = b.dataset.years.split('-'); go({ from: +f || 0, to: +t2 || 0 }); }));
@@ -423,6 +455,7 @@
     document.getElementById('from').addEventListener('change', yr);
     document.getElementById('to').addEventListener('change', yr);
     document.getElementById('filter-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+    document.getElementById('unread-only').addEventListener('change', e => go({ unread: e.target.checked ? 1 : 0 }));
     bindPager(n => { location.hash = hashFor('search', Object.assign({}, st, { page: n })); });
   }
 
@@ -480,6 +513,7 @@
           <a class="btn ${a.pdf || a.oa ? 'btn-ghost' : 'btn-primary'}" href="${esc(a.u)}" target="_blank" rel="noopener">${/doi\.org\/10\.2307/.test(a.u) ? 'View on JSTOR' : /doi\.org/.test(a.u) ? 'View via DOI' : 'View at ' + esc(j?.name || 'publisher')} ↗</a>
           ${a.pub ? `<a class="btn btn-ghost" href="${esc(a.pub)}" target="_blank" rel="noopener">View at ${esc(j?.name || 'the publisher')} ↗</a>` : ''}
           <button class="btn btn-ghost" id="save-article">${saved.has(a.id) ? '★ Saved' : '☆ Save to my list'}</button>
+          <button class="btn btn-ghost" id="read-article">${readSet.has(a.id) ? '✓ Read' : 'Mark as read'}</button>
           <a class="btn btn-ghost" href="https://scholar.google.com/scholar?q=${encodeURIComponent('"' + a.t + '"')}" target="_blank" rel="noopener">Google Scholar ↗</a>
         </div>
         ${a.tp.length ? `<h2>Topics</h2><div class="tags">${a.tp.map(t => `<a class="tag" href="${hashFor('search', { topic: t })}">${esc(topicById[t]?.parent ? topicById[topicById[t].parent].name + ' › ' : '')}${esc(topicById[t]?.name)}</a>`).join('')}</div>` : ''}
@@ -520,6 +554,7 @@
       navigator.clipboard.writeText(mode === 'bb' ? plainCite(a) : bibtex(a)).then(() => toast('Citation copied'));
     });
     document.getElementById('save-article').addEventListener('click', e => { toggleSave(a.id); e.currentTarget.textContent = saved.has(a.id) ? '★ Saved' : '☆ Save to my list'; });
+    document.getElementById('read-article').addEventListener('click', e => { toggleRead(a.id); e.currentTarget.textContent = readSet.has(a.id) ? '✓ Read' : 'Mark as read'; });
     articleMentions(a);
   }
   // Supreme Court cases and indexed articles named in an article's title, abstract and keywords (the full text sits behind
@@ -629,11 +664,26 @@
     </div>`;
   }
 
-  function viewSaved() {
+  function viewSaved(params) {
+    const tab = params && params.get('tab') === 'read' ? 'read' : 'saved';
+    const tabs = `<div class="seg mylist-tabs" role="tablist" aria-label="My list"><a role="tab" href="#/saved" class="${tab === 'saved' ? 'on' : ''}">Saved <span class="n">${saved.size}</span></a><a role="tab" href="#/saved?tab=read" class="${tab === 'read' ? 'on' : ''}">Read <span class="n">${readList.length}</span></a></div>`;
+    const head = `<div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>My list</span></div>
+        <h1>My list</h1><p>${tab === 'read' ? 'Articles you have marked as read, most recent first.' : 'Articles you have saved.'} Stored in this browser only.</p>${tabs}</div>`;
+    if (tab === 'read') {
+      const items = readList.map(id => byId.get(id)).filter(Boolean);
+      app.innerHTML = `<div class="fade-in">${head}
+        <div class="layout" style="grid-template-columns:1fr"><div>
+          ${items.length ? `<div class="toolbar"><div class="count"><b>${items.length}</b> article${items.length === 1 ? '' : 's'} read</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="clear-read">Clear read history</button></div></div>
+            <div class="cards">${items.map(a => card(a)).join('')}</div>`
+          : `<div class="empty"><h3>Nothing marked as read yet</h3><p>Use the check button on any article, or “Mark as read” on its page, to keep track of what you have read. In Articles you can then show only unread ones.</p><p style="margin-top:18px"><a class="btn btn-primary" href="#/search">Browse articles</a></p></div>`}
+        </div></div></div>`;
+      const c = document.getElementById('clear-read');
+      if (c) c.addEventListener('click', () => { if (!confirm('Clear your read history?')) return; readList = []; persistRead(); viewSaved(params); });
+      return;
+    }
     const items = [...saved].map(id => byId.get(id)).filter(Boolean);
-    app.innerHTML = `<div class="fade-in">
-      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>My list</span></div>
-        <h1>My list</h1><p>Articles you have saved. Your list is stored in this browser only.</p></div>
+    app.innerHTML = `<div class="fade-in">${head}
       <div class="layout" style="grid-template-columns:1fr">
         <div>
           ${items.length ? `<div class="toolbar"><div class="count"><b>${items.length}</b> saved article${items.length === 1 ? '' : 's'}</div>
@@ -655,7 +705,7 @@
     });
     document.getElementById('clear-saved').addEventListener('click', () => {
       if (!confirm('Remove all saved articles from your list?')) return;
-      saved = new Set(); persistSaved(); viewSaved();
+      saved = new Set(); persistSaved(); viewSaved(params);
     });
   }
 
@@ -3321,7 +3371,7 @@
       case 'article': viewArticle(decodeURIComponent(seg.slice(1).join('/'))); break;
       case 'author': viewAuthor(seg.slice(1).join('/'), params); break;
       case 'journals': viewJournals(); break;
-      case 'saved': viewSaved(); break;
+      case 'saved': viewSaved(params); break;
       case 'impact': viewImpact(params); break;
       case 'scotus': viewScotus(params); break;
       case 'docket': viewDocket(params); break;
@@ -3353,6 +3403,8 @@
   app.addEventListener('click', e => {
     const b = e.target.closest('.save-btn');
     if (b) { e.preventDefault(); toggleSave(b.dataset.id); return; }
+    const rb = e.target.closest('.read-btn');
+    if (rb) { e.preventDefault(); toggleRead(rb.dataset.id); return; }
     const v = e.target.closest('.vtile');
     if (v && v.tagName !== 'A') { e.preventDefault(); openVideo(v.dataset.video, v.dataset.title, v.dataset.ch, v.dataset.start); }
   });
@@ -3377,5 +3429,6 @@
   document.getElementById('footer-updated').textContent = 'Updated ' + DATA.generated;
   window.addEventListener('hashchange', route);
   persistSaved();
+  persistRead();
   route();
 })();
