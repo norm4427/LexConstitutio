@@ -33,7 +33,7 @@ def main():
     for v in L['videos']:
         if v['id'] in in_carousel:
             continue
-        title_hits = [tid for tid, r in rx.items() if r.search(v['t'])]
+        title_hits = list(dict.fromkeys([g for g in v.get('gt', []) if g in rx] + [tid for tid, r in rx.items() if r.search(v['t'])]))   # gt: found for that topic by guide_videos.py
         cat_hits = [tid for c in v.get('cat', []) for tid in CAT_TOPICS.get(c, []) if tid not in title_hits] if len(v.get('cat', [])) == 1 and not title_hits else []
         for tid in title_hits[:PER_VIDEO] + cat_hits:
             cands[tid].append((0 if tid in title_hits else 1, -int(v.get('v') or 0), v))
