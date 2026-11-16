@@ -1474,8 +1474,13 @@
           .catch(e => { if (token === routeToken) el.innerHTML = `<p class="muted-line">${esc(e.message)}.</p>`; });
       } else if (k === 'media') {
         const el = app.querySelector('[data-panel="media"]');
-        loadScriptOnce(`data/media/${c.t}.js`).then(() => { if (token === routeToken) renderMedia(el, (window.MEDIA || {})[c.id], c); })
-          .catch(() => { el.innerHTML = '<p class="muted-line">Could not load the media list.</p>'; });
+        // a case listed in the index but with nothing to show (or a file that fails to load) loses the tab
+        const noMedia = () => { if (token !== routeToken) return; const t = app.querySelector('.case-tabs [data-tab="media"]'); if (t) t.remove(); showTab(''); history.replaceState(null, '', tabHref('')); };
+        loadScriptOnce(`data/media/${c.t}.js`).then(() => {
+          const M = (window.MEDIA || {})[c.id];
+          if (!M || !((M.videos || []).length || (M.print || []).length)) return noMedia();
+          if (token === routeToken) renderMedia(el, M, c);
+        }).catch(noMedia);
       } else if (k === 'parties') {
         const el = app.querySelector('[data-panel="parties"]');
         const pp = (window.PARTIES_INDEX || []).includes(String(c.t)) ? loadScriptOnce(`data/parties/${c.t}.js`).then(() => (window.PARTIES || {})[c.id] || null).catch(() => null) : Promise.resolve(null);

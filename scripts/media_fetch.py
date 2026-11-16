@@ -197,7 +197,8 @@ def loc_one(c):
 
 def loc():
     """The most-cited cases decided before 1964 (LOC_N, default 150) and every named case of the Marshall era and
-    before (decided before 1836). The API takes ~30 s a query, so three queries run at a time."""
+    before (decided before 1836); with LOC_ALL=1, then every other named case through 1963, a decade at a time.
+    The API takes ~30 s a query, so several run at a time (LOC_WORKERS, default 3)."""
     from concurrent.futures import ThreadPoolExecutor
     os.makedirs(f'{RAW}/loc', exist_ok=True)
     S = load_js('docs/data/scotus.js')['cases']
@@ -206,7 +207,21 @@ def loc():
     for c in top_cases('1963-12-31', int(os.environ.get('LOC_N', 150))) + early:
         if c['id'] not in seen:
             seen.add(c['id']); todo.append(c)
-    with ThreadPoolExecutor(3) as ex:
+    if os.environ.get('LOC_ALL'):
+        # then every other named case through 1963 (Chronicling America's range), most cited first, taken a decade at a
+        # time in turn so that every period fills in early; resumable, so it can run over several sessions
+        I = load_js('docs/data/case_impact.js')['c']
+        rest = [c for c in S if c.get('dec') and c['dec'] < '1964-01-01' and ' v. ' in c['n'] and c['id'] not in seen]
+        rest.sort(key=lambda c: -(I.get(c['id']) or [0, 0, 0])[2])
+        by_dec = {}
+        for c in rest:
+            by_dec.setdefault(c['dec'][:3], []).append(c)
+        queues = [by_dec[k] for k in sorted(by_dec)]
+        while any(queues):
+            for q in queues:
+                if q:
+                    todo.append(q.pop(0))
+    with ThreadPoolExecutor(int(os.environ.get('LOC_WORKERS', 3))) as ex:
         for k, _ in enumerate(ex.map(loc_one, todo)):
             if k % 50 == 0:
                 print('loc', k, '/', len(todo), flush=True)

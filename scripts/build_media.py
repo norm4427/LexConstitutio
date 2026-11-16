@@ -309,9 +309,10 @@ def main():
             media[c['id']]['print'].append({'date': x['date'], 'paper': paper.title() if paper.islower() else paper, 'page': int(pg.group(1)) if pg else None,
                                             'url': re.sub(r'&q=.*$', '', x['url']) if x.get('url') else None, 'img': x.get('img')})
         media[c['id']]['print'].sort(key=lambda x: x['date'])
-        media[c['id']]['print'] = media[c['id']]['print'][:8]
+        media[c['id']]['print'] = media[c['id']]['print'][:12]
     # --- write by term
-    tmap = {c['id']: str(c.get('t')) for c in allc}
+    tmap = {c['id']: str(c.get('t')) for c in S}          # every case, Supreme Court Database-only ones included
+    tmap.update({c['id']: str(c.get('t')) for c in pend})
     by_term = collections.defaultdict(dict)
     n = collections.Counter()
     for cid, m in media.items():
