@@ -20,7 +20,7 @@ import html, json, os, re, sys, time, urllib.parse, urllib.request
 from datetime import date, timedelta
 
 RAW = 'data/raw/media'
-UA = {'User-Agent': 'LexConstitutio/1.0 (academic research index)'}
+UA = {'User-Agent': 'LexConstitutio/1.0 (academic research index; lexconstitutio.com)'}
 PLAYLISTS = {
     'PLDuw5W_udnx2RhekBcHhFSIpDC9TE286q': 'Advisory Opinions',
     'PLDuw5W_udnx2IqUp8Lj9_qpfCpX7W8fEz': 'SCOTUSblog',
@@ -264,6 +264,45 @@ def pod():
         time.sleep(1)
 
 
+def wiki():
+    """Each case's English Wikipedia article (wikitext), for the news and commentary it cites. Titles are tried in
+    batches of 50 (the case name as the site writes it, redirects followed); build_media.py keeps an article only when
+    its Supreme Court case infobox gives the same U.S. Reports citation or docket number.
+    -> data/raw/media/wiki/<batch>.json"""
+    os.makedirs(f'{RAW}/wiki', exist_ok=True)
+    S = load_js('docs/data/scotus.js')['cases']
+    K = load_js('docs/data/docket.js')['cases']
+    names = sorted({re.sub(r'\s*\(\d\)$', '', c['n']) for c in S if c.get('s') != 1 and ' v. ' in c['n']} |
+                   {c['n'] for c in K if ' v. ' in c['n']})
+    for k in range(0, len(names), 50):
+        dest = f'{RAW}/wiki/{k // 50:04d}.json'
+        if os.path.exists(dest):
+            continue
+        batch = names[k:k + 50]
+        url = ('https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&redirects=1&prop=revisions'
+               '&rvprop=content&rvslots=main&titles=' + urllib.parse.quote('|'.join(batch)))
+        try:
+            r = json.loads(get(url, timeout=120))
+        except Exception as e:
+            print('  wiki failed', k, e, flush=True)
+            time.sleep(10)
+            continue
+        q = r.get('query', {})
+        back = {}
+        for m in q.get('normalized', []) + q.get('redirects', []):
+            back[m['to']] = back.get(m['from'], m['from'])
+        pages = {}
+        for p in q.get('pages', []):
+            if p.get('missing') or not p.get('revisions'):
+                continue
+            pages[back.get(p['title'], p['title'])] = {'title': p['title'], 'text': p['revisions'][0]['slots']['main']['content']}
+        json.dump(pages, open(dest, 'w', encoding='utf-8'), ensure_ascii=False)
+        if k % 1000 == 0:
+            print('wiki', k, '/', len(names), flush=True)
+        time.sleep(1)
+    print('wiki done', flush=True)
+
+
 if __name__ == '__main__':
     for w in sys.argv[1:] or ['pod', 'yt', 'search', 'loc']:
-        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod}[w]()
+        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod, 'wiki': wiki}[w]()

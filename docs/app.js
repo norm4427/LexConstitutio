@@ -1134,6 +1134,7 @@
      that name it, and newspaper pages printed after the decision (Chronicling America, public domain). */
   function renderMedia(el, M, c) {
     if (!M) { el.innerHTML = '<p class="muted-line">Nothing found yet.</p>'; return; }
+    M.videos = M.videos || []; M.print = M.print || [];
     const clock = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
     const ICON_BY_TAG = { speech: 'free-speech', religion: 'religion', guns: 'second-amendment', equality: 'equal-protection', dueprocess: 'due-process', crimpro: 'fourth-amendment', federalism: 'federalism', seppowers: 'separation-of-powers', admin: 'administrative-state', voting: 'voting', security: 'executive-power' };
     const iconKey = ICON_BY_TAG[(c.tg || [])[0]] || 'judicial-review';
@@ -1161,6 +1162,10 @@
     el.innerHTML = `<section class="md">
       ${block(shows, 'Podcasts and shows', `Episodes of ${[...new Set(shows.map(v => v.ch))].map(esc).join(', ')} that discuss this case. Videos the show posts on YouTube play here through YouTube's embedded player; other episodes link to the show's own page (or a YouTube search for the episode). The listed time is where the show notes mark the discussion of the case. Matches come from episode titles and show notes.`)}
       ${block(others, 'Videos', 'Videos whose titles name this case: embedded through YouTube’s player when the owner allows it, otherwise linked.')}
+      ${(M.web || []).length ? `<h2>Coverage and commentary</h2>
+        <p class="md-legend"><span class="md-pw pw">Paywall</span> subscription needed for most readers (some sites allow a few free articles a month) <span class="md-pw free">Free</span> free to read, as far as we know</p>
+        <ul class="md-web">${M.web.map(w => `<li><a href="${esc(w.u)}" target="_blank" rel="noopener nofollow">${esc(w.t)} <span class="ext">↗</span></a><div><span class="md-pw ${w.pw ? 'pw' : 'free'}">${w.pw ? 'Paywall' : 'Free'}</span><b>${esc(w.o)}</b>${w.d ? `<span>${esc(w.d.length === 10 ? fmtDate(w.d) : w.d)}</span>` : ''}</div></li>`).join('')}</ul>
+        <p class="attrib">News and analysis cited in the case's <a href="${esc(M.wiki)}" target="_blank" rel="noopener">Wikipedia article</a>, linked to the original publishers; nothing is copied. Paywall labels come from a list of outlets that require subscriptions and may not reflect each article.</p>` : ''}
       ${M.print.length ? `<h2>In the newspapers</h2><div class="md-print">${M.print.map(p => `<a class="md-clip" href="${esc(p.url)}" target="_blank" rel="noopener">${p.img ? `<img src="${esc(p.img)}" alt="Page of ${esc(p.paper)}, ${esc(p.date)}" loading="lazy">` : ''}<b>${esc(p.paper)}</b><span>${esc(fmtDate(p.date))}${p.page ? ' · page ' + p.page : ''}</span><em>View the page ↗</em></a>`).join('')}</div>
         <p class="attrib">Newspaper pages printed in the weeks after the decision that name both parties and the Supreme Court, from <a href="https://www.loc.gov/collections/chronicling-america/" target="_blank" rel="noopener">Chronicling America</a> (Library of Congress; public domain). Search the page for the case name to find the story.</p>` : ''}
     </section>`;
@@ -1488,7 +1493,7 @@
         const noMedia = () => { if (token !== routeToken) return; const t = app.querySelector('.case-tabs [data-tab="media"]'); if (t) t.remove(); showTab(''); history.replaceState(null, '', tabHref('')); };
         loadScriptOnce(`data/media/${c.t}.js`).then(() => {
           const M = (window.MEDIA || {})[c.id];
-          if (!M || !((M.videos || []).length || (M.print || []).length)) return noMedia();
+          if (!M || !((M.videos || []).length || (M.print || []).length || (M.web || []).length)) return noMedia();
           if (token === routeToken) renderMedia(el, M, c);
         }).catch(noMedia);
       } else if (k === 'parties') {

@@ -17,7 +17,7 @@ Newspaper pages: Chronicling America pages printed in the weeks after the decisi
 both party names and "supreme court"; the Library of Congress page and its scan are linked, nothing is copied.
 Run from the repo root:  python scripts/build_media.py
 """
-import collections, glob, json, os, re
+import collections, glob, json, os, re, urllib.parse
 from datetime import date, timedelta
 
 RAW = 'data/raw/media'
@@ -357,17 +357,121 @@ def main():
                                             'url': re.sub(r'&q=.*$', '', x['url']) if x.get('url') else None, 'img': x.get('img')})
         media[c['id']]['print'].sort(key=lambda x: x['date'])
         media[c['id']]['print'] = media[c['id']]['print'][:12]
+    # --- coverage and commentary on the web: the news and analysis cited in the case's Wikipedia article
+    # (data/raw/media/wiki, media_fetch.py wiki). The article counts only when its Supreme Court case infobox gives the
+    # case's U.S. Reports volume and page or its docket number. Primary sources (the Court, Oyez, Justia, Cornell LII...)
+    # are left out: the case page links them already.
+    PRIMARY = re.compile(r'(supremecourt\.gov|oyez\.org|justia\.com|law\.cornell\.edu|findlaw\.com|loc\.gov|govinfo\.gov|courtlistener\.com|'
+                         r'casetext\.com|uscourts\.gov|wikipedia\.org|wikisource\.org|archive\.org|google\.com|scholar\.google|westlaw|lexis)', re.I)
+    # outlets that require a subscription for most articles (hard paywalls and metered sites that cut off after a few)
+    PAYWALL = re.compile(r'(?:^|\.)(nytimes\.com|wsj\.com|washingtonpost\.com|ft\.com|economist\.com|bloomberg\.com|bloomberglaw\.com|'
+                         r'theatlantic\.com|newyorker\.com|latimes\.com|bostonglobe\.com|chicagotribune\.com|law360\.com|'
+                         r'nationalreview\.com|thetimes\.co\.uk|telegraph\.co\.uk|businessinsider\.com|barrons\.com|wired\.com|'
+                         r'newsweek\.com|thedispatch\.com|foreignaffairs\.com|'
+                         r'harpers\.org|nybooks\.com|thenation\.com|newrepublic\.com|washingtonexaminer\.com|'
+                         r'insidehighered\.com|chronicle\.com|startribune\.com|sfchronicle\.com|denverpost\.com|seattletimes\.com|'
+                         r'dallasnews\.com|houstonchronicle\.com|ajc\.com|inquirer\.com|tampabay\.com|miamiherald\.com|'
+                         r'baltimoresun\.com|post-gazette\.com|jsonline\.com|azcentral\.com|courant\.com|'
+                         r'law\.com|nationaljournal\.com|rollcall\.com|theathletic\.com|vanityfair\.com|'
+                         r'jstor\.org|tandfonline\.com|sciencedirect\.com|springer\.com|wiley\.com|heinonline\.org)$', re.I)
+    from urllib.parse import urlparse
+
+    def tparams(t):
+        """{{cite news |a=b |c=[[x|y]] ...}} -> dict, splitting on top-level pipes only"""
+        body = t[2:-2]
+        parts, depth, cur = [], 0, ''
+        i = 0
+        while i < len(body):
+            two = body[i:i + 2]
+            if two in ('[[', '{{'):
+                depth += 1; cur += two; i += 2; continue
+            if two in (']]', '}}'):
+                depth -= 1; cur += two; i += 2; continue
+            if body[i] == '|' and depth == 0:
+                parts.append(cur); cur = ''
+            else:
+                cur += body[i]
+            i += 1
+        parts.append(cur)
+        out = {}
+        for p_ in parts[1:]:
+            if '=' in p_:
+                k, v = p_.split('=', 1)
+                out[k.strip().lower()] = v.strip()
+        return out
+
+    def plain(v):
+        v = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', v or '')
+        v = re.sub(r'\{\{[^{}]*\}\}', '', v)
+        v = re.sub(r"'{2,}", '', v)
+        return _html.unescape(re.sub(r'<[^>]+>', '', v)).strip()
+
+    def iso(d):
+        d = plain(d)
+        for fmt in ('%B %d, %Y', '%d %B %Y', '%Y-%m-%d', '%b %d, %Y', '%d %b %Y', '%B %Y', '%Y'):
+            try:
+                from datetime import datetime
+                return datetime.strptime(d, fmt).date().isoformat()[: 4 if fmt == '%Y' else 7 if fmt == '%B %Y' else 10]
+            except ValueError:
+                pass
+        return ''
+
+    wiki = {}
+    for pth in glob.glob(f'{RAW}/wiki/*.json'):
+        wiki.update(json.load(open(pth, encoding='utf-8')))
+    n_wiki = 0
+    for c in list(cases) + pend:
+        name = re.sub(r'\s*\(\d\)$', '', c['n'])
+        pg = wiki.get(name)
+        if not pg:
+            continue
+        w = pg['text']
+        ib = re.search(r'\{\{\s*Infobox SCOTUS case(.*?)\n\}\}', w, re.S | re.I)
+        if not ib:
+            continue
+        box = ib.group(1)
+        m = re.match(r'^(\d+) U\.S\. (\d+)$', c.get('cit') or c.get('citUS') or '')
+        vol = re.search(r'\|\s*USVol\s*=\s*(\d+)', box)
+        page = re.search(r'\|\s*USPage\s*=\s*(\d+)', box)
+        dk = re.search(r'\|\s*Docket\s*=\s*([^\n|]+)', box)
+        ok = (m and vol and page and vol.group(1) == m.group(1) and page.group(1) == m.group(2)) or \
+             (c.get('d') and dk and c['d'].strip().lower() in dk.group(1).lower()) or \
+             (m and vol and vol.group(1) == m.group(1) and not page)
+        if not ok:
+            continue
+        links, seen_u = [], set()
+        for t in re.findall(r'\{\{\s*cite\s+(?:news|web|magazine|journal|press release|podcast|av media)\b(?:[^{}]|\{\{[^{}]*\}\})*\}\}', w, re.I):
+            p_ = tparams(t)
+            u = (p_.get('url') or '').strip()
+            if not u.startswith('http') or PRIMARY.search(u) or u in seen_u:
+                continue
+            host = urlparse(u).netloc.lower().removeprefix('www.')
+            if (host.endswith('.gov') or host.endswith('.mil')) and not host.endswith('congress.gov'):
+                continue                                    # government documents, not coverage (CRS reports stay)
+            title = plain(p_.get('title', ''))
+            if not title or len(title) > 300:
+                continue
+            outlet = plain(p_.get('work') or p_.get('newspaper') or p_.get('website') or p_.get('magazine') or p_.get('journal') or p_.get('publisher') or host)
+            seen_u.add(u)
+            links.append({'u': u, 't': title, 'o': outlet[:80], 'd': iso(p_.get('date', '')),
+                          'pw': 1 if PAYWALL.search(host) else 0})
+        if links:
+            links.sort(key=lambda x: x['d'] or '0000', reverse=True)
+            media[c['id']]['web'] = links[:30]
+            media[c['id']]['wiki'] = 'https://en.wikipedia.org/wiki/' + urllib.parse.quote(pg['title'].replace(' ', '_'))
+            n_wiki += 1
+    print('cases with web coverage from Wikipedia citations:', n_wiki)
     # --- write by term
     tmap = {c['id']: str(c.get('t')) for c in S}          # every case, Supreme Court Database-only ones included
     tmap.update({c['id']: str(c.get('t')) for c in pend})
     by_term = collections.defaultdict(dict)
     n = collections.Counter()
     for cid, m in media.items():
-        if not (m['videos'] or m['print']):
+        if not (m['videos'] or m['print'] or m.get('web')):
             continue
         m['videos'].sort(key=lambda v: (v['date'] or '9999'), reverse=False)
         by_term[tmap.get(cid, 'x')][cid] = m
-        n['cases'] += 1; n['videos'] += len(m['videos']); n['print'] += len(m['print'])
+        n['cases'] += 1; n['videos'] += len(m['videos']); n['print'] += len(m['print']); n['web'] += len(m.get('web', []))
     os.makedirs(OUT, exist_ok=True)
     for f in glob.glob(f'{OUT}/*.js'):
         os.remove(f)
