@@ -26,6 +26,7 @@ PLAYLISTS = {
     'PLDuw5W_udnx2IqUp8Lj9_qpfCpX7W8fEz': 'SCOTUSblog',
     'PLDuw5W_udnx09k7Lt6wS_GU2BUNC-CRCe': 'SCOTUSblog Animated Explainers',
     'UUk-Km4tcqAbhpnbrvj1pJFw': 'Strict Scrutiny',
+    'UUaqFv9hD-XJmPMzC5Yvtneg': 'The Dispatch',          # all Dispatch uploads: older Advisory Opinions episodes are not in the show's playlist
     'UUu4dm15fbc4jWrOC-AtfDdg': 'Divided Argument',
 }
 

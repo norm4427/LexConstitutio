@@ -165,6 +165,8 @@ def main():
     recent = [c for c in allc if c['id'] in info and (c.get('pending') or c['dec'] >= '2015-01-01')]
     rx = {c['id']: (full_rx(c), short_rx(c)) for c in recent}
     for v in vids:
+        if v.get('show') == 'The Dispatch':         # the channel's other shows: used only to pair podcast episodes below
+            continue
         if not v.get('date'):
             continue
         vd = date.fromisoformat(v['date'])
@@ -205,6 +207,101 @@ def main():
              'citizens-guide': ("The Citizen's Guide to the Supreme Court", "The Citizen's Guide"),
              'landmark-decisions': ('Landmark Decisions in the U.S. Supreme Court', 'Aaron Larson')}
     yt_by_title = {re.sub(r'\W+', '', v['t'].lower()): v for v in vids}
+    # a podcast episode's own YouTube upload: same show channel, published within ten days, and the same title once
+    # show names, episode numbers and "Interview:" style labels are set aside
+    import difflib
+    PAIR_CH = {'Advisory Opinions': ('dispatch', 'advisory'), 'Strict Scrutiny': ('strict scrutiny', 'crooked'), 'Divided Argument': ('divided',),
+               'SCOTUStalk': ('scotusblog',)}
+    def tnorm(t):
+        t = t.lower()
+        t = re.sub(r'\b(?:advisory opinions|strict scrutiny|divided argument|scotustalk|the dispatch|podcast|episode \d+|ep\.? ?\d+|interview|bonus|full episode)\b', ' ', t)
+        return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]+', ' ', t)).strip()
+    by_show = collections.defaultdict(list)
+    for v in vids:
+        if not v.get('date'):
+            continue
+        ch = (v.get('ch') or '').lower() + ' ' + (v.get('show') or '').lower()
+        for show, keys in PAIR_CH.items():
+            if any(k in ch for k in keys):
+                by_show[show].append((date.fromisoformat(v['date']), tnorm(v['t']), v))
+
+    def pair_yt(title, ed, show):
+        a = tnorm(title)
+        if len(a) < 6:
+            return None
+        best = None
+        for vd, b, v in by_show.get(show, []):
+            if abs((vd - ed).days) > 10 or not b:
+                continue
+            r = 1.0 if a == b else difflib.SequenceMatcher(None, a, b).ratio()
+            if (a in b or b in a) and min(len(a), len(b)) >= 15:
+                r = max(r, 0.9)
+            if r >= 0.85 and (best is None or r > best[0]):
+                best = (r, v)
+        return best[1] if best else None
+
+    DESC_STOP = set('sarah david isgur french advisory opinions dispatch strict scrutiny divided argument leah melissa kate podcast episode agenda notes supreme court their about which there today discuss justice judge would could after before other these those where while'.split())
+    SHOW_MARK = {'Advisory Opinions': 'advisory opinions', 'Strict Scrutiny': 'strict scrutiny', 'Divided Argument': 'divided argument'}
+
+    def pair_by_length(ed, sec, show, notes=''):
+        """The show retitles its YouTube uploads ("Why You Should Hate Oliver Wendell Holmes Jr." for the podcast's
+        "Progressivism and Eugenics in the Court of Justice Holmes"), so failing a title match, take the show's upload
+        published within two days whose running time is within 6% (at least 90 seconds) of the episode's."""
+        if not sec or show not in SHOW_MARK:
+            return None
+        best = None
+        for vd, b, v in by_show.get(show, []):
+            if abs((vd - ed).days) > 2 or not v.get('sec'):
+                continue
+            own = v.get('show') == show or SHOW_MARK[show] in (v.get('t', '') + ' ' + v.get('desc', '')[:600]).lower() \
+                or SHOW_MARK[show] in (v.get('ch') or '').lower()
+            if not own:
+                continue
+            # the YouTube cut drops the ads, so it runs up to ~10% shorter than the audio (never much longer)
+            gap = abs(v['sec'] - sec)
+            # and the video's description must echo the episode's notes (the show reuses them): 4+ shared distinctive words
+            nw = set(re.findall(r'[a-z]{5,}', notes[:700].lower())) - DESC_STOP
+            vw = set(re.findall(r'[a-z]{5,}', (v.get('desc') or '')[:900].lower())) - DESC_STOP
+            if len(nw & vw) < 4:
+                continue
+            if sec - 0.10 * sec <= v['sec'] <= sec + 90 and (best is None or gap < best[0]):
+                best = (gap, v)
+        return best
+
+    # one video per episode: pair every episode of the shows first (title matches, then the closest running time), so
+    # two episodes released a day apart cannot both take the same upload
+    PAIRED = {}
+    cands = []
+    for path in sorted(glob.glob(f'{RAW}/pod/*.xml')):
+        show0 = SHOWS.get(os.path.basename(path)[:-4], ('', ''))[0]
+        if show0 not in SHOW_MARK:
+            continue
+        try:
+            root0 = ET.parse(path).getroot()
+        except ET.ParseError:
+            continue
+        for it in root0.iter('item'):
+            t0 = (it.findtext('title') or '').strip()
+            try:
+                e0 = parsedate_to_datetime(it.findtext('pubDate')).date()
+            except Exception:
+                continue
+            v0 = yt_by_title.get(re.sub(r'\W+', '', t0.lower())) or pair_yt(t0, e0, show0)
+            if v0:
+                cands.append((-1, show0, t0, v0))
+                continue
+            d0 = (it.findtext('itunes:duration', namespaces=NS) or '').strip()
+            d0 = int(d0) if d0.isdigit() else (secs(d0) if re.fullmatch(r'(?:\d+:)?\d{1,2}:\d{2}', d0) else 0)
+            n0 = _html.unescape(re.sub(r'<[^>]+>', ' ', it.findtext('content:encoded', namespaces=NS) or it.findtext('description') or ''))
+            got = pair_by_length(e0, d0, show0, n0)
+            if got:
+                cands.append((got[0], show0, t0, got[1]))
+    used = set()
+    for gap, show0, t0, v0 in sorted(cands, key=lambda x: x[0]):
+        if v0['id'] in used or (show0, t0) in PAIRED:
+            continue
+        used.add(v0['id'])
+        PAIRED[(show0, t0)] = v0
     # every named case (Supreme Court Database-only ones too) can be matched by its full name
     every = {c['id']: c for c in S if c.get('dec') and ' v. ' in c['n']}
     every.update({c['id']: c for c in pend})
@@ -274,7 +371,7 @@ def main():
             chapters += [(secs(m.group(2)), m.group(1)) for m in (CHAPTER_END.match(l) for l in lines) if m]
             words = set(re.findall(r"[A-Z][A-Za-z'’\-]{3,}", title + '\n' + notes))
             cands = set().union(*(word_idx[w] for w in words if w in word_idx)) if words else set()
-            yt = yt_by_title.get(re.sub(r'\W+', '', title.lower()))
+            yt = yt_by_title.get(re.sub(r'\W+', '', title.lower())) or pair_yt(title, ed, show)
             n_ep += 1
             for cid in cands:
                 c = every[cid]
@@ -316,15 +413,20 @@ def main():
                         if same_episode(nv, title, show):
                             yt = {'id': nv, 'embed': True}
                             break
+                if show in SHOW_MARK:
+                    yt = PAIRED.get((show, title))
                 if yt and yt.get('embed', True):
                     item.update({'id': yt['id'], 'embed': True})
+                    if item['start'] and yt.get('sec') and item['sec'] and abs(yt['sec'] - item['sec']) > 60:
+                        item['start'] = 0       # the video is cut differently from the audio: its chapter times would not line up
                 lst = media[cid]['videos']
                 if not any(x.get('t') == title and x.get('ch') == show for x in lst):
                     lst.append(item)
     print('podcast episodes read:', n_ep)
-    # a YouTube copy of a podcast episode replaces the separate video entry
+    # a YouTube copy of a podcast episode replaces the separate video entry (on every case page)
+    all_pod_ids = {x.get('id') for m in media.values() for x in m['videos'] if x.get('kind') == 'pod' and x.get('id')}
     for m in media.values():
-        pod_ids = {x.get('id') for x in m['videos'] if x.get('kind') == 'pod' and x.get('id')}
+        pod_ids = all_pod_ids
         m['videos'] = [x for x in m['videos'] if x.get('kind') == 'pod' or x['id'] not in pod_ids]
     # --- other videos: site lectures and searches, title must name the case in full
     older = [c for c in cases if c['id'] in info]
