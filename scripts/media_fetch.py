@@ -12,7 +12,8 @@
    before 1964 and every named case decided before 1836: pages printed in the three weeks (two months before 1870) after the decision that name the parties and the Supreme Court.
    -> data/raw/media/loc/<case>.json
 4. Podcast feeds (Advisory Opinions, Strict Scrutiny, Divided Argument, 5-4, SCOTUScast, SCOTUStalk, We the People,
-   Amarica’s Constitution): every episode with show notes. -> data/raw/media/pod/<show>.xml
+   Amarica’s Constitution, More Perfect, Amicus, C-SPAN Landmark Cases, Make No Law, Supreme Myths,
+   Constitutional, Bound By Oath, Opening Arguments, The Citizen's Guide to the Supreme Court, Landmark Decisions): every episode with show notes. -> data/raw/media/pod/<show>.xml
 Resumable.  Run from the repo root:  python scripts/media_fetch.py [yt|search|loc]   (YT_API_KEY=... for the back catalog)
 """
 import html, json, os, re, sys, time, urllib.parse, urllib.request
@@ -223,6 +224,16 @@ PODCASTS = {
     'scotustalk': ('SCOTUStalk', 'SCOTUSblog', 'https://feeds.acast.com/public/shows/5c7d6c6a80f32c6a7cdeca24'),
     'we-the-people': ('We the People', 'National Constitution Center', 'https://pdrl.fm/2f25bb/feeds.megaphone.fm/wethepeople'),
     'amaricas-constitution': ("Amarica's Constitution", 'Akhil Reed Amar', 'https://feed.podbean.com/amaricasconstitution/feed.xml'),
+    'more-perfect': ('More Perfect', 'WNYC Studios', 'https://feeds.simplecast.com/lQwwDIs1'),
+    'amicus': ('Amicus', 'Slate (Dahlia Lithwick)', 'https://my.slate.com/podcasts/feeds/amicus/'),
+    'landmark-cases': ('Landmark Cases', 'C-SPAN', 'https://feeds.megaphone.fm/cspanlandmarkcases'),
+    'make-no-law': ('Make No Law', 'Legal Talk Network (Ken White)', 'https://feeds.megaphone.fm/LTN4153488764'),
+    'supreme-myths': ('Supreme Myths', 'Eric Segall', 'https://feeds.captivate.fm/supreme-myths/'),
+    'constitutional': ('Constitutional', 'The Washington Post', 'http://podcast.posttv.com/itunes-5951e18ce4b056ae8fa8e4b2.xml'),
+    'bound-by-oath': ('Bound By Oath', 'Institute for Justice', 'https://feeds.podcastmirror.com/bound-by-oath'),
+    'opening-arguments': ('Opening Arguments', 'Opening Arguments Media', 'https://openargs.libsyn.com/'),
+    'citizens-guide': ("The Citizen's Guide to the Supreme Court", "The Citizen's Guide", 'https://rss.libsyn.com/shows/61022/destinations/236445.xml'),
+    'landmark-decisions': ('Landmark Decisions in the U.S. Supreme Court', 'Aaron Larson', 'https://anchor.fm/s/44d196bc/podcast/rss'),
 }
 
 

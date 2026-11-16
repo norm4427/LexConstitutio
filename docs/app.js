@@ -1048,6 +1048,22 @@
   }
   /* AI-generated case briefs (scripts/build_ai_briefs.py) for cases with no Oyez summary: the one place the site shows
      generated text, always under an unmistakable notice; quotations in them were checked against the opinion. */
+  /* The reporter's headnotes from the U.S. Reports (Caselaw Access Project scan), for cases with no Oyez summary. */
+  function headnotes(el, c) {
+    const slot = document.createElement('div');
+    el.appendChild(slot);
+    const y = String(c.y || ''), tk = routeToken;
+    loadData('headnotes-index', 'HEADNOTES_INDEX').catch(() => []).then(ix => {
+      if (!(ix || []).includes(y)) return null;
+      return loadScriptOnce(`data/headnotes/${y}.js`).then(() => (window.HEADNOTES || {})[c.id]);
+    }).then(h => {
+      if (!h || tk !== routeToken || !slot.isConnected) return;
+      const syl = h.src === 'loc';
+      slot.innerHTML = `<section class="headnotes" aria-label="${syl ? 'Syllabus' : "Reporter's headnotes"}"><h2>${syl ? 'Syllabus' : 'Headnotes'} <small>from the United States Reports</small></h2>
+        <div class="prose-sm">${h.h.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>
+        ${syl ? `<p class="attrib">The syllabus prepared by the Reporter of Decisions and printed with the opinion${h.cite ? ' at ' + esc(h.cite) : ''} (public domain; it is not part of the Court's opinion), read by OCR from the <a href="${esc(c.pdf || 'https://www.loc.gov/collections/united-states-reports/')}" target="_blank" rel="noopener">Library of Congress scan</a>, so it may contain scanning errors.</p>` : `<p class="attrib">The reporter's headnotes and statement of the case printed with the opinion${h.cite ? ' at ' + esc(h.cite) : ''} (public domain), from the <a href="https://case.law/" target="_blank" rel="noopener">Caselaw Access Project</a> (Harvard Law School Library). The text was read from page scans by OCR and may contain scanning errors.</p>`}</section>`;
+    }).catch(() => {});
+  }
   function aiBrief(el, c) {
     const dec = String(Math.floor((c.y || 0) / 10) * 10);
     const tk = routeToken;
@@ -1434,6 +1450,7 @@
     }).catch(() => {});
     if (c.s === 1) {   // listed from the Supreme Court Database only; Oyez has no record of it
       document.getElementById('case-live').innerHTML = `<p class="muted-line">This case is listed from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Spaeth et al.), which records its name, citation, date and votes. No summary is available; read the opinion ${c.pdf ? 'in the <i>United States Reports</i> (Library of Congress) or ' : ''}on Justia.</p>`;
+      headnotes(document.getElementById('case-live'), c);
       aiBrief(document.getElementById('case-live'), c);
       if (c.arg && !hasArgAudio(c)) document.getElementById('case-audio').innerHTML = '<p class="muted-line">No argument recording exists: the Court began recording oral arguments in October 1955.</p>';
       return;
@@ -1446,7 +1463,7 @@
         d.question ? `<h2>Question</h2><div class="prose-sm">${htmlParas(d.question)}</div>` : '',
         d.conclusion ? `<h2>Conclusion</h2><div class="prose-sm">${htmlParas(d.conclusion)}</div>` : ''
       ].join('') || '<p class="muted-line">Oyez has no written summary for this case.</p>';
-      if (!d.facts_of_the_case && !d.conclusion) aiBrief(live, c);
+      if (!d.facts_of_the_case && !d.conclusion) { headnotes(live, c); aiBrief(live, c); }
       live.insertAdjacentHTML('beforeend', '<p class="attrib">Summary text © Oyez (oyez.org), used under <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>.</p>');
       statutify([app.querySelector('.article .abstract'), app.querySelector('.article .callout'), live]);
       // precedents named in Oyez's summary, plus Oyez's own related-case links

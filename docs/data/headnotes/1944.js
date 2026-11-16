@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/1943-141":{"h":"Kohlmeyer, Newberger & Co. et al. v. Cooper, Collector of Revenue.\nMarch 13, 1944.","cite":"321 U.S. 753","cap":301950}});

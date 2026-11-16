@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/1934-132":{"h":"Assistant to the Attorney General Stanley, with whom Solicitor General Reed and Messrs. Alexander Holtzoff and Carl McFarland were on the brief, for the United States.","cite":"295 U.S. 480","cap":333701}});

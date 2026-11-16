@@ -121,7 +121,17 @@ def main():
     SHOWS = {'advisory-opinions': ('Advisory Opinions', 'The Dispatch'), 'strict-scrutiny': ('Strict Scrutiny', 'Crooked Media'),
              'divided-argument': ('Divided Argument', 'Will Baude & Dan Epps'), 'five-four': ('5-4', 'Prologue Projects'),
              'scotuscast': ('SCOTUScast', 'The Federalist Society'), 'scotustalk': ('SCOTUStalk', 'SCOTUSblog'),
-             'we-the-people': ('We the People', 'National Constitution Center'), 'amaricas-constitution': ("Amarica's Constitution", 'Akhil Reed Amar')}
+             'we-the-people': ('We the People', 'National Constitution Center'), 'amaricas-constitution': ("Amarica's Constitution", 'Akhil Reed Amar'),
+             'more-perfect': ('More Perfect', 'WNYC Studios'),
+             'amicus': ('Amicus', 'Slate (Dahlia Lithwick)'),
+             'landmark-cases': ('Landmark Cases', 'C-SPAN'),
+             'make-no-law': ('Make No Law', 'Legal Talk Network (Ken White)'),
+             'supreme-myths': ('Supreme Myths', 'Eric Segall'),
+             'constitutional': ('Constitutional', 'The Washington Post'),
+             'bound-by-oath': ('Bound By Oath', 'Institute for Justice'),
+             'opening-arguments': ('Opening Arguments', 'Opening Arguments Media'),
+             'citizens-guide': ("The Citizen's Guide to the Supreme Court", "The Citizen's Guide"),
+             'landmark-decisions': ('Landmark Decisions in the U.S. Supreme Court', 'Aaron Larson')}
     yt_by_title = {re.sub(r'\W+', '', v['t'].lower()): v for v in vids}
     # every named case (Supreme Court Database-only ones too) can be matched by its full name
     every = {c['id']: c for c in S if c.get('dec') and ' v. ' in c['n']}
