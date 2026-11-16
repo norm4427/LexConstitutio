@@ -818,7 +818,7 @@
   let caseById = null;
   function viewScotus(params) { withData([['scotus', 'SCOTUS'], ['case_impact', 'CASE_IMPACT']], (S, I) => renderScotus(S, params, I)); }
   function renderScotus(S, params, I) {
-    const st = { q: params.get('q') || '', tag: params.get('tag') || '', era: params.get('era') || '', audio: params.get('audio') === '1', con: params.get('con') === '1', sort: params.get('sort') || 'newest', page: Math.max(1, +params.get('page') || 1) };
+    const st = { q: params.get('q') || '', tag: params.get('tag') || '', era: params.get('era') || '', audio: params.get('audio') === '1', con: params.get('con') === '1', sort: params.get('sort') || 'newest', page: Math.max(1, +params.get('page') || 1), v: params.get('v') === 'justices' ? 'justices' : '' };
     const pq = parseQuery(st.q);
     const era = ERAS.find(e => e.id === st.era);
     const filt = (skipTag) => S.cases.filter(c => {
@@ -839,7 +839,7 @@
     const tagCounts = {}; for (const c of filt(true)) for (const t of c.tg || []) tagCounts[t] = (tagCounts[t] || 0) + 1;
     const page = Math.min(st.page, Math.max(1, Math.ceil(list.length / PAGE_SIZE)));
     const slice = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-    const go = patch => { const s = Object.assign({}, st, { page: 1 }, patch); location.hash = hashFor('scotus', { q: s.q, tag: s.tag, era: s.era, audio: s.audio ? 1 : '', con: s.con ? 1 : '', sort: s.sort !== 'newest' ? s.sort : '', page: s.page > 1 ? s.page : '' }); };
+    const go = patch => { const s = Object.assign({}, st, { page: 1 }, patch); location.hash = hashFor('scotus', { q: s.q, tag: s.tag, era: s.era, audio: s.audio ? 1 : '', con: s.con ? 1 : '', sort: s.sort !== 'newest' ? s.sort : '', page: s.page > 1 ? s.page : '', v: s.v }); };
     const tagName = t => topicById[t]?.name || t;
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Supreme Court</span></div>
@@ -862,15 +862,17 @@
           </ul></div>
         </aside>
         <div>
-          <div class="toolbar"><div class="count"><button class="btn btn-ghost btn-sm filter-toggle" id="filter-toggle">Filters</button> <b>${fmt(list.length)}</b> case${list.length === 1 ? '' : 's'}</div>
-            <div class="seg" role="group" aria-label="Sort">
+          <div class="toolbar"><div class="count"><button class="btn btn-ghost btn-sm filter-toggle" id="filter-toggle">Filters</button> <span id="sc-count"><b>${fmt(list.length)}</b> case${list.length === 1 ? '' : 's'}</span></div>
+            <div class="sc-tools"><div class="seg" role="group" aria-label="List"><button data-view="" class="${st.v ? '' : 'on'}">Cases</button><button data-view="justices" class="${st.v ? 'on' : ''}">Justices</button></div>
+            ${st.v ? '' : `<div class="seg" role="group" aria-label="Sort">
               <button data-sort="newest" class="${st.sort === 'newest' ? 'on' : ''}">Newest</button>
               <button data-sort="oldest" class="${st.sort === 'oldest' ? 'on' : ''}">Oldest</button>
               <button data-sort="cited" class="${st.sort === 'cited' ? 'on' : ''}" title="Cited most often by later Supreme Court opinions">Most cited</button>
-            </div></div>
+            </div>`}</div></div>
+          ${st.v ? '<div id="sc-justices"><p class="muted-line"><span class="spinner sm"></span> Loading the justices…</p></div>' : `
           ${st.sort === 'cited' ? '<p class="muted-line" style="margin:-4px 0 12px">Ranked by how many later Supreme Court opinions cite each case (Caselaw Access Project, Harvard Law School Library). Its data runs to about 2020, so recent decisions are not yet scored.</p>' : ''}
           ${slice.length ? `<div class="cards">${slice.map(c => caseCard(c, imp(c.id))).join('')}</div>` : '<div class="empty"><h3>No cases found</h3><p>Try fewer keywords or another era.</p></div>'}
-          ${pager(list.length, page, 'scotus')}
+          ${pager(list.length, page, 'scotus')}`}
         </div>
       </div></div>`;
     document.getElementById('sc-form').addEventListener('submit', e => { e.preventDefault(); go({ q: document.getElementById('sc-q').value.trim() }); });
@@ -880,7 +882,23 @@
     app.querySelectorAll('[data-tag]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); go({ tag: a.dataset.tag }); }));
     document.getElementById('filter-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
     app.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => go({ sort: b.dataset.sort })));
-    bindPager(n => go({ page: n }));
+    app.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { keepScrollOnce = true; go({ v: b.dataset.view }); }));
+    if (!st.v) { bindPager(n => go({ page: n })); return; }
+    // Justices view: the same compact list, of the justices who served in the selected era (and match the search)
+    const tk = routeToken;
+    loadData('justices', 'JUSTICES').then(J => {
+      const box = document.getElementById('sc-justices');
+      if (tk !== routeToken || !box) return;
+      const from = j => +yearOf(j.roles[0].start), to = j => j.roles[j.roles.length - 1].end ? +yearOf(j.roles[j.roles.length - 1].end) : 9999;
+      const js = J.justices.filter(j => (!era || (from(j) < era.to && to(j) >= era.from)) && (!pq.terms.length || pq.terms.every(t => j.name.toLowerCase().includes(t))))
+        .sort((a, b) => (isSitting(b) - isSitting(a)) || (isSitting(a) ? isChiefNow(b) - isChiefNow(a) || from(a) - from(b) : to(b) - to(a) || from(b) - from(a)));
+      document.getElementById('sc-count').innerHTML = `<b>${fmt(js.length)}</b> justice${js.length === 1 ? '' : 's'}`;
+      box.innerHTML = js.length ? `<ul class="sc-jlist">${js.map(j => { const r = j.roles; const appt = [...new Set(r.map(x => x.appointer).filter(Boolean))].join(', '); return `<li><a href="#/justice/${esc(j.id)}">
+        <span class="sc-jimg">${j.img ? `<img src="${esc(j.img)}" alt="" loading="lazy">` : ''}</span>
+        <span class="sc-jt"><b>${esc(j.name)}</b><span>${r.some(x => x.pos === 'Chief Justice') ? 'Chief Justice · ' : ''}${servedLabel(j)}${appt ? ' · appointed by ' + esc(appt) : ''}</span></span>
+        ${isSitting(j) ? '<span class="tag">Sitting</span>' : ''}</a></li>`; }).join('')}</ul>
+        <p class="attrib">The era filter shows every justice who served during it. Case-area filters apply to the case list only. <a href="#/justices" style="color:var(--accent)">Portrait grid of all justices →</a></p>` : '<div class="empty"><h3>No justices match</h3></div>';
+    }).catch(() => { const box = document.getElementById('sc-justices'); if (box) box.innerHTML = '<p class="muted-line">Could not load the justices.</p>'; });
   }
   const topPct = m => { const v = (1 - m[1]) * 100; return v < 0.1 ? v.toFixed(2) : v.toFixed(1); };
   const impactTitle = m => `Cited in ${fmt(m[2])} later Supreme Court opinion${m[2] === 1 ? '' : 's'}; citation PageRank in the top ${topPct(m)}% of American cases (Caselaw Access Project)`;
@@ -1002,7 +1020,171 @@
     return `<li><a class="t" href="#/case/${esc(x.id)}">${esc(x.n)}</a><div class="m">${x.cit ? esc(x.cit) + ' · ' : ''}${x.y || x.t || ''}</div></li>`;
   }
 
-  function viewCase(id) { withData([['scotus', 'SCOTUS'], ['docket', 'DOCKET'], ['case_impact', 'CASE_IMPACT']], (S, K, I) => renderCase(S, id, K, I)); }
+  function viewCase(id, params) {
+    withData([['scotus', 'SCOTUS'], ['docket', 'DOCKET'], ['case_impact', 'CASE_IMPACT']], (S, K, I) => {
+      // the Authorities index is optional: the case page renders without it
+      const tk = routeToken;
+      Promise.all([loadData('auth-index', 'AUTH_INDEX').catch(() => null), loadData('parties-index', 'PARTIES_INDEX').catch(() => null), loadData('media-index', 'MEDIA_INDEX').catch(() => null)])
+        .then(([AI]) => { if (tk === routeToken) renderCase(S, id, K, I, AI, params); });
+    });
+  }
+  /* Authorities tab data: one file per docket (scripts/build_authorities.py) */
+  const authLoading = {};
+  function loadAuth(dk) {
+    window.AUTH = window.AUTH || {};
+    if (window.AUTH[dk]) return Promise.resolve(window.AUTH[dk]);
+    if (!authLoading[dk]) authLoading[dk] = new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = `data/auth/${encodeURIComponent(dk)}.js?v=${window.LC_VER || ''}`;
+      s.onload = () => window.AUTH[dk] ? res(window.AUTH[dk]) : rej(new Error('No authorities data'));
+      s.onerror = () => { delete authLoading[dk]; rej(new Error(`Couldn't load the authorities for No. ${dk}`)); };
+      document.body.appendChild(s);
+    });
+    return authLoading[dk];
+  }
+  const BRIEF_SHORT = { petitioner: 'Pet.', respondent: 'Resp.', reply: 'Reply', 'united-states': 'U.S.' };
+  const briefName = b => ({ petitioner: "Petitioner's brief", respondent: "Respondent's brief", reply: 'Reply brief', 'united-states': 'Brief of the United States' }[b.k] || 'Brief');
+  function briefTiles(briefs) {
+    return `<div class="briefs">${briefs.map(b => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(BRIEF_LABEL[b.k] || briefName(b))}</b><span>${esc(b.label)}</span><em>${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}PDF ↗</em></a>`).join('')}</div>`;
+  }
+  /* AI-generated case briefs (scripts/build_ai_briefs.py) for cases with no Oyez summary: the one place the site shows
+     generated text, always under an unmistakable notice; quotations in them were checked against the opinion. */
+  function aiBrief(el, c) {
+    const dec = String(Math.floor((c.y || 0) / 10) * 10);
+    const tk = routeToken;
+    loadData('aibriefs-index', 'AIBRIEFS_INDEX').catch(() => []).then(ix => {
+      if (!(ix || []).includes(dec)) return null;
+      return loadScriptOnce(`data/aibriefs/${dec}.js`).then(() => (window.AIBRIEFS || {})[c.id]);
+    }).then(b => {
+      if (!b || tk !== routeToken || !el.isConnected) return;
+      const sec = (h, t) => t ? `<h3>${h}</h3><p>${esc(t)}</p>` : '';
+      el.insertAdjacentHTML('beforeend', `<section class="ai-brief" aria-label="AI-generated case brief">
+        <div class="ai-warn" role="note"><b>AI-generated</b><span>This brief was written by an AI model (${esc(b.model || 'Claude')}) from the Court's opinion, not by Oyez or an editor. It may contain errors or omissions: rely on the <a href="${esc(b.src || c.pdf || '#')}" target="_blank" rel="noopener">opinion itself</a>. Quoted words were checked against the opinion text.</span></div>
+        <h2>Case brief <small>(AI-generated)</small></h2>
+        <div class="prose-sm">${sec('Facts', b.facts)}${sec('Procedural history', b.procedure)}${sec('Question', b.question)}${sec('Holding', b.holding)}${sec('Reasoning', b.reasoning)}${sec('Separate opinions', b.separate)}${sec('Disposition', b.disposition)}</div>
+        <p class="attrib">Generated ${esc(b.date || '')} from the opinion PDF. AI-generated content; not legal advice.</p></section>`);
+    }).catch(() => {});
+  }
+  /* "In the media": podcast and video episodes about the case (starting where the episode turns to it), other videos
+     that name it, and newspaper pages printed after the decision (Chronicling America, public domain). */
+  function renderMedia(el, M, c) {
+    if (!M) { el.innerHTML = '<p class="muted-line">Nothing found yet.</p>'; return; }
+    const clock = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+    const ICON_BY_TAG = { speech: 'free-speech', religion: 'religion', guns: 'second-amendment', equality: 'equal-protection', dueprocess: 'due-process', crimpro: 'fourth-amendment', federalism: 'federalism', seppowers: 'separation-of-powers', admin: 'administrative-state', voting: 'voting', security: 'executive-power' };
+    const iconKey = ICON_BY_TAG[(c.tg || [])[0]] || 'judicial-review';
+    const tile = v => {
+      const meta = [v.date ? fmtDate(v.date) : '', v.start ? `starts at ${clock(v.start)}` : ''].filter(Boolean).join(' · ');
+      const thumb = videoThumb({ t: v.t, ch: v.ch, len: v.sec ? clock(v.sec) : '' }, iconKey);
+      return v.embed
+        ? `<div class="md-v"><button class="vtile" data-video="${esc(v.id)}" data-title="${esc(v.t)}" data-ch="${esc(v.ch)}" data-start="${v.start || 0}">${thumb}<span class="vm">${esc(meta)}</span></button>${v.topic ? `<p class="md-topic">Chapter: ${esc(v.topic)}</p>` : ''}</div>`
+        : `<div class="md-v"><a class="vtile" href="https://www.youtube.com/watch?v=${esc(v.id)}${v.start ? '&t=' + v.start + 's' : ''}" target="_blank" rel="noopener">${thumb}<span class="vm">${esc(meta)}${meta ? ' · ' : ''}watch on YouTube ↗</span></a></div>`;
+    };
+    const isShow = v => /Advisory Opinions|SCOTUSblog|Strict Scrutiny|Divided Argument/.test(v.ch || '');
+    const shows = M.videos.filter(isShow), others = M.videos.filter(v => !isShow(v));
+    el.innerHTML = `<section class="md">
+      ${shows.length ? `<h2>Podcasts and shows</h2><div class="vgrid md-grid">${shows.map(tile).join('')}</div>
+        <p class="attrib">Episodes of ${[...new Set(shows.map(v => v.ch + (v.by && v.by !== v.ch ? ' (' + v.by + ')' : '')))].map(esc).join(', ')} that discuss this case, played through YouTube's embedded player. An episode starts at its chapter on the case when the show's description marks one.</p>` : ''}
+      ${others.length ? `<h2>Videos</h2><div class="vgrid md-grid">${others.map(tile).join('')}</div><p class="attrib">Videos whose titles name this case, played through YouTube's embedded player.</p>` : ''}
+      ${M.print.length ? `<h2>In the newspapers</h2><div class="md-print">${M.print.map(p => `<a class="md-clip" href="${esc(p.url)}" target="_blank" rel="noopener">${p.img ? `<img src="${esc(p.img)}" alt="Page of ${esc(p.paper)}, ${esc(p.date)}" loading="lazy">` : ''}<b>${esc(p.paper)}</b><span>${esc(fmtDate(p.date))}${p.page ? ' · page ' + p.page : ''}</span><em>View the page ↗</em></a>`).join('')}</div>
+        <p class="attrib">Newspaper pages printed in the weeks after the decision that name both parties and the Supreme Court, from <a href="https://www.loc.gov/collections/chronicling-america/" target="_blank" rel="noopener">Chronicling America</a> (Library of Congress; public domain). Search the page for the case name to find the story.</p>` : ''}
+    </section>`;
+  }
+  const scriptLoading = {};
+  function loadScriptOnce(src) {
+    if (!scriptLoading[src]) scriptLoading[src] = new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = `${src}?v=${window.LC_VER || ''}`;
+      s.onload = res; s.onerror = () => { delete scriptLoading[src]; rej(new Error(`Couldn't load ${src}`)); };
+      document.body.appendChild(s);
+    });
+    return scriptLoading[src];
+  }
+  /* The Parties & advocates tab: the parties as the docket and Oyez name them, who argued (the transcript's appearances
+     page, or Oyez), and counsel of record on the briefs (docket). */
+  function renderParties(el, P, d, c, pend) {
+    const SIDE = { pet: "Petitioner's side", res: "Respondent's side", other: 'Amici curiae and others' };
+    const lab = (x, dflt) => esc(x || dflt);
+    const parties = [];
+    if (d && (d.first_party || d.second_party)) parties.push(['Oyez', `<dl class="kv pa-kv"><dt>${lab(d.first_party_label, 'Petitioner')}</dt><dd>${esc(d.first_party || '—')}</dd><dt>${lab(d.second_party_label, 'Respondent')}</dt><dd>${esc(d.second_party || '—')}</dd>${d.lower_court && d.lower_court.name ? `<dt>Lower court</dt><dd>${esc(d.lower_court.name)}</dd>` : ''}</dl>`]);
+    const title = (P && P.title) || (pend && pend.title);
+    const lower = (P && P.lower) || (pend && pend.lower);
+    if (title || lower) parties.push(['the Supreme Court docket', `<dl class="kv pa-kv">${title ? `<dt>Case title</dt><dd>${esc(title)}</dd>` : ''}${lower && !(d && d.lower_court) ? `<dt>Lower court</dt><dd>${esc(lower)}</dd>` : ''}</dl>`]);
+    const argued = P && P.argued && P.argued.length ? P.argued.map(a => ({ name: a.name, desc: a.desc, side: a.side, src: 'tr' }))
+      : ((d && d.advocates) || []).filter(a => a && a.advocate).map(a => ({ name: a.advocate.name, desc: a.advocate_description || '', side: /petitioner|appellant/i.test(a.advocate_description || '') ? 'pet' : /respondent|appellee/i.test(a.advocate_description || '') ? 'res' : 'other', src: 'oyez' }));
+    const counsel = (P && P.counsel) || [];
+    const bySide = k => counsel.filter(x => x.side === k);
+    const person = x => `<li><b>${esc(x.name)}</b>${x.cor ? ' <span class="tag">Counsel of record</span>' : ''}${x.org ? `<span>${esc(x.org)}</span>` : ''}${x.party ? `<em>for ${esc(x.party)}</em>` : ''}</li>`;
+    el.innerHTML = `<section class="pa">
+      ${parties.length ? `<h2>The parties</h2>${parties.map(([src, h]) => `${h}<p class="attrib">From ${src}.</p>`).join('')}` : ''}
+      <h2>Argued by</h2>
+      ${argued.length ? `<ul class="pa-argued">${argued.map(a => `<li class="pa-${esc(a.side)}"><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></li>`).join('')}</ul>
+        <p class="attrib">${argued[0].src === 'tr' ? 'From the appearances page of the official argument transcript (supremecourt.gov).' : `From <a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez</a>.`}</p>`
+        : `<p class="muted-line">${pend && !pend.argued ? 'Not yet argued.' : 'No record of the advocates for this case in the sources used here.'}</p>`}
+      ${counsel.length ? `<h2>Counsel on the briefs</h2>
+        <div class="pa-cols">${['pet', 'res'].map(k => bySide(k).length ? `<div><h3>${SIDE[k]}</h3><ul class="pa-counsel">${bySide(k).map(person).join('')}</ul></div>` : '').join('')}</div>
+        ${bySide('other').length ? `<details class="amici"><summary>${bySide('other').length} lawyer${bySide('other').length === 1 ? '' : 's'} for amici curiae and others</summary><ul class="pa-counsel">${bySide('other').map(person).join('')}</ul></details>` : ''}
+        <p class="attrib">Counsel listed on the <a href="${esc(P.docket)}" target="_blank" rel="noopener">Supreme Court docket for No. ${esc(P.d)}</a>${P.also ? ` (and No. ${P.also.map(esc).join(', ')})` : ''}, with the firm or office the docket gives. Contact details are left out.</p>` : ''}
+    </section>`;
+  }
+  /* The Authorities tab: what the briefs rely on (from their Tables of Authorities), and the passages of those
+     authorities as the briefs, the opinion and the argument actually quote them. */
+  function renderAuthorities(el, A, c) {
+    const B = A.briefs;
+    const items = A.items;
+    const shortOf = i => { const b = B[i]; const same = B.filter(x => x.k === b.k); return (BRIEF_SHORT[b.k] || 'Brief') + (same.length > 1 ? ' ' + (same.indexOf(b) + 1) : ''); };
+    const sides = it => new Set(Object.keys(it.by).map(i => B[i].side));
+    const authLink = (it, inner) => it.id ? `<a href="#/case/${esc(it.id)}">${inner}</a>` : it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${inner} <span class="ext">↗</span></a>` : inner;
+    const title = it => it.t === 'case' ? `<i>${esc(it.label)}</i>` : esc(it.label + (it.subs && it.subs.length === 1 ? it.subs[0] : ''));
+    const meta = it => it.t === 'case' ? [it.cite, it.court ? `${it.court} ${it.y || ''}`.trim() : it.y].filter(Boolean).map(esc).join(' · ') : it.subs && it.subs.length > 1 ? 'Subsections cited: ' + it.subs.slice(0, 8).map(esc).join(', ') + (it.subs.length > 8 ? '…' : '') : '';
+    const chips = it => Object.entries(it.by).map(([i, p]) => `<span class="au-chip au-${esc(B[i].side)}" title="${esc(B[i].label || briefName(B[i]))}, page${/[,–-]|passim/.test(p) ? 's' : ''} ${esc(p)}">${esc(shortOf(i))}</span>`).join('');
+    const clauseLinks = it => it.clauses ? `<div class="au-clauses">Annotated Constitution: ${it.clauses.map(([id, name]) => `<a href="${hashFor('corner/constitution', { c: id })}">${esc(name)}</a>`).join(' · ')}</div>` : '';
+    const srcOrder = { opinion: 0, brief: 1, argument: 2 };
+    const quoteHtml = q => {
+      const who = q.src === 'brief' ? `<a href="${esc(B[q.b].url)}" target="_blank" rel="noopener">${esc(briefName(B[q.b]))}</a>` : q.src === 'opinion' ? (A.opinion ? `<a href="${esc(A.opinion)}" target="_blank" rel="noopener">${esc(q.who)}</a>` : esc(q.who)) : `Oral argument · ${esc(q.who)}`;
+      return `<figure class="au-q au-q-${q.src}"><blockquote>${q.src === 'argument' ? '' : '“'}${esc(q.text)}${q.src === 'argument' ? '' : '”'}</blockquote><figcaption>${who}${q.cite ? ` · <span>${esc(q.cite)}</span>` : ''}</figcaption></figure>`;
+    };
+    const stextHtml = (s, open) => `<details class="au-stext"${open ? ' open' : ''}><summary>Text of ${esc(s.head || 'the section')} <small>U.S. Code${s.ed ? ', ' + esc(s.ed) + ' edition' : ''} (govinfo)</small></summary>
+      <div class="au-stat">${s.paras.map(([ind, t]) => `<p style="margin-left:${ind * 1.1}em">${esc(t)}</p>`).join('')}${s.more ? '<p class="muted-line">…</p>' : ''}</div>
+      <a class="link-arrow" href="${esc(s.src)}" target="_blank" rel="noopener">Full section at govinfo.gov ↗</a></details>`;
+    const score = it => (it.q || []).reduce((s, q) => s + (q.src === 'opinion' ? 3 : q.src === 'argument' ? 1.5 : 1), 0) + Object.keys(it.by).length + (it.stext ? 1 : 0);
+    const quoted = items.filter(it => (it.q && it.q.length) || it.stext || (it.t === 'const' && it.text)).sort((a, b) => score(b) - score(a));
+    const card = (it, i) => {
+      const qs = (it.q || []).slice().sort((a, b) => srcOrder[a.src] - srcOrder[b.src]);
+      return `<article class="au-card${i >= 10 ? ' au-more' : ''}"${i >= 10 ? ' hidden' : ''}>
+        <header><h3>${authLink(it, title(it))}</h3><div class="au-meta">${meta(it)}${chips(it)}</div></header>
+        ${it.t === 'const' && it.text ? `<blockquote class="au-const">${esc(it.text)}</blockquote>${clauseLinks(it)}` : ''}
+        ${it.stext ? stextHtml(it.stext, i < 3 && !qs.length) : ''}
+        ${qs.map(quoteHtml).join('')}
+      </article>`;
+    };
+    const groups = [['const', 'Constitutional provisions'], ['case', 'Cases'], ['usc', 'Statutes'], ['law', 'Public laws'], ['reg', 'Regulations'], ['rule', 'Federal rules']];
+    const sorted = list => list.slice().sort((a, b) => (Object.keys(b.by).length - Object.keys(a.by).length) || (b.sc || 0) - (a.sc || 0) || a.label.localeCompare(b.label, 'en', { numeric: true }));
+    const row = it => `<li data-sides="${[...sides(it)].join(' ')}"><div class="au-row-t">${authLink(it, title(it))}</div><div class="au-row-m">${meta(it) ? `<span>${meta(it)}</span>` : ''}${chips(it)}</div>
+      ${it.t === 'const' ? clauseLinks(it) : ''}</li>`;
+    const nOp = items.filter(it => (it.q || []).some(q => q.src === 'opinion')).length;
+    el.innerHTML = `<section class="au">
+      <p class="au-intro">${fmt(items.length)} authorities cited in the Tables of Authorities of ${B.length} merits brief${B.length === 1 ? '' : 's'}${A.opinion ? `; ${nOp} of them quoted in the Court's opinion` : ''}${A.tr ? '; with the passages where the argument transcript names them' : ''}. Quotations are reproduced exactly as they appear in each source and attributed to it.</p>
+      <div class="briefs au-briefs">${B.map((b, i) => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(briefName(b))}</b><span>${esc(b.label)}</span><em>${b.n ? `${b.n} authorities · ` : ''}${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}PDF ↗</em></a>`).join('')}</div>
+      ${quoted.length ? `<h2>In their own words</h2><p class="muted-line au-sub">The authorities the case turned on, with the passages quoted from them${A.opinion ? ' in the opinion,' : ''} in the briefs${A.tr ? ' and at oral argument' : ''}, and the text of the main statutes.</p>
+        <div class="au-cards">${quoted.map(card).join('')}</div>
+        ${quoted.length > 10 ? `<button class="btn btn-ghost btn-sm" id="au-all">Show all ${quoted.length} quoted authorities</button>` : ''}` : ''}
+      <h2>Cited in the briefs</h2>
+      <div class="au-tools"><div class="seg" role="group" aria-label="Side"><button data-side="" class="on">All</button><button data-side="both">Both sides</button><button data-side="pet">Petitioner's side</button><button data-side="res">Respondent's side</button></div>
+        <span class="au-legend"><span class="au-chip au-pet">Pet.</span> petitioner <span class="au-chip au-res">Resp.</span> respondent <span class="au-chip au-us">U.S.</span> United States · hover a tag for page numbers</span></div>
+      ${groups.map(([t, label]) => { const list = sorted(items.filter(it => it.t === t)); return list.length ? `<div class="au-group"><h3 class="au-gh">${label} <span>${list.length}</span></h3><ul class="au-list">${list.map(row).join('')}</ul></div>` : ''; }).join('')}
+      <p class="attrib">Authorities read from each brief's Table of Authorities (briefs from the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener">Supreme Court docket for No. ${esc(A.d)}</a>); entries that could not be read confidently are left out, as are secondary sources. Quotations: a passage in quotation marks followed directly by a citation to the authority in the brief or opinion; at argument, the sentence in which a speaker names it. Statutory text: U.S. Code (govinfo.gov, public domain). Case links go to this site's page when the case is here, otherwise to Justia or CourtListener.</p>
+    </section>`;
+    const all = el.querySelector('#au-all');
+    if (all) all.addEventListener('click', () => { el.querySelectorAll('.au-more').forEach(x => { x.hidden = false; }); all.remove(); });
+    el.querySelector('.au-tools .seg').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      const f = b.dataset.side;
+      el.querySelectorAll('.au-list li').forEach(li => {
+        const s = li.dataset.sides.split(' ');
+        li.hidden = f === 'both' ? !(s.includes('pet') && s.includes('res')) : f ? !s.includes(f) : false;
+      });
+      el.querySelectorAll('.au-group').forEach(g => { const n = g.querySelectorAll('li:not([hidden])').length; g.hidden = !n; g.querySelector('.au-gh span').textContent = n; });
+    });
+  }
   /* The Court began recording oral arguments in October 1955 (the 1955 Term); earlier argued cases have no audio. */
   const hasArgAudio = c => !!c.arg && parseInt(String(c.t), 10) >= 1955;
 
@@ -1101,7 +1283,7 @@
       maj: vs.filter(x => x.vote === 'majority').map(x => [name(x), flag(x)]), min: vs.filter(x => x.vote === 'minority').map(x => [name(x), flag(x)]) };
   }
 
-  function renderCase(S, id, K, I) {
+  function renderCase(S, id, K, I, AI, params) {
     if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
     const dk = (K && K.cases.find(e => e.id === id || id.endsWith('/' + e.d))) || null;
     let c = caseById.get(id);
@@ -1111,13 +1293,29 @@
     const caseName = c.n.toLowerCase().replace(/\s*\(\d\)$/, '');
     const relatedArticles = caseName.length < 10 ? [] : articles.filter(a => a._t.includes(caseName) || a._ab.includes(caseName))
       .sort((x, y) => (y.c ?? -1) - (x.c ?? -1)).slice(0, 6);
-    app.innerHTML = `<div class="fade-in"><div class="article">
+    // tabs: the overview (summary, opinions, briefs, audio); the authorities the briefs rely on, with quotations; and,
+    // for pending cases, the predicted outcome. Switching tabs does not re-render the page, so argument audio keeps playing.
+    const adk = (AI && (AI[c.id] || (pend && AI[pend.id]))) || null;
+    const hasParties = c.s !== 1 || ((window.PARTIES_INDEX || []).includes(String(c.t)));
+    const hasMedia = (window.MEDIA_INDEX || []).includes(c.id);
+    const TABS = [['', 'Overview'], adk ? ['authorities', 'Authorities & quotes'] : null, hasParties ? ['parties', 'Parties & advocates'] : null, hasMedia ? ['media', 'In the media'] : null, pend ? ['prediction', 'Predicted outcome'] : null].filter(Boolean);
+    let tab = (params && params.get('tab')) || '';
+    if (!TABS.some(t => t[0] === tab)) tab = '';
+    const tabHref = k => `#/case/${c.id}${k ? '?tab=' + k : ''}`;
+    app.innerHTML = `<div class="fade-in"><div class="article${tab ? ' article-wide' : ''}" id="case-article">
       <div>
         <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a>${pend ? '<span>/</span><a href="#/docket">Current docket</a>' : c.y ? `<span>/</span><a href="${hashFor('scotus', { era: (ERAS.find(e => c.y >= e.from && c.y < e.to) || {}).id })}">${c.y}</a>` : ''}</div>
         <h1>${esc(c.n)}</h1>
         <div class="publine">${c.cit ? esc(c.cit) + ' · ' : ''}${c.dec ? 'Decided ' + esc(fmtDate(c.dec)) : 'October Term ' + esc(c.t)}${c.d ? ' · No. ' + esc(c.d) : ''}${pend && pend.lower ? ' · from the ' + esc(pend.lower) : ''}</div>
         ${pend ? `<div class="pending-banner status-${docketStatus(pend).k}"><b>Pending</b><span>${esc(docketStatus(pend).label)}</span></div>` : ''}
+        ${TABS.length > 1 ? `<div class="subtabs case-tabs" role="tablist">${TABS.map(([k, l]) => `<a href="${esc(tabHref(k))}" data-tab="${k}" role="tab" class="${k === tab ? 'on' : ''}">${l}</a>`).join('')}</div>` : ''}
+        ${adk ? `<div class="case-panel" data-panel="authorities"${tab === 'authorities' ? '' : ' hidden'}><p class="muted-line"><span class="spinner sm"></span> Loading the authorities…</p></div>` : ''}
+        ${hasMedia ? `<div class="case-panel" data-panel="media"${tab === 'media' ? '' : ' hidden'}><p class="muted-line"><span class="spinner sm"></span> Loading…</p></div>` : ''}
+        ${hasParties ? `<div class="case-panel" data-panel="parties"${tab === 'parties' ? '' : ' hidden'}><p class="muted-line"><span class="spinner sm"></span> Loading the parties and advocates…</p></div>` : ''}
+        ${pend ? `<div class="case-panel" data-panel="prediction"${tab === 'prediction' ? '' : ' hidden'}><div id="case-prediction"><p class="muted-line"><span class="spinner sm"></span> Loading the prediction…</p></div></div>` : ''}
+        <div class="case-panel" data-panel=""${tab ? ' hidden' : ''}>
         ${c.ds ? `<div class="abstract plain">${esc(c.ds)}</div>` : ''}
+        ${!pend && adk ? '<div id="case-briefs"></div>' : ''}
         ${pend ? `<h2>Briefs & filings</h2>
           <div class="briefs">
             ${pend.qp ? `<a class="brief brief-qp" href="${esc(pend.qp)}" target="_blank" rel="noopener"><b>Questions presented</b><span>The legal questions the Court agreed to decide</span><em>PDF ↗</em></a>` : ''}
@@ -1146,9 +1344,9 @@
         <div id="case-live"><h2>Case summary</h2><p class="muted-line"><span class="spinner sm"></span> Loading facts, question and conclusion from Oyez…</p></div>
         <div id="case-audio"></div>
         ${relatedArticles.length ? `<h2>Law review articles discussing this case</h2><div class="cards">${relatedArticles.map(a => card(a)).join('')}</div>` : ''}
-        ${pend ? '<div id="case-prediction"></div>' : ''}
+        </div>
       </div>
-      <aside>
+      <aside id="case-aside"${tab ? ' hidden' : ''}>
         <div class="panel"><h4>Details</h4><dl class="kv">
           ${c.cit ? `<dt>Citation</dt><dd>${esc(c.cit)}</dd>` : ''}
           <dt>Term</dt><dd>${esc(c.t)}</dd>
@@ -1174,17 +1372,54 @@
       ve.innerHTML = voteHtml({ m: r[0], n: r[1], maj: r[2].map(([i, f]) => [V.j[i], f]), min: r[3].map(([i, f]) => [V.j[i], f]), eq: r[5] ? r[5].map(i => V.j[i]) : null },
         r[4] === 2 ? `<a href="https://www.oyez.org/cases/${esc(c.id)}" target="_blank" rel="noopener">Oyez</a>` : r[4] ? `the Court's opinion${c.pdf ? ` (<a href="${esc(c.pdf)}" target="_blank" rel="noopener">PDF</a>)` : ''}` : '<a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a>');
     }).catch(() => {});
-    if (pend) {   // pending case: per-justice predicted votes and split odds (app-stats.js, data/models.js)
-      Promise.all([ext(), loadData('models', 'MODELS'), loadData('justices', 'JUSTICES')])
-        .then(([X, M, J]) => { const el = document.getElementById('case-prediction'); if (token === routeToken && el) X.casePrediction(el, c.id, M, J); })
-        .catch(() => {});
-    }
+    // Oyez's live record (summary, votes, audio; parties and advocates for the Parties tab)
+    const oyezP = c.s === 1 ? Promise.resolve(null) : fetch(`https://api.oyez.org/cases/${c.id}`).then(r => r.ok ? r.json() : null).catch(() => null);
+    const loaded = {};
+    const showTab = k => {
+      app.querySelectorAll('.case-tabs [data-tab]').forEach(a => a.classList.toggle('on', a.dataset.tab === k));
+      app.querySelectorAll('.case-panel').forEach(p => { p.hidden = p.dataset.panel !== k; });
+      document.getElementById('case-article').classList.toggle('article-wide', !!k);
+      document.getElementById('case-aside').hidden = !!k;
+      if (loaded[k]) return;
+      loaded[k] = true;
+      if (k === 'authorities') {
+        const el = app.querySelector('[data-panel="authorities"]');
+        loadAuth(adk).then(A => { if (token === routeToken) renderAuthorities(el, A, c); })
+          .catch(e => { if (token === routeToken) el.innerHTML = `<p class="muted-line">${esc(e.message)}.</p>`; });
+      } else if (k === 'media') {
+        const el = app.querySelector('[data-panel="media"]');
+        loadScriptOnce(`data/media/${c.t}.js`).then(() => { if (token === routeToken) renderMedia(el, (window.MEDIA || {})[c.id], c); })
+          .catch(() => { el.innerHTML = '<p class="muted-line">Could not load the media list.</p>'; });
+      } else if (k === 'parties') {
+        const el = app.querySelector('[data-panel="parties"]');
+        const pp = (window.PARTIES_INDEX || []).includes(String(c.t)) ? loadScriptOnce(`data/parties/${c.t}.js`).then(() => (window.PARTIES || {})[c.id] || null).catch(() => null) : Promise.resolve(null);
+        Promise.all([pp, oyezP]).then(([P, d]) => { if (token === routeToken) renderParties(el, P, d, c, pend); });
+      } else if (k === 'prediction') {   // pending case: per-justice predicted votes and split odds (app-stats.js, data/models.js)
+        Promise.all([ext(), loadData('models', 'MODELS'), loadData('justices', 'JUSTICES')])
+          .then(([X, M, J]) => { const el = document.getElementById('case-prediction'); if (token === routeToken && el) { X.casePrediction(el, c.id, M, J); if (!el.innerHTML) el.innerHTML = '<p class="muted-line">The model has no prediction for this case yet (it needs the questions presented and the docket facts).</p>'; } })
+          .catch(() => { const el = document.getElementById('case-prediction'); if (el) el.innerHTML = '<p class="muted-line">The prediction could not be loaded.</p>'; });
+      }
+    };
+    app.querySelectorAll('.case-tabs [data-tab]').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault();
+      history.replaceState(null, '', a.getAttribute('href'));
+      lastRoute = { path: location.hash.replace(/^#\/?/, '').split('?')[0], params: new URLSearchParams(a.getAttribute('href').split('?')[1] || '') };
+      showTab(a.dataset.tab);
+    }));
+    showTab(tab);
+    if (!pend && adk) loadAuth(adk).then(A => {
+      const el = document.getElementById('case-briefs');
+      if (token !== routeToken || !el || !A.briefs.length) return;
+      el.innerHTML = `<h2>Merits briefs</h2>${briefTiles(A.briefs)}<p class="attrib">From the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court docket for No. ${esc(A.d)}</a>. What the briefs cite, with quotations: <a href="${esc(tabHref('authorities'))}" data-goto-tab="authorities" style="color:var(--accent)">Authorities &amp; quotes →</a></p>`;
+      el.querySelector('[data-goto-tab]').addEventListener('click', e => { e.preventDefault(); app.querySelector('.case-tabs [data-tab="authorities"]').click(); window.scrollTo({ top: 0 }); });
+    }).catch(() => {});
     if (c.s === 1) {   // listed from the Supreme Court Database only; Oyez has no record of it
       document.getElementById('case-live').innerHTML = `<p class="muted-line">This case is listed from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Spaeth et al.), which records its name, citation, date and votes. No summary is available; read the opinion ${c.pdf ? 'in the <i>United States Reports</i> (Library of Congress) or ' : ''}on Justia.</p>`;
+      aiBrief(document.getElementById('case-live'), c);
       if (c.arg && !hasArgAudio(c)) document.getElementById('case-audio').innerHTML = '<p class="muted-line">No argument recording exists: the Court began recording oral arguments in October 1955.</p>';
       return;
     }
-    fetch(`https://api.oyez.org/cases/${c.id}`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+    oyezP.then(d => { if (!d) throw new Error('no Oyez record');
       if (token !== routeToken) return;
       const live = document.getElementById('case-live');
       live.innerHTML = [
@@ -1192,6 +1427,7 @@
         d.question ? `<h2>Question</h2><div class="prose-sm">${htmlParas(d.question)}</div>` : '',
         d.conclusion ? `<h2>Conclusion</h2><div class="prose-sm">${htmlParas(d.conclusion)}</div>` : ''
       ].join('') || '<p class="muted-line">Oyez has no written summary for this case.</p>';
+      if (!d.facts_of_the_case && !d.conclusion) aiBrief(live, c);
       live.insertAdjacentHTML('beforeend', '<p class="attrib">Summary text © Oyez (oyez.org), used under <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>.</p>');
       statutify([app.querySelector('.article .abstract'), app.querySelector('.article .callout'), live]);
       // precedents named in Oyez's summary, plus Oyez's own related-case links
@@ -1285,18 +1521,32 @@
         if (!turns.length) return;
         const tr = document.getElementById('transcript');
         const els = [...tr.querySelectorAll('.turn')];
-        let cur = -1;
+        let cur = -1, seekedAt = 0;
         tr.addEventListener('click', e => { const t = e.target.closest('.turn'); if (!t) return; audio.currentTime = +t.dataset.s + 0.05; audio.play(); });
+        audio.addEventListener('seeking', () => { seekedAt = Date.now(); });
+        // the turn being spoken: the one whose span holds the current time. Oyez restarts or omits times in some
+        // sections and the timestamps are not always in order, so this is a scan, not a binary search; and the transcript
+        // never jumps backwards on its own (a speed-changing browser extension or a stray time update would otherwise
+        // send it to the top) unless the listener seeked or clicked
+        const findTurn = now => {
+          let best = -1;
+          for (let k = 0; k < turns.length; k++) {
+            const t = turns[k];
+            if (typeof t.s !== 'number') continue;
+            if (t.s <= now && (typeof t.e !== 'number' || now < t.e)) best = k;
+          }
+          return best;
+        };
         audio.addEventListener('timeupdate', () => {
-          const now = audio.currentTime;
-          let lo = 0, hi = turns.length - 1, idx = -1;
-          while (lo <= hi) { const mid = (lo + hi) >> 1; if (turns[mid].s <= now) { idx = mid; lo = mid + 1; } else hi = mid - 1; }
-          if (idx === cur) return;
+          const idx = findTurn(audio.currentTime);
+          if (idx < 0 || idx === cur) return;
+          if (idx < cur && Date.now() - seekedAt > 1500) return;
           if (cur >= 0) els[cur].classList.remove('now');
           cur = idx;
-          if (cur >= 0) {
-            els[cur].classList.add('now');
-            if (document.getElementById('follow')?.checked) tr.scrollTo({ top: els[cur].offsetTop - tr.offsetTop - 60, behavior: 'smooth' });
+          els[cur].classList.add('now');
+          if (document.getElementById('follow')?.checked) {
+            const top = tr.scrollTop + els[cur].getBoundingClientRect().top - tr.getBoundingClientRect().top - 60;
+            tr.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
           }
         });
       }).catch(() => { body.innerHTML = '<p class="muted-line" style="padding:18px">Couldn\'t load this recording from Oyez.</p>'; });
@@ -1382,13 +1632,14 @@
   }
   const compact = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : String(n);
   const embedSrc = id => `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0&modestbranding=1`;
-  function openVideo(id, title, ch) {
+  function openVideo(id, title, ch, start) {
+    const st = +start > 0 ? `&start=${Math.floor(+start)}` : '';
     const m = document.createElement('div');
     m.className = 'modal';
     m.innerHTML = `<div class="modal-box" role="dialog" aria-label="${esc(title)}">
-      <div class="modal-video"><iframe src="${embedSrc(id)}&autoplay=1" title="${esc(title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+      <div class="modal-video"><iframe src="${embedSrc(id)}&autoplay=1${st}" title="${esc(title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
       <div class="modal-foot"><div><b>${esc(title)}</b><span>${esc(ch)}</span></div>
-        <div style="display:flex;gap:8px"><a class="btn btn-ghost btn-sm" href="https://www.youtube.com/watch?v=${encodeURIComponent(id)}" target="_blank" rel="noopener">YouTube ↗</a><button class="btn btn-primary btn-sm" data-close>Close</button></div></div>
+        <div style="display:flex;gap:8px"><a class="btn btn-ghost btn-sm" href="https://www.youtube.com/watch?v=${encodeURIComponent(id)}${st ? `&t=${Math.floor(+start)}s` : ''}" target="_blank" rel="noopener">YouTube ↗</a><button class="btn btn-primary btn-sm" data-close>Close</button></div></div>
     </div>`;
     const close = () => { m.remove(); document.removeEventListener('keydown', onKey); };
     const onKey = e => { if (e.key === 'Escape') close(); };
@@ -1844,6 +2095,62 @@
   let narrScrolledAt = 0;   // the page stops following the narration for a few seconds after the reader scrolls
   ['wheel', 'touchmove', 'keydown'].forEach(ev => addEventListener(ev, () => { narrScrolledAt = Date.now(); }, { passive: true }));
   const fmtClock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+
+  /* ------------------------------------------------------------ audio dock: once any audio on the page starts (guide
+     narration, Constitution Annotated essays, oral arguments), a bar fixed to the bottom of the window shows what is
+     playing with play/pause, a seekable progress bar and the time, so the reader need not scroll back to the player */
+  const dock = document.createElement('div');
+  dock.className = 'audio-dock';
+  dock.hidden = true;
+  dock.innerHTML = `<button class="dock-play" aria-label="Pause"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-play" d="M8 5v14l11-7z"/><path class="i-pause" d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+    <div class="dock-main"><div class="dock-title"></div><div class="dock-bar" role="slider" aria-label="Seek" tabindex="0"><i></i></div></div>
+    <span class="dock-time">0:00</span>
+    <button class="dock-close" aria-label="Stop and close">×</button>`;
+  document.body.appendChild(dock);
+  let dockAudio = null;
+  const dockFill = dock.querySelector('.dock-bar i'), dockTime = dock.querySelector('.dock-time'), dockPlay = dock.querySelector('.dock-play');
+  const dockHide = () => { dock.hidden = true; document.body.classList.remove('has-dock'); };
+  const dockSync = () => {
+    const a = dockAudio;
+    if (!a || !a.isConnected) return dockHide();
+    const d = isFinite(a.duration) ? a.duration : 0;
+    dockFill.style.width = d ? (100 * a.currentTime / d) + '%' : '0';
+    dockTime.textContent = fmtClock(a.currentTime) + (d ? ' / ' + fmtClock(d) : '');
+    dock.classList.toggle('playing', !a.paused);
+    dockPlay.setAttribute('aria-label', a.paused ? 'Play' : 'Pause');
+  };
+  const dockTitle = a => {
+    const narr = a.closest('.narr');
+    if (narr) {          // the section the Listen bar belongs to: the essay's title, or the page's heading
+      const essay = narr.closest('details.essay');
+      const h = essay ? essay.querySelector('summary') : null;
+      return (h ? h.textContent : (app.querySelector('h1') || {}).textContent || 'Narration').trim().replace(/\s+/g, ' ');
+    }
+    const tab = app.querySelector('.player-tabs .on');   // an oral argument: the case and the recording
+    return [(app.querySelector('h1') || {}).textContent, tab && tab.lastChild.textContent].filter(Boolean).join(' · ').trim().replace(/\s+/g, ' ') || 'Audio';
+  };
+  document.addEventListener('play', e => {
+    if (e.target.tagName !== 'AUDIO') return;
+    dockAudio = e.target;
+    dock.querySelector('.dock-title').textContent = dockTitle(e.target);
+    dock.hidden = false;
+    document.body.classList.add('has-dock');
+    dockSync();
+  }, true);
+  ['pause', 'timeupdate', 'durationchange', 'seeked'].forEach(ev => document.addEventListener(ev, e => { if (e.target === dockAudio) dockSync(); }, true));
+  document.addEventListener('ended', e => { if (e.target === dockAudio) { dockSync(); dockHide(); } }, true);
+  addEventListener('hashchange', () => setTimeout(dockSync, 50));      // a new page removes its players (and stops them)
+  dockPlay.addEventListener('click', () => { if (!dockAudio) return; dockAudio.paused ? dockAudio.play() : dockAudio.pause(); });
+  dock.querySelector('.dock-close').addEventListener('click', () => { if (dockAudio) dockAudio.pause(); dockHide(); });
+  const dockSeek = frac => { if (dockAudio && isFinite(dockAudio.duration)) dockAudio.currentTime = Math.max(0, Math.min(1, frac)) * dockAudio.duration; };
+  dock.querySelector('.dock-bar').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); dockSeek((e.clientX - r.left) / r.width); });
+  dock.querySelector('.dock-bar').addEventListener('keydown', e => {
+    if (!dockAudio) return;
+    if (e.key === 'ArrowRight') dockAudio.currentTime += 10;
+    else if (e.key === 'ArrowLeft') dockAudio.currentTime = Math.max(0, dockAudio.currentTime - 10);
+    else if (e.key === ' ') { e.preventDefault(); dockPlay.click(); }
+  });
+
   function mountNarration(key, host, els) {
     if (!host) return;
     loadData('narration', 'NARRATION').then(N => {
@@ -2984,7 +3291,7 @@
       case 'justice': viewJustice(decodeURIComponent(seg[1] || '')); break;
       case 'statutes': viewStatutes(seg[1], params); break;
       case 'stats': { const tk = routeToken; ext().then(X => { if (tk === routeToken) X.viewStats(params); }).catch(e => { app.innerHTML = `<div class="prose"><h1>Couldn't load this section</h1><p>${esc(e.message)}</p></div>`; }); break; }
-      case 'case': viewCase(decodeURIComponent(seg.slice(1).join('/'))); break;
+      case 'case': viewCase(decodeURIComponent(seg.slice(1).join('/')), params); break;
       case 'lectures': viewLectures(params); break;
       case 'books': viewBooks(params); break;
       case 'book': viewBook(decodeURIComponent(seg[1] || '')); break;
@@ -3009,7 +3316,7 @@
     const b = e.target.closest('.save-btn');
     if (b) { e.preventDefault(); toggleSave(b.dataset.id); return; }
     const v = e.target.closest('.vtile');
-    if (v) { e.preventDefault(); openVideo(v.dataset.video, v.dataset.title, v.dataset.ch); }
+    if (v && v.tagName !== 'A') { e.preventDefault(); openVideo(v.dataset.video, v.dataset.title, v.dataset.ch, v.dataset.start); }
   });
   // Open Library serves a 1×1 image when it has no cover; swap in the typographic fallback
   document.addEventListener('load', e => {

@@ -1,0 +1,1 @@
+window.MEDIA=window.MEDIA||{};Object.assign(window.MEDIA,{"1987/87-1279":{"videos":[{"id":"gk8IKBWrTqw","t":"The Great Dissent: Justice Scalia's Opinion in Morrison v. Olson","ch":"The Federalist Society","by":"The Federalist Society","date":"","start":0,"topic":"","sec":905,"embed":true}],"print":[]}});

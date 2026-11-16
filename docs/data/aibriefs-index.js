@@ -1,0 +1,1 @@
+window.AIBRIEFS_INDEX=["1950","1960","1970"];

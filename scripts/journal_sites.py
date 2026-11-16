@@ -230,6 +230,74 @@ JOURNALS = {
 }
 
 
+def clr_list(jid):
+    """Cornell Law Review's site (its repository stops in 2020): every post in its WordPress site map."""
+    base = 'https://publications.lawschool.cornell.edu/lawreview/'
+    idx = get(jid, base + 'wp-sitemap.xml')
+    out = []
+    for sm in [u for u in locs(idx) if 'wp-sitemap-posts-post-' in u]:
+        out += [u for u in locs(get(jid, sm)) if re.search(r'/lawreview/20\d\d/\d\d/\d\d/[^/]+/$', u)]
+    return out
+
+
+def clr_parse(url, p):
+    head = one(r'<div class="article-head">(.*?)<div class="share">', p)
+    cats = re.findall(r'category-([a-z0-9-]+)', one(r'(<article id="post-\d+" class="[^"]*")', p))
+    kinds = {'articles': 'Article', 'notes': 'Note', 'essay': 'Essay', 'essays': 'Essay', 'symposium': 'Symposium',
+             'book-reviews': 'Book Review', 'responses': 'Response'}
+    kind = next((kinds[c] for c in cats if c in kinds), '')
+    if not head or not kind:
+        return dict(t='')                # news, mastheads, announcements and the like
+    vol = next((re.findall(r'\d+', c)[-1] for c in cats if re.fullmatch(r'(?:issue-\d+-)?(?:print|online)-volume-\d+', c)), None)
+    t = text(one(r'<h2>(.*?)</h2>', head))
+    # the author block is either bold names, or one paragraph per author ("Name, title and school"), sometimes with the
+    # title in its own paragraph: keep the names, never the job titles
+    block = one(r'<p class="author">(.*?)<p class="tags">', head) or ''
+    a = [text(x) for x in re.findall(r'<strong>(.*?)</strong>', block, re.S)]
+    if not a:
+        a = [text(x).split(',')[0].strip() for x in re.findall(r'<p>(.*?)</p>', block, re.S)]
+    a = [x for x in a if 2 <= len(x.split()) <= 5 and not re.search(
+        r'Professor|Law\b|University|School|Candidate|Class of|J\.D\.|Fellow|Dean|Director|Chair|Judge|Partner|Associate|Lecturer|Counsel|Editor', x)]
+    tags = [text(x) for x in re.findall(r'rel="tag">(.*?)</a>', head)][:6]
+    pdf = one(r'href="(https://publications\.lawschool\.cornell\.edu/lawreview/wp-content/uploads/[^"]+\.pdf)"', p)
+    return dict(t=t, a=a, v=int(vol) if vol else None, y=year_of(text(one(r'<p class="date">(.*?)</p>', head))) or year_of(url),
+                kind=kind, tags=tags, ab=meta(p, 'og:description'), pdf=pdf, online='online-volume' in ' '.join(cats))
+
+
+def clip_sentences(s, n):
+    """a long opening cut at the last full sentence before n characters (with an ellipsis), never mid-sentence."""
+    if len(s) <= n:
+        return s
+    ends = [m.end() for m in re.finditer(r'(?<!\bv)(?<!\b[A-Z])(?<!\bNo)(?<!\bU\.S)[.!?]["”’)]?(?=\s)', s[:n])]
+    return (s[:ends[-1]] + ' …') if ends and ends[-1] > n // 3 else ''
+
+
+def glj_list(jid):
+    """Georgetown Law Journal: each piece is a page under in-print/volume-N/<issue>/ in its WordPress site map."""
+    base = 'https://www.law.georgetown.edu/georgetown-law-journal/'
+    out = []
+    for sm in [u for u in locs(get(jid, base + 'wp-sitemap.xml')) if 'wp-sitemap-posts-page-' in u]:
+        out += [u for u in locs(get(jid, sm)) if re.search(r'/in-print/volume-\d+/[^/]+/[^/]+/$', u)]
+    return out
+
+
+def glj_parse(url, p):
+    t = text(one(r'class="abstract_alt_volume_title">(.*?)</h1>', p))
+    a = split_authors(one(r'<div class="published_author">(.*?)</div>', p))
+    v = one(r'is_volume">\s*<div class="journal_meta_box_content">\s*Volume (\d+)', p) or one(r'/in-print/volume-(\d+)/', url)
+    i = one(r'Issue</div>\s*</div>\s*<div class="journal_meta_box_content">\s*(\d+)', p)
+    y = one(r'Date</div>\s*</div>\s*<div class="journal_meta_box_content">\s*(\d{4})', p)
+    body = re.sub(r"<span class='js-footnote footnote'>.*?</cite>\s*</span>", '', one(r'<div class="abstract_alt_description[^"]*">(.*?)</section>', p), flags=re.S)
+    ab = text(body)
+    pdf = one(r'href="(https://www\.law\.georgetown\.edu/georgetown-law-journal/wp-content/uploads/[^"]+\.pdf)"', p)
+    return dict(t=t, a=a, v=int(v) if v else None, i=int(i) if i else None, y=int(y) if y else (int(v) + 1912 if v else None),
+                kind='', tags=[], ab=clip_sentences(ab, 1200), pdf=pdf)
+
+
+JOURNALS.update({'clr': (clr_list, clr_parse), 'glj': (glj_list, glj_parse)})
+NO_VOLUMES = {'clr'}       # sites that give no volume: pieces are matched to the index by title alone
+
+
 def harvest(jid, results):
     lister, parser = JOURNALS[jid]
     if parser is None:
@@ -279,18 +347,20 @@ def main():
         for a in arts:
             if a['j'] == jid:
                 a.pop('pub', None)
-                have[(norm(a['t']), a.get('v'))] = a
-                have.setdefault((norm(re.split(r'[:.?]', a['t'])[0]), a.get('v')), a)
+                vk = None if jid in NO_VOLUMES else a.get('v')
+                have[(norm(a['t']), vk)] = a
+                have.setdefault((norm(re.split(r'[:.?]', a['t'])[0]), vk), a)
         added = linked = skipped = 0
         seen = set()
         for p in results.get(jid, []):
-            if JUNK.search(p['t']) or not p.get('v') or not p.get('y') or len(p['t']) < 6:
+            if JUNK.search(p['t']) or (not p.get('v') and jid not in NO_VOLUMES) or not p.get('y') or len(p['t']) < 6:
                 continue
-            key = (norm(p['t']), p['v'])
+            pv = None if jid in NO_VOLUMES else p.get('v')
+            key = (norm(p['t']), pv)
             if key in seen:
                 continue
             seen.add(key)
-            old = have.get(key) or have.get((norm(re.split(r'[:.?]', p['t'])[0]), p['v']))
+            old = have.get(key) or have.get((norm(re.split(r'[:.?]', p['t'])[0]), pv))
             if old:
                 if p['url'] not in (old.get('u') or '') and p['url'] != old.get('pdf'):
                     if 'doi.org/' in (old.get('u') or ''):
@@ -305,7 +375,9 @@ def main():
                 skipped += 1
                 continue
             a = {'a': p['a'], 'ab': p.get('ab') or '', 'id': prefix[jid] + hashlib.md5(p['url'].encode()).hexdigest()[:8], 'j': jid,
-                 't': p['t'], 'tp': topics(tax, p['t'], subj, p.get('ab') or ''), 'u': p['url'], 'y': p['y'], 'v': p['v']}
+                 't': p['t'], 'tp': topics(tax, p['t'], subj, p.get('ab') or ''), 'u': p['url'], 'y': p['y']}
+            if p.get('v'):
+                a['v'] = p['v']
             if a['ab'] and not p.get('real'):      # a site summary or page description, not the piece's abstract
                 a['abx'] = 1
             for k in ('i', 'fp', 'pdf'):
