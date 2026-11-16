@@ -143,3 +143,15 @@
 .st-row { grid-template-columns: 110px 1fr 48px 48px; }
 .st-row .val.past { color: var(--ink-3); font-weight: 400; }
 .st-row .track b.past { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); opacity: .55; }
+
+/* hover / tap notes on the model's predictor rows */
+.st-bar.has-tip { position: relative; cursor: help; border-radius: 4px; outline-offset: 2px; }
+.st-bar.has-tip .lab { text-decoration: underline dotted var(--ink-3); text-underline-offset: 3px; }
+.st-bar.has-tip:hover, .st-bar.has-tip:focus { background: var(--bg-sunk); }
+.st-tip { display: none; position: absolute; z-index: 30; left: 0; top: calc(100% + 6px); width: min(440px, 92vw); padding: 10px 12px;
+  background: var(--bg-raised, var(--bg)); color: var(--ink); border: 1px solid var(--line, rgba(127,127,127,.3)); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: 13px; line-height: 1.45; }
+.st-tip p { margin: 6px 0 0; }
+.st-tip p span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+.st-tip .m { color: var(--ink-2); font-size: 12px; }
+.st-bar.has-tip:hover .st-tip, .st-bar.has-tip:focus .st-tip, .st-bar.has-tip:focus-within .st-tip { display: block; }

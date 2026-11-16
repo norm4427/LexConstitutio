@@ -636,6 +636,8 @@ def main():
         mdl = keep.get((ver, 'own', code)) if choice[(ver, code)] == 'own' and (ver, 'own', code) in keep else keep[(ver, 'pooled')]
         cols = (cats + num) if mdl is not keep[(ver, 'pooled')] else ['justice'] + cats + num
         r['imp'] = grouped_importance(mdl, XS[ver].loc[mt], yt, GROUPS, cols)
+        import model_directions as MD      # hover notes: what each group measures, which way it moves this justice
+        r['dir'] = MD.directions(V, code, surname.get(code, code).title())
         out[jid] = r
         print(f"{code:12} test={mt.sum():4} base={best_base:.3f} | pending-case model [{r['dock']['choice']:6}] {r['dock']['acc']:.3f} "
               f"(pooled {r['dock']['all']['pooled']:.3f} own {r['dock']['all']['own']:.3f} blend {r['dock']['all']['blend']:.3f}; previous {r['old']}) "

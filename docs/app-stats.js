@@ -44,8 +44,8 @@
   }
   // Horizontal bars with direct labels; rows: [label, value, note, cls, whisker [lo, hi]]
   function bars(rows, max, fmtV) {
-    return `<div class="st-bars">${rows.map(([lab, v, note, cls, ci]) => `<div class="st-bar ${cls || ''}" title="${esc(lab + ': ' + fmtV(v) + (note ? ' — ' + note : ''))}">
-      <span class="lab">${esc(lab)}</span><span class="track"><i style="width:${Math.max(0.5, 100 * v / max).toFixed(1)}%"></i>${ci ? `<b class="ci" style="left:${(100 * ci[0] / max).toFixed(1)}%;width:${(100 * (ci[1] - ci[0]) / max).toFixed(1)}%"></b>` : ''}</span><span class="val">${esc(fmtV(v))}</span></div>`).join('')}</div>`;
+    return `<div class="st-bars">${rows.map(([lab, v, note, cls, ci, tip]) => `<div class="st-bar ${cls || ''}${tip ? ' has-tip" tabindex="0"' : `" title="${esc(lab + ': ' + fmtV(v) + (note ? ' — ' + note : ''))}"`}>
+      <span class="lab">${esc(lab)}</span><span class="track"><i style="width:${Math.max(0.5, 100 * v / max).toFixed(1)}%"></i>${ci ? `<b class="ci" style="left:${(100 * ci[0] / max).toFixed(1)}%;width:${(100 * (ci[1] - ci[0]) / max).toFixed(1)}%"></b>` : ''}</span><span class="val">${esc(fmtV(v))}</span>${tip ? `<div class="st-tip" role="tooltip">${tip}</div>` : ''}</div>`).join('')}</div>`;
   }
 
   /* ---------------------------------------------------------------- justice profile: ratings + model */
@@ -104,13 +104,12 @@
   function modelPanel(M, m, j) {
     const b = m.base, D = m.dock, F = m.full;
     const best = Math.max(b.majority, b.reverse, b.hindsight);
+    // the current model and the strongest of the simple baselines
+    const baseLab = best === b.majority ? `Baseline: always ${b.majorityLabel === 'petitioner' ? 'for the petitioner' : 'for the respondent'}, ${esc(j.last || j.name)}’s more common vote before 2022`
+      : best === b.reverse ? 'Baseline: always for the petitioner (reverse)' : 'Baseline: best constant guess, picked with hindsight';
     const accRows = [
-      ['Pending-case model (used for the docket)', D.acc * 100, '', 'hi', D.ci.map(x => x * 100)],
-      ['Same, with the SCDB coding of the case (issue, law, disposition below)', F.acc * 100, '', 'mid', F.ci.map(x => x * 100)],
-      ...(m.old != null ? [['Previous version of this model (docket predictors only)', m.old * 100, '', 'mid']] : []),
-      [`Baseline: always the more common vote before 2022 (${b.majorityLabel})`, b.majority * 100, '', 'base'],
-      ['Baseline: always for the petitioner (reverse)', b.reverse * 100, '', 'base'],
-      ['Baseline: best constant guess, picked with hindsight', b.hindsight * 100, '', 'base']
+      ['Current model (used for the pending docket)', D.acc * 100, '', 'hi', D.ci.map(x => x * 100)],
+      [baseLab, best * 100, '', 'base']
     ];
     const weak = m.verdict !== 'beats every baseline';
     const caseOf = Object.fromEntries(M.cases.map(c => [c.id, c]));
@@ -121,13 +120,14 @@
     const name = esc(j.last || j.name);
     return `<div class="panel st-panel st-model"><h4>Vote prediction model</h4>
       <p class="st-lead">Predicts whether ${name} votes for the petitioner (to reverse or vacate) or for the respondent (to affirm). Tested on ${name}’s ${fmt(m.nTest)} votes in the ${M.test[0]}–${M.test[1]} Terms (${esc(m.testSpan[0])} to ${esc(m.testSpan[1])}): each Term was predicted by models fitted only on earlier Terms, so no test vote was used to fit or choose the model.</p>
-      <p class="st-verdict ${weak ? 'weak' : ''}"><b>Result.</b> ${esc(m.verdict.charAt(0).toUpperCase() + m.verdict.slice(1))}: ${pct(D.acc * 100)} of test votes called correctly, against ${pct(best * 100)} for the best baseline${m.old != null ? ` and ${pct(m.old * 100)} for the previous version` : ''}. With the database’s coding of each case (available only after decision): ${pct(F.acc * 100)}.</p>
-      <div class="st-sub">Test-vote accuracy (bars show the 95% interval for the models)</div>
+      <p class="st-verdict ${weak ? 'weak' : ''}"><b>Result.</b> ${esc(m.verdict.charAt(0).toUpperCase() + m.verdict.slice(1))}: ${pct(D.acc * 100)} of test votes called correctly, against ${pct(best * 100)} for the best simple baseline.</p>
+      <div class="st-sub">Test-vote accuracy (the bar on the model shows its 95% interval)</div>
       ${bars(accRows, 100, v => pct(v))}
       <div class="st-sub">Tailored to ${name}</div>
       <p class="st-lead">For each justice the site compares three models on the ${M.val[0]}–${M.val[1]} Terms (predicted the same way, Term by Term) and keeps the most accurate. For ${name}: ${esc(CHOICE[D.choice] || D.choice)}${vals ? ` (validation accuracy: ${vals})` : ' (no votes in the validation Terms, so the Court-wide model is used)'}.</p>
-      <div class="st-sub">What moves ${name}’s predicted vote <span class="muted-line">(how much worse the test predictions get, in log loss, when a group of predictors is scrambled)</span></div>
-      ${imp.length ? bars(imp.map(r => [r[0], r[2], `accuracy ${r[1] >= 0 ? '−' : '+'}${Math.abs(r[1]).toFixed(1)} pts`, 'imp']), impMax, v => '+' + v.toFixed(1) + '%') : '<p class="muted-line">No predictor group improved the test predictions.</p>'}
+      <div class="st-sub">What moves ${name}’s predicted vote <span class="muted-line">(how much worse the test predictions get, in log loss, when a group of predictors is scrambled; hover or tap a row for what it measures and how it moves ${name})</span></div>
+      ${imp.length ? bars(imp.map(r => { const dr = (m.dir || {})[r[0]] || {}; return [r[0], r[2], '', 'imp', null,
+        `<b>${esc(r[0])}</b>${dr.how ? `<p><span>Measures</span>${esc(dr.how)}</p>` : ''}${dr.dir ? `<p><span>In ${name}’s votes</span>${esc(dr.dir)}</p>` : ''}<p class="m">Scrambling it makes the test predictions ${r[2].toFixed(1)}% worse in log loss (accuracy ${r[1] >= 0 ? '−' : '+'}${Math.abs(r[1]).toFixed(1)} pts).</p>`]; }), impMax, v => '+' + v.toFixed(1) + '%') : '<p class="muted-line">No predictor group improved the test predictions.</p>'}
       <div class="st-sub">Predicted votes in pending cases <span class="muted-line">(refitted on all votes through the ${M.test[1]} Term)</span></div>
       ${preds.length ? `<ul class="st-preds">${preds.map(({ c, p }) => `<li><a href="#/case/${esc(c.id)}">${esc(c.n)}</a><span class="muted-line">${esc(c.src)}${c.area ? ' · ' + esc(c.area) : ''}${c.arg ? ' · argued' : ''}</span><span class="st-pill ${p >= 0.5 ? 'rev' : 'aff'}" title="Predicted probability of voting for the petitioner: ${pct(p * 100, 0)}">${p >= 0.5 ? 'Reverse' : 'Affirm'} · ${pct((p >= 0.5 ? p : 1 - p) * 100, 0)}</span></li>`).join('')}</ul>` : '<p class="muted-line">No pending cases.</p>'}
       <details class="st-method"><summary>About the model</summary>
