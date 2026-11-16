@@ -240,6 +240,9 @@ def import_file(path):
     st = load_store()
     new = json.load(open(path, encoding='utf-8'))
     S = {c['id']: c for c in load_js('docs/data/scotus.js')['cases']}
+    # Supreme Court Database-only cases carry no `pdf` in scotus.js: queue() fills in the Library of Congress U.S. Reports
+    # link the site uses, so take the case records from there when they have one
+    S.update({c['id']: c for c in queue()[0]})
     for cid, brief in new.items():
         c = S[cid]
         bad = check_quotes(brief, opinion_text(c))
