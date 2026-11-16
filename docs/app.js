@@ -1096,7 +1096,7 @@
     m.className = 'modal';
     m.innerHTML = `<div class="modal-box md-audio" role="dialog" aria-label="${esc(d.title)}">
       <div class="md-audio-body"><small>${esc(d.ch)}</small><b>${esc(d.title)}</b>
-        <audio controls autoplay preload="metadata" src="${esc(d.audio)}"></audio></div>
+        <audio controls autoplay preload="metadata" src="${esc(d.audio)}" data-dock-title="${esc(d.ch + ': ' + d.title)}"></audio></div>
       <div class="modal-foot"><div><span>Audio from the ${esc(d.ch)} podcast feed${+d.start ? ' · starts at the chapter on this case' : ''}</span></div>
         <div style="display:flex;gap:8px">${d.link ? `<a class="btn btn-ghost btn-sm" href="${esc(d.link)}" target="_blank" rel="noopener">Show page ↗</a>` : ''}<button class="btn btn-primary btn-sm" data-close>Close</button></div></div></div>`;
     const a = m.querySelector('audio');
@@ -2145,6 +2145,7 @@
       const h = essay ? essay.querySelector('summary') : null;
       return (h ? h.textContent : (app.querySelector('h1') || {}).textContent || 'Narration').trim().replace(/\s+/g, ' ');
     }
+    if (a.dataset.dockTitle) return a.dataset.dockTitle;   // set by the player that owns it (podcast episodes)
     const tab = app.querySelector('.player-tabs .on');   // an oral argument: the case and the recording
     return [(app.querySelector('h1') || {}).textContent, tab && tab.lastChild.textContent].filter(Boolean).join(' · ').trim().replace(/\s+/g, ' ') || 'Audio';
   };
