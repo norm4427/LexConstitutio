@@ -65,7 +65,7 @@ def extract(head):
 # ---- official syllabus from the Library of Congress U.S. Reports PDFs (scripts/loc_syllabus.py), 1930s on
 RUNHEAD = re.compile(r"^(OCTOBER TERM,? \d{4}\.?|Syllabus\.?|\d+ U\. ?S\.?|\d+|.{3,90} v\. .{2,90}[.,]? \d+|\d+ .{3,90} v\. .{2,90}\.?)$")
 SYL_STOP = re.compile(r"^(Opinion of the Court\.?$|PER CURIAM|Per Curiam\.?$|(MR\. )?(CHIEF )?JUSTICE [A-Z][A-Za-z]+.{0,60}(delivered|announced)|"
-                      r".{0,160}\bargued the cause|.{0,160}\b(filed|submitted) (a |the )?briefs?\b|.{0,120}\bby appointment of the Court|.{0,80}\bpro se\b)")
+                      r".{0,160}\bargued the cause|.{0,160}\b(filed|submitted) (a |the )?briefs?\b|.{0,120}\bby appointment of the Court|[A-Z][A-Za-z.,' -]{2,60}, pro se\b)")
 
 
 def syllabus(t):
