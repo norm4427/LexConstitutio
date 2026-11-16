@@ -26,7 +26,7 @@ def main():
     base = [a for a in d['articles'] if a['j'] not in new_ids]
     byd = collections.defaultdict(list)
     for a in base:
-        if a.get('c') is not None and a.get('y') and not a.get('rv'):
+        if a.get('c') is not None and a.get('y') and not a.get('rv') and not a.get('cx'):
             byd[a['y'] // 10 * 10].append(a['c'])
     p75 = {dec: sorted(v)[int(.75 * (len(v) - 1))] for dec, v in byd.items()}
     seen = {(a['j'], a['t'].lower()) for a in base}
@@ -38,7 +38,7 @@ def main():
         if c is None:
             unknown += 1; continue
         need = max(3, p75.get((a.get('y') or 2000) // 10 * 10, 3))
-        if c < need or a.get('rv'):
+        if c < need or a.get('rv') or a.get('cx'):
             low += 1; continue
         a = dict(a, c=c, t=titlecase(a['t']))
         if (a['j'], a['t'].lower()) in seen:

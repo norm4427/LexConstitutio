@@ -137,6 +137,8 @@ def main():
     changed = 0
     for a in d['articles']:
         e = cache.get(a['id'])
+        if a.get('rv') or a.get('cx'):      # book reviews: the database's count belongs to the reviewed book (review_cites.py)
+            continue
         if e and e.get('c') is not None and a.get('c') != e['c']:
             a['c'] = e['c']
             changed += 1

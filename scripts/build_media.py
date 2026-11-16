@@ -55,6 +55,47 @@ def load_js(path):
     return json.loads(s[s.index('=') + 1:].rstrip().rstrip(';'))
 
 
+YT_ID = re.compile(r'(?:youtube(?:-nocookie)?\.com/(?:watch\?v=|embed/|live/)|youtu\.be/)([\w-]{11})')
+SHOW_CHANNELS = {'Advisory Opinions': ('dispatch', 'advisory'), 'Strict Scrutiny': ('crooked', 'strict scrutiny'),
+                 'Divided Argument': ('divided',), '5-4': ('5-4', 'five four', 'prologue'), 'SCOTUScast': ('federalist',),
+                 'SCOTUStalk': ('scotusblog',), 'We the People': ('constitution center', 'constitutioncenter'),
+                 "Amarica's Constitution": ('amar',), 'Amicus': ('slate',), 'More Perfect': ('wnyc', 'more perfect'),
+                 'Opening Arguments': ('opening arguments',), "The Citizen's Guide to the Supreme Court": ('citizen',),
+                 'Bound By Oath': ('institute for justice',), 'Landmark Cases': ('c-span', 'cspan')}
+
+
+def oembed(vid):
+    """YouTube's official oEmbed endpoint: title and channel of a public, embeddable video (None otherwise). Cached."""
+    import urllib.request
+    os.makedirs(f'{RAW}/oembed', exist_ok=True)
+    p = f'{RAW}/oembed/{vid}.json'
+    if not os.path.exists(p):
+        try:
+            d = json.load(urllib.request.urlopen(f'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={vid}&format=json', timeout=30))
+        except Exception as e:
+            d = {'error': str(getattr(e, 'code', e))}
+        json.dump(d, open(p, 'w', encoding='utf-8'))
+    d = json.load(open(p, encoding='utf-8'))
+    return None if d.get('error') else d
+
+
+def same_episode(vid, title, show):
+    """A YouTube video linked from an episode's notes is that episode's video only if its channel is the show's and its
+    title is the episode's title (allowing the show name or episode number around it)."""
+    import difflib
+    d = oembed(vid)
+    if not d:
+        return False
+    ch = (d.get('author_name') or '').lower()
+    if show in SHOW_CHANNELS and not any(k in ch for k in SHOW_CHANNELS[show]):
+        return False
+    a = re.sub(r'\W+', ' ', title.lower()).strip()
+    b = re.sub(r'\W+', ' ', (d.get('title') or '').lower()).strip()
+    b = re.sub(r'\b(?:advisory opinions|strict scrutiny|divided argument|ep(?:isode)? ?\d+)\b', ' ', b).strip()
+    b = re.sub(r'\s+', ' ', b)
+    return bool(a) and (a in b or b in a and len(b) > 12 or difflib.SequenceMatcher(None, a, b).ratio() >= 0.8)
+
+
 def secs(ts):
     p = [int(x) for x in ts.split(':')]
     return p[0] * 3600 + p[1] * 60 + p[2] if len(p) == 3 else p[0] * 60 + p[1]
@@ -225,6 +266,7 @@ def main():
             enc = it.find('enclosure')
             audio = enc.get('url') if enc is not None else None
             notes = it.findtext('content:encoded', namespaces=NS) or it.findtext('description') or ''
+            note_vids = list(dict.fromkeys(YT_ID.findall(_html.unescape(notes + ' ' + (it.findtext('link') or '')))))
             notes = _html.unescape(re.sub(r'<[^>]+>', '', re.sub(r'<br\s*/?>|</p>|</li>|</div>', '\n', notes)))
             lines = [l.strip(' \t—–-•*') for l in notes.split('\n') if l.strip()]
             short = [l for l in lines if len(l) < 160]                  # agenda / chapter lines
@@ -269,6 +311,11 @@ def main():
                     continue
                 item = {'kind': 'pod', 't': title, 'ch': show, 'by': by, 'date': ed.isoformat(), 'start': hit[0], 'topic': hit[1][:140],
                         'sec': dur(it.findtext('itunes:duration', namespaces=NS)), 'audio': audio, 'link': it.findtext('link') or ''}
+                if not (yt and yt.get('embed', True)):
+                    for nv in note_vids[:3]:            # the episode's own YouTube video, linked from its notes
+                        if same_episode(nv, title, show):
+                            yt = {'id': nv, 'embed': True}
+                            break
                 if yt and yt.get('embed', True):
                     item.update({'id': yt['id'], 'embed': True})
                 lst = media[cid]['videos']

@@ -161,3 +161,12 @@
 .au-sum > span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); margin-bottom: 2px; }
 .au-sum > span em { font-style: normal; text-transform: none; letter-spacing: 0; }
 .au-sum.au-ai > span em { color: var(--accent); }
+
+/* In the media: compact links for episodes and videos that are not embedded */
+.md-links { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.md-links li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.md-links li > a b { font-weight: 600; font-size: 14px; color: var(--ink); }
+.md-links li > a:hover b { color: var(--accent); }
+.md-lm { font-size: 12.5px; color: var(--ink-3); }
+.md-lm a { color: var(--accent); }
+.md-links .md-topic { font-size: 12.5px; color: var(--ink-2); margin: 0; }
