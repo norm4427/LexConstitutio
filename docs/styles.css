@@ -369,3 +369,42 @@ mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: in
 .nav-dd-menu a { justify-content: space-between; border-radius: 8px; }
 .nav-dd-menu a span { font-size: 12px; color: var(--ink-3); }
 .nav-dd:hover .nav-dd-menu, .nav-dd:focus-within .nav-dd-menu { display: block; }
+
+/* ------------------------------------------------------------ book reader */
+.bk-cover { max-width: 760px; margin: 0 auto; padding: 32px 24px 60px; }
+.bk-title { padding: 26px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.bk-title h1 { font-family: var(--serif, Georgia, 'Iowan Old Style', serif); font-size: clamp(30px, 4.5vw, 44px); line-height: 1.12; margin: 8px 0 10px; }
+.bk-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.bk-toc, .bk-drawer ol { list-style: none; margin: 0; padding: 0; counter-reset: part; }
+.bk-toc li a, .bk-drawer li a { display: flex; justify-content: space-between; gap: 14px; padding: 9px 10px; border-radius: 8px; color: var(--ink); font-size: 15px; }
+.bk-toc li a:hover, .bk-drawer li a:hover { background: var(--bg-sunk); }
+.bk-toc li a em, .bk-drawer li a em { font-style: normal; color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
+.bk-toc li.here a, .bk-drawer li.here a { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.bk-read { --bk-size: 0; position: relative; }
+.bk-progress { position: sticky; top: var(--bk-top, 0px); z-index: 41; height: 3px; background: transparent; }
+.bk-progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+.bk-bar { position: sticky; top: calc(var(--bk-top, 0px) + 3px); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 18px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.bk-home { display: flex; flex-direction: column; min-width: 0; color: var(--ink); }
+.bk-home b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-home span { font-size: 12px; color: var(--ink-3); }
+.bk-tools { display: flex; gap: 6px; flex-shrink: 0; }
+.bk-drawer { position: fixed; z-index: 60; top: 0; right: 0; bottom: 0; width: min(380px, 92vw); background: var(--bg-elev); border-left: 1px solid var(--line);
+  box-shadow: -12px 0 32px rgba(0,0,0,.18); overflow-y: auto; }
+.bk-drawer-in { padding: 70px 14px 30px; }
+.bk-drawer h4 { margin: 10px 10px 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.bk-sec li a { font-size: 13.5px; color: var(--ink-2); }
+.bk-page { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
+.bk-chead { text-align: center; margin-bottom: 34px; }
+.bk-chead span { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+.bk-chead h1 { font-family: var(--serif, Georgia, 'Iowan Old Style', serif); font-size: clamp(26px, 3.6vw, 36px); line-height: 1.2; margin: 10px 0 0; }
+.bk-text { font-family: var(--serif, Georgia, 'Iowan Old Style', 'Palatino Linotype', serif); font-size: calc(18px + var(--bk-size) * 1.5px); line-height: 1.75; color: var(--ink); hyphens: auto; }
+.bk-text p { margin: 0 0 1.05em; text-align: justify; text-justify: inter-word; }
+.bk-text h3 { font-family: inherit; font-size: 1.05em; font-weight: 700; text-align: center; letter-spacing: .02em; margin: 2.2em 0 1em; scroll-margin-top: calc(var(--bk-top, 0px) + 70px); }
+.bk-text p { scroll-margin-top: calc(var(--bk-top, 0px) + 70px); }
+.bk-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 48px 0 18px; padding-top: 22px; border-top: 1px solid var(--line); }
+.bk-nav a { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); font-size: 14.5px; }
+.bk-nav a:hover { border-color: var(--accent); }
+.bk-nav a small { color: var(--ink-3); font-size: 12px; }
+.bk-nav a.next { text-align: right; }
+@media (max-width: 640px) { .bk-text p { text-align: left; } .bk-page { padding: 28px 18px 60px; } }

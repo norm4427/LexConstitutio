@@ -2570,6 +2570,7 @@
 
   function viewCorner() { withData([['corner', 'CORNER']], C => renderCorner(C)); }
   function renderCorner(C) {
+    if (!window.LIB_INDEX) { loadScriptOnce('data/lib-index.js').then(() => { if (lastRoute.path === 'corner') renderCorner(C); }).catch(() => { window.LIB_INDEX = []; }); }
     const srcs = SOURCE_ORDER.map(id => C.sources.find(s => s.id === id)).filter(Boolean);
     app.innerHTML = `<div class="fade-in">
       <section class="hero corner-hero"><div class="hero-inner" style="padding:64px 24px 54px">
@@ -2595,7 +2596,100 @@
     </div>`;
   }
   function libraryLink(sid) {
-    return { federalist: '<a class="link-arrow" href="#/library/federalist">Read →</a>', documents: '<a class="link-arrow" href="#/library/documents">Read →</a>', statutes: '<a class="link-arrow" href="#/library/statutes">Read →</a>' }[sid] || '';
+    const fixed = { federalist: '#/library/federalist', documents: '#/library/documents', statutes: '#/library/statutes' }[sid];
+    const book = (window.LIB_INDEX || []).find(b => b.corner === sid);
+    const href = fixed || (book ? `#/library/book/${book.id}` : '');
+    return href ? `<a class="link-arrow" href="${href}">Read →</a>` : '';
+  }
+  /* ------------------------------------------------------------ book reader (full texts from scripts/library_books.py) */
+  const libPosKey = id => 'cl-lib-pos:' + id;
+  const libPos = id => { try { return JSON.parse(localStorage.getItem(libPosKey(id)) || 'null'); } catch (e) { return null; } };
+  const readerSize = () => +(localStorage.getItem('cl-reader-size') || 0);
+  function loadLibBook(id) {
+    return (window.LIB_BOOKS || {})[id] ? Promise.resolve(window.LIB_BOOKS[id]) : loadScriptOnce(`data/lib/${id}.js`).then(() => (window.LIB_BOOKS || {})[id]);
+  }
+  function loadLibChapter(id, n) {
+    const k = id + '-' + n;
+    return (window.LIB_CHS || {})[k] ? Promise.resolve(window.LIB_CHS[k]) : loadScriptOnce(`data/lib/${k}.js`).then(() => (window.LIB_CHS || {})[k]);
+  }
+  function viewLibBook(id, n) {
+    app.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    const tk = routeToken;
+    loadLibBook(id).then(B => {
+      if (tk !== routeToken) return;
+      if (!B) return viewNotFound();
+      if (!n) return renderLibCover(B);
+      loadLibChapter(id, n).then(C => { if (tk === routeToken) C ? renderLibChapter(B, C) : viewNotFound(); });
+    }).catch(() => viewNotFound());
+  }
+  const fmtWords = w => w >= 1000 ? Math.round(w / 1000) + 'k words' : w + ' words';
+  const readMins = w => Math.max(1, Math.round(w / 230));
+  function renderLibCover(B) {
+    const pos = libPos(B.id), total = B.toc.reduce((s, c) => s + c[1], 0);
+    app.innerHTML = `<div class="fade-in"><div class="bk-cover">
+      <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a><span>/</span><span>${esc(B.title)}</span></div>
+      <div class="bk-title"><span class="eyebrow">${esc(B.author)} · ${esc(B.year)}</span><h1>${esc(B.title)}</h1>
+        <p class="muted-line">${B.toc.length} parts · ${fmtWords(total)} · about ${Math.round(readMins(total) / 60)} hours of reading</p>
+        <div class="bk-actions">${pos ? `<a class="btn btn-primary" href="#/library/book/${esc(B.id)}/${pos.n}">Continue reading · ${esc((B.toc[pos.n - 1] || [''])[0])}</a><a class="btn btn-ghost" href="#/library/book/${esc(B.id)}/1">Start from the beginning</a>` : `<a class="btn btn-primary" href="#/library/book/${esc(B.id)}/1">Start reading</a>`}</div></div>
+      <h2>Contents</h2>
+      <ol class="bk-toc">${B.toc.map(([t, w], i) => `<li class="${pos && pos.n === i + 1 ? 'here' : ''}"><a href="#/library/book/${esc(B.id)}/${i + 1}"><span>${esc(t)}</span><em>${readMins(w)} min</em></a></li>`).join('')}</ol>
+      <p class="attrib">${esc(B.license)}. Source: <a href="${esc(B.src)}" target="_blank" rel="noopener">${esc(B.srcName)}</a>. Headers, page numbers and footnote markers are omitted.</p>
+    </div></div>`;
+  }
+  function renderLibChapter(B, C) {
+    const n = C.n, N = B.toc.length;
+    const heads = C.b.map((x, i) => x[0] === 'h' ? [i, x[1]] : null).filter(Boolean);
+    const words = C.b.reduce((s, x) => s + x[1].split(' ').length, 0);
+    const chHref = k => `#/library/book/${B.id}/${k}`;
+    app.innerHTML = `<div class="bk-read" style="--bk-size:${readerSize()}">
+      <div class="bk-progress"><i id="bk-bar"></i></div>
+      <div class="bk-bar">
+        <a class="bk-home" href="#/library/book/${esc(B.id)}" title="Book contents"><b>${esc(B.title)}</b><span>${esc(B.author)}</span></a>
+        <div class="bk-tools">
+          <button class="btn btn-ghost btn-sm" id="bk-toc-btn" aria-expanded="false">Contents</button>
+          <button class="btn btn-ghost btn-sm" data-size="-1" title="Smaller text" aria-label="Smaller text">A−</button>
+          <button class="btn btn-ghost btn-sm" data-size="1" title="Larger text" aria-label="Larger text">A+</button>
+        </div>
+      </div>
+      <aside class="bk-drawer" id="bk-drawer" hidden><div class="bk-drawer-in">
+        <h4>Contents</h4><ol>${B.toc.map(([t, w], i) => `<li class="${i + 1 === n ? 'here' : ''}"><a href="${chHref(i + 1)}"><span>${esc(t)}</span><em>${readMins(w)} min</em></a></li>`).join('')}</ol>
+        ${heads.length > 2 ? `<h4>In this part</h4><ol class="bk-sec">${heads.map(([i, t]) => `<li><a href="#" data-jump="${i}">${esc(t.length > 90 ? t.slice(0, 88) + '…' : t)}</a></li>`).join('')}</ol>` : ''}
+      </div></aside>
+      <article class="bk-page">
+        <div class="bk-chead"><span>Part ${n} of ${N} · ${readMins(words)} min read</span><h1>${esc(C.t)}</h1></div>
+        <div class="bk-text">${C.b.map((x, i) => x[0] === 'h' ? `<h3 id="bk-${i}">${esc(x[1])}</h3>` : `<p id="bk-${i}">${esc(x[1])}</p>`).join('')}</div>
+        <nav class="bk-nav">${n > 1 ? `<a href="${chHref(n - 1)}"><small>← Previous</small>${esc(B.toc[n - 2][0])}</a>` : '<span></span>'}${n < N ? `<a class="next" href="${chHref(n + 1)}"><small>Next →</small>${esc(B.toc[n][0])}</a>` : `<a class="next" href="#/library/book/${esc(B.id)}"><small>The end</small>Back to the contents</a>`}</nav>
+        <p class="attrib">${esc(B.license)}. Source: <a href="${esc(B.src)}" target="_blank" rel="noopener">${esc(B.srcName)}</a>.</p>
+      </article>
+    </div>`;
+    const root = app.querySelector('.bk-read'), drawer = document.getElementById('bk-drawer'), tb = document.getElementById('bk-toc-btn');
+    const hdr = document.querySelector('header'); if (hdr && getComputedStyle(hdr).position === 'sticky') root.style.setProperty('--bk-top', hdr.getBoundingClientRect().height + 'px');
+    tb.addEventListener('click', () => { drawer.hidden = !drawer.hidden; tb.setAttribute('aria-expanded', String(!drawer.hidden)); });
+    drawer.addEventListener('click', e => { const j = e.target.closest('[data-jump]'); if (!j) return; e.preventDefault(); drawer.hidden = true; document.getElementById('bk-' + j.dataset.jump).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    root.querySelectorAll('[data-size]').forEach(b => b.addEventListener('click', () => {
+      const v = Math.max(-2, Math.min(4, readerSize() + +b.dataset.size)); localStorage.setItem('cl-reader-size', v); root.style.setProperty('--bk-size', v);
+    }));
+    // progress bar and saved place (part and how far into it)
+    const pos = libPos(B.id);
+    if (pos && pos.n === n && pos.f > 0.02) requestAnimationFrame(() => window.scrollTo({ top: pos.f * (document.documentElement.scrollHeight - innerHeight) }));
+    else window.scrollTo({ top: 0 });
+    const bar = document.getElementById('bk-bar'); let tmr = 0;
+    const onScroll = () => {
+      if (!document.body.contains(bar)) { window.removeEventListener('scroll', onScroll); document.removeEventListener('keydown', onKey); return; }
+      const f = Math.min(1, scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight));
+      bar.style.width = (f * 100).toFixed(1) + '%';
+      clearTimeout(tmr); tmr = setTimeout(() => localStorage.setItem(libPosKey(B.id), JSON.stringify({ n, f: +f.toFixed(4) })), 250);
+    };
+    const onKey = e => {
+      if (!document.body.contains(bar)) { document.removeEventListener('keydown', onKey); return; }
+      if (e.target.closest('input,textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowRight' && n < N) location.hash = chHref(n + 1);
+      if (e.key === 'ArrowLeft' && n > 1) location.hash = chHref(n - 1);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('keydown', onKey);
+    localStorage.setItem(libPosKey(B.id), JSON.stringify({ n, f: pos && pos.n === n ? pos.f : 0 }));
+    onScroll();
   }
   function viewCornerTopic(id, params) { withData([['corner', 'CORNER']], C => renderCornerTopic(C, id, params)); }
   function renderCornerTopic(C, id, params) {
@@ -2637,17 +2731,20 @@
     if (kind === 'federalist') return withData([['library-federalist', 'LIB_FEDERALIST']], F => seg[2] ? renderFederalist(F, +seg[2]) : renderLibraryList('federalist', F, params));
     if (kind === 'documents' || kind === 'doc') return withData([['library-documents', 'LIB_DOCUMENTS']], D => seg[2] ? renderLibDoc(D, seg[2]) : renderLibraryList('documents', D, params));
     if (kind === 'statutes' || kind === 'statute') return withData([['library-statutes', 'LIB_STATUTES']], S => seg[2] ? renderStatute(S, seg[2]) : renderLibraryList('statutes', S, params));
+    if (kind === 'book' && seg[2]) return viewLibBook(seg[2], +seg[3] || 0);
     viewNotFound();
   }
   function renderLibraryHome() {
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>Library</span></div>
-        <h1>The founding-era library</h1><p>Full texts you can read here: every number of <i>The Federalist</i>, the founding documents and early state constitutions, and every act of the first five Congresses.</p></div>
+        <h1>The founding-era library</h1><p>Full texts you can read here: every number of <i>The Federalist</i>, the founding documents and early state constitutions, every act of the first five Congresses, and the treatises the founders and early commentators relied on.</p></div>
       <section class="section" style="padding-top:28px"><div class="jgrid">
         <a class="jcard" href="#/library/federalist"><div class="abbr">Hamilton, Madison & Jay · 1787–88</div><h3>The Federalist</h3><div class="foot"><span>85 essays</span><b>Read →</b></div></a>
         <a class="jcard" href="#/library/documents"><div class="abbr">1215–1802</div><h3>Founding documents & state constitutions</h3><div class="foot"><span>Magna Carta to the Danbury letter</span><b>Read →</b></div></a>
         <a class="jcard" href="#/library/statutes"><div class="abbr">1789–1799</div><h3>Acts of the First Congresses</h3><div class="foot"><span><i>Statutes at Large</i>, vol. 1</span><b>Read →</b></div></a>
+        ${(window.LIB_INDEX || []).map(b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${b.chapters} parts · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`).join('')}
       </div></section></div>`;
+    if (!window.LIB_INDEX) loadScriptOnce('data/lib-index.js').then(() => { if (lastRoute.path === 'library') renderLibraryHome(); }).catch(() => { window.LIB_INDEX = []; });
   }
   function renderLibraryList(kind, items, params) {
     const q = (params.get('q') || '').toLowerCase();
