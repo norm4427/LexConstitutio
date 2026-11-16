@@ -27,6 +27,8 @@ GENERIC = set('united states state states city county commissioner people secret
               'corporation association et al new york california texas ohio pennsylvania virginia illinois georgia florida '
               'trump biden obama president first second little brown white black green young king long free'.split())
 CHAPTER = re.compile(r'^\s*[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*[-–—:|]?\s*(.+?)\s*$')
+CHAPTER_END = re.compile(r'^\s*(.{4,140}?)\s*[-–—:|(\[]\s*((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*$')
+READING = re.compile(r'\(\d{4}\)|\b\d+ U\.\s?S\.|\b\d+ (?:S\. ?Ct|F\.\d?d?|F\. Supp)|Cir\.|\bet al\.|Order,|Brief|Opinion,|Petition|https?://|\bLII\b', re.I)
 
 
 def load_js(path):
@@ -82,7 +84,7 @@ def main():
 
     def short_rx(c):
         sd, d = info[c['id']]
-        ws = [w for w in (sd[0][:1] + sd[1][:1]) if unique_word(w, d)]
+        ws = [w for w in (sd[0][:1] or sd[1][:1]) if unique_word(w, d)]
         return re.compile(r'\b(?:' + '|'.join(map(re.escape, ws)) + r")(?:['’]s)?\b") if ws else None
 
     media = collections.defaultdict(lambda: {'videos': [], 'print': []})
@@ -103,7 +105,7 @@ def main():
             fr, sr = rx[c['id']]
             hit = None
             for t, topic in chapters:
-                if fr.search(topic) or (sr and sr.search(topic)):
+                if fr.search(topic) or (sr and sr.search(topic) and ' v. ' not in topic):
                     hit = (t, topic); break
             if not hit and (fr.search(v['t']) or (sr and sr.search(v['t']))):
                 hit = (0, '')
@@ -112,6 +114,100 @@ def main():
             if hit:
                 media[c['id']]['videos'].append({'id': v['id'], 't': v['t'], 'ch': v.get('show') or v.get('ch'), 'by': v.get('ch'), 'date': v['date'],
                                                  'start': hit[0], 'topic': hit[1][:140], 'sec': v.get('sec') or 0, 'embed': v.get('embed', True)})
+    # --- podcast feeds (media_fetch.py pod): every episode of each show
+    import html as _html, xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
+    NS = {'itunes': 'http://www.itunes.com/dtds/podcast-1.0.dtd', 'content': 'http://purl.org/rss/1.0/modules/content/'}
+    SHOWS = {'advisory-opinions': ('Advisory Opinions', 'The Dispatch'), 'strict-scrutiny': ('Strict Scrutiny', 'Crooked Media'),
+             'divided-argument': ('Divided Argument', 'Will Baude & Dan Epps'), 'five-four': ('5-4', 'Prologue Projects'),
+             'scotuscast': ('SCOTUScast', 'The Federalist Society'), 'scotustalk': ('SCOTUStalk', 'SCOTUSblog'),
+             'we-the-people': ('We the People', 'National Constitution Center'), 'amaricas-constitution': ("Amarica's Constitution", 'Akhil Reed Amar')}
+    yt_by_title = {re.sub(r'\W+', '', v['t'].lower()): v for v in vids}
+    # every named case (Supreme Court Database-only ones too) can be matched by its full name
+    every = {c['id']: c for c in S if c.get('dec') and ' v. ' in c['n']}
+    every.update({c['id']: c for c in pend})
+    word_idx = collections.defaultdict(set)
+    sides_of = {}
+    for cid, c in every.items():
+        sd = info[cid][0] if cid in info else sides(c['n'])
+        if not sd or not (sd[0] and sd[1]):
+            continue
+        sides_of[cid] = sd
+        word_idx[sd[0][0]].add(cid)
+        word_idx[sd[1][0]].add(cid)
+    rx_cache = {}
+
+    def rx_full(cid):
+        if cid not in rx_cache:
+            sd = sides_of[cid]
+            rx_cache[cid] = re.compile(re.escape(re.sub(r'\s*\(\d\)$', '', every[cid]['n'])) + '|' + r'\b' + re.escape(sd[0][0]) +
+                                       r'\b[^\n.]{0,60}?\bv(?:s)?\.?\s[^\n]{0,60}?\b' + re.escape(sd[1][0]) + r'\b')
+        return rx_cache[cid]
+
+    def dur(s):
+        s = (s or '').strip()
+        if re.fullmatch(r'\d+', s):
+            return int(s)
+        return secs(s) if re.fullmatch(r'(?:\d+:)?\d{1,2}:\d{2}', s) else 0
+
+    n_ep = 0
+    for path in sorted(glob.glob(f'{RAW}/pod/*.xml')):
+        key = os.path.basename(path)[:-4]
+        show, by = SHOWS.get(key, (key, ''))
+        try:
+            root = ET.parse(path).getroot()
+        except ET.ParseError:
+            continue
+        for it in root.iter('item'):
+            title = (it.findtext('title') or '').strip()
+            try:
+                ed = parsedate_to_datetime(it.findtext('pubDate')).date()
+            except Exception:
+                continue
+            enc = it.find('enclosure')
+            audio = enc.get('url') if enc is not None else None
+            notes = it.findtext('content:encoded', namespaces=NS) or it.findtext('description') or ''
+            notes = _html.unescape(re.sub(r'<[^>]+>', '', re.sub(r'<br\s*/?>|</p>|</li>|</div>', '\n', notes)))
+            lines = [l.strip(' \t—–-•*') for l in notes.split('\n') if l.strip()]
+            short = [l for l in lines if len(l) < 160]                  # agenda / chapter lines
+            chapters = [(secs(m.group(1)), m.group(2)) for m in (CHAPTER.match(l) for l in lines) if m]
+            chapters += [(secs(m.group(2)), m.group(1)) for m in (CHAPTER_END.match(l) for l in lines) if m]
+            words = set(re.findall(r"[A-Z][A-Za-z'’\-]{3,}", title + '\n' + notes))
+            cands = set().union(*(word_idx[w] for w in words if w in word_idx)) if words else set()
+            yt = yt_by_title.get(re.sub(r'\W+', '', title.lower()))
+            n_ep += 1
+            for cid in cands:
+                c = every[cid]
+                fr = rx_full(cid)
+                d = date.fromisoformat(c['dec']) if c.get('dec') else date.fromisoformat(c['from'])
+                in_window = (d - timedelta(days=30) <= ed <= d + timedelta(days=700)) if c.get('pending') else (d - timedelta(days=540) <= ed <= d + timedelta(days=460))
+                sr = rx[cid][1] if cid in rx else None
+                hit = None
+                for t, topic in chapters:                               # a chapter that names the case
+                    if fr.search(topic) or (in_window and sr and sr.search(topic) and ' v. ' not in topic):
+                        hit = (t, topic); break
+                if not hit and fr.search(title):                        # the title names the case
+                    hit = (0, '')
+                if not hit:
+                    for l in short:                                     # an agenda line names it in full
+                        if fr.search(l) and not READING.search(l):
+                            hit = (0, l); break
+                if not hit and in_window and fr.search(notes):          # the notes name it in full, around the decision
+                    hit = (0, '')
+                if not hit:
+                    continue
+                item = {'kind': 'pod', 't': title, 'ch': show, 'by': by, 'date': ed.isoformat(), 'start': hit[0], 'topic': hit[1][:140],
+                        'sec': dur(it.findtext('itunes:duration', namespaces=NS)), 'audio': audio, 'link': it.findtext('link') or ''}
+                if yt and yt.get('embed', True):
+                    item.update({'id': yt['id'], 'embed': True})
+                lst = media[cid]['videos']
+                if not any(x.get('t') == title and x.get('ch') == show for x in lst):
+                    lst.append(item)
+    print('podcast episodes read:', n_ep)
+    # a YouTube copy of a podcast episode replaces the separate video entry
+    for m in media.values():
+        pod_ids = {x.get('id') for x in m['videos'] if x.get('kind') == 'pod' and x.get('id')}
+        m['videos'] = [x for x in m['videos'] if x.get('kind') == 'pod' or x['id'] not in pod_ids]
     # --- other videos: site lectures and searches, title must name the case in full
     older = [c for c in cases if c['id'] in info]
     orx = [(c, full_rx(c)) for c in older]
@@ -125,7 +221,7 @@ def main():
         for c, r in orx:
             if v.get('only') and v['only'] != c['id'].replace('/', '_'):
                 continue
-            if r.search(v['t']) and not any(x['id'] == v['id'] for x in media[c['id']]['videos']):
+            if r.search(v['t']) and not any(x.get('id') == v['id'] for x in media[c['id']]['videos']):
                 media[c['id']]['videos'].append({'id': v['id'], 't': v['t'], 'ch': v['ch'], 'by': v['ch'], 'date': v.get('date', ''), 'start': 0, 'topic': '', 'sec': v['sec'], 'embed': True})
     # --- newspapers
     S_by_key = {c['id'].replace('/', '_'): c for c in S}

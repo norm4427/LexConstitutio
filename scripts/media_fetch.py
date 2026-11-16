@@ -9,8 +9,10 @@
 2. Videos about older landmark cases (needs YT_API_KEY): a Data API search for "<case name>", embeddable videos only,
    for the 500 most-cited cases decided before 2015. -> data/raw/media/search/<case>.json
 3. Newspaper pages (public domain) from the Library of Congress's Chronicling America, for the most-cited cases decided
-   before 1964: pages printed in the three weeks (two months before 1870) after the decision that name the parties and the Supreme Court.
+   before 1964 and every named case decided before 1836: pages printed in the three weeks (two months before 1870) after the decision that name the parties and the Supreme Court.
    -> data/raw/media/loc/<case>.json
+4. Podcast feeds (Advisory Opinions, Strict Scrutiny, Divided Argument, 5-4, SCOTUScast, SCOTUStalk, We the People,
+   Amarica’s Constitution): every episode with show notes. -> data/raw/media/pod/<show>.xml
 Resumable.  Run from the repo root:  python scripts/media_fetch.py [yt|search|loc]   (YT_API_KEY=... for the back catalog)
 """
 import html, json, os, re, sys, time, urllib.parse, urllib.request
@@ -161,35 +163,81 @@ def party_words(name):
     return out
 
 
-def loc():
-    os.makedirs(f'{RAW}/loc', exist_ok=True)
-    for c in top_cases('1963-12-31', int(os.environ.get('LOC_N', 150))):   # the API takes ~30 s a query
-        dest = f"{RAW}/loc/{c['id'].replace('/', '_')}.json"
-        if os.path.exists(dest):
-            continue
-        ws = party_words(c['n'])
-        if not ws:
-            json.dump({'skip': 'no distinctive party name'}, open(dest, 'w'))
-            continue
-        d = date.fromisoformat(c['dec'])
-        a, b = d - timedelta(days=1), d + timedelta(days=60 if d.year < 1870 else 21)   # news travelled slower before the telegraph age
-        q = ' '.join(f'"{w}"' for w in ws) + ' "supreme court"'
-        url = ('https://www.loc.gov/collections/chronicling-america/?fo=json&c=12&at=results&q=' + urllib.parse.quote_plus(q) +
-               f'&dates={a.isoformat()}/{b.isoformat()}')
+def loc_one(c):
+    dest = f"{RAW}/loc/{c['id'].replace('/', '_')}.json"
+    if os.path.exists(dest):
+        return
+    ws = party_words(c['n'])
+    if not ws:
+        json.dump({'skip': 'no distinctive party name'}, open(dest, 'w'))
+        return
+    d = date.fromisoformat(c['dec'])
+    # news travelled slowly before the telegraph: Marshall-era reports of a decision appeared for months afterwards
+    days = 120 if d.year < 1836 else 60 if d.year < 1870 else 21
+    a, b = d - timedelta(days=1), d + timedelta(days=days)
+    q = ' '.join(f'"{w}"' for w in ws) + ' "supreme court"'
+    url = ('https://www.loc.gov/collections/chronicling-america/?fo=json&c=25&at=results&q=' + urllib.parse.quote_plus(q) +
+           f'&dates={a.isoformat()}/{b.isoformat()}')
+    for attempt in range(3):
         try:
-            r = json.loads(get(url, timeout=150))
+            r = json.loads(get(url, timeout=180))
+            break
         except Exception as e:
-            print('  loc failed', c['id'], e, flush=True)
-            time.sleep(5)
-            continue
-        res = [{'date': x.get('date'), 'title': x.get('title'), 'url': x.get('url'), 'img': (x.get('image_url') or [None])[0],
-                'paper': (x.get('partof_title') or [None])[0] if isinstance(x.get('partof_title'), list) else x.get('partof_title'),
-                'loc': x.get('location_city') or x.get('location')} for x in r.get('results', [])]
-        json.dump({'q': q, 'from': a.isoformat(), 'to': b.isoformat(), 'results': res}, open(dest, 'w', encoding='utf-8'), ensure_ascii=False)
-        time.sleep(1.5)
+            if attempt == 2:
+                print('  loc failed', c['id'], e, flush=True)
+                return
+            time.sleep(20 * (attempt + 1))
+    res = [{'date': x.get('date'), 'title': x.get('title'), 'url': x.get('url'), 'img': (x.get('image_url') or [None])[0],
+            'paper': (x.get('partof_title') or [None])[0] if isinstance(x.get('partof_title'), list) else x.get('partof_title'),
+            'loc': x.get('location_city') or x.get('location')} for x in r.get('results', [])]
+    json.dump({'q': q, 'from': a.isoformat(), 'to': b.isoformat(), 'results': res}, open(dest, 'w', encoding='utf-8'), ensure_ascii=False)
+    time.sleep(1.5)
+
+
+def loc():
+    """The most-cited cases decided before 1964 (LOC_N, default 150) and every named case of the Marshall era and
+    before (decided before 1836). The API takes ~30 s a query, so three queries run at a time."""
+    from concurrent.futures import ThreadPoolExecutor
+    os.makedirs(f'{RAW}/loc', exist_ok=True)
+    S = load_js('docs/data/scotus.js')['cases']
+    early = [c for c in S if c.get('dec') and c['dec'] < '1836-01-01' and ' v. ' in c['n']]
+    todo, seen = [], set()
+    for c in top_cases('1963-12-31', int(os.environ.get('LOC_N', 150))) + early:
+        if c['id'] not in seen:
+            seen.add(c['id']); todo.append(c)
+    with ThreadPoolExecutor(3) as ex:
+        for k, _ in enumerate(ex.map(loc_one, todo)):
+            if k % 50 == 0:
+                print('loc', k, '/', len(todo), flush=True)
     print('loc done', flush=True)
 
 
+# Podcast feeds (public RSS, found through the Apple Podcasts directory): every episode with its show notes, date,
+# length and audio file. The case page plays the publisher's audio file in the browser; nothing is copied.
+PODCASTS = {
+    'advisory-opinions': ('Advisory Opinions', 'The Dispatch', 'https://feeds.megaphone.fm/DISPME4573820108'),
+    'strict-scrutiny': ('Strict Scrutiny', 'Crooked Media', 'https://audioboom.com/channels/5166629.rss'),
+    'divided-argument': ('Divided Argument', 'Will Baude & Dan Epps', 'https://feeds.beamly.com/GxB3ykF8pz0UMRya/feed.xml'),
+    'five-four': ('5-4', 'Prologue Projects', 'https://feeds.redcircle.com/b6f505a9-f29d-4915-9e94-85182953a0ba'),
+    'scotuscast': ('SCOTUScast', 'The Federalist Society', 'https://www.spreaker.com/show/2654486/episodes/feed'),
+    'scotustalk': ('SCOTUStalk', 'SCOTUSblog', 'https://feeds.acast.com/public/shows/5c7d6c6a80f32c6a7cdeca24'),
+    'we-the-people': ('We the People', 'National Constitution Center', 'https://pdrl.fm/2f25bb/feeds.megaphone.fm/wethepeople'),
+    'amaricas-constitution': ("Amarica's Constitution", 'Akhil Reed Amar', 'https://feed.podbean.com/amaricasconstitution/feed.xml'),
+}
+
+
+def pod():
+    os.makedirs(f'{RAW}/pod', exist_ok=True)
+    for k, (name, by, url) in PODCASTS.items():
+        try:
+            b = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'LexConstitutio/1.0 (podcast directory)'}), timeout=120).read()
+            open(f'{RAW}/pod/{k}.xml', 'wb').write(b)
+            print(name, len(b) // 1024, 'KB', b.count(b'<item'), 'episodes', flush=True)
+        except Exception as e:
+            print('feed failed', name, e, flush=True)
+        time.sleep(1)
+
+
 if __name__ == '__main__':
-    for w in sys.argv[1:] or ['yt', 'search', 'loc']:
-        {'yt': yt, 'search': search, 'loc': loc}[w]()
+    for w in sys.argv[1:] or ['pod', 'yt', 'search', 'loc']:
+        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod}[w]()
