@@ -30,6 +30,25 @@ CHAPTER = re.compile(r'^\s*[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*[-–—:|
 CHAPTER_END = re.compile(r'^\s*(.{4,140}?)\s*[-–—:|(\[]\s*((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*$')
 READING = re.compile(r'\(\d{4}\)|\b\d+ U\.\s?S\.|\b\d+ (?:S\. ?Ct|F\.\d?d?|F\. Supp)|Cir\.|\bet al\.|Order,|Brief|Opinion,|Petition|https?://|\bLII\b', re.I)
 
+STARTERS = set('The A An In On At And Plus But About After Before With Why How What When Can Does Is Are Will Did Should Today This That '
+               'Inside Breaking Episode Part Live Bonus Interview Also Then Meanwhile Finally Is Was'.split())
+
+
+def sr_ok(sr, text, name):
+    """A party name used alone counts only when it is not part of a longer proper name ("Amy Coney Barrett",
+    "Follow Peter"): the words beside it must not be capitalized, unless they belong to the case name itself."""
+    own = set(re.findall(r"[A-Za-z'’]+", name))
+    for m in sr.finditer(text):
+        before = re.findall(r"([A-Za-z'’@]+)\W*$", text[:m.start()])
+        after = re.findall(r"^\W*([A-Za-z'’@(]+)", text[m.end():])
+        b = before[0] if before else ''
+        a = after[0] if after else ''
+        cap = lambda w: bool(re.match(r"[A-Z@(]", w)) and w not in own
+        if (b and cap(b) and b not in STARTERS and not re.search(r'[.!?:—–-]\s*$', text[:m.start()])) or (a and cap(a)):
+            continue
+        return True
+    return False
+
 
 def load_js(path):
     s = open(path, encoding='utf-8').read()
@@ -84,7 +103,8 @@ def main():
 
     def short_rx(c):
         sd, d = info[c['id']]
-        ws = [w for w in (sd[0][:1] or sd[1][:1]) if unique_word(w, d)]
+        ws = [w for w in (sd[0][:1] or sd[1][:1]) if unique_word(w, d)
+              and not re.search(r'\b(?:City|County|Town|Village|Borough|Township|Parish|District|Port|State) of ' + re.escape(w), c['n'])]
         return re.compile(r'\b(?:' + '|'.join(map(re.escape, ws)) + r")(?:['’]s)?\b") if ws else None
 
     media = collections.defaultdict(lambda: {'videos': [], 'print': []})
@@ -105,9 +125,9 @@ def main():
             fr, sr = rx[c['id']]
             hit = None
             for t, topic in chapters:
-                if fr.search(topic) or (sr and sr.search(topic) and ' v. ' not in topic):
+                if fr.search(topic) or (sr and sr_ok(sr, topic, c['n']) and ' v. ' not in topic):
                     hit = (t, topic); break
-            if not hit and (fr.search(v['t']) or (sr and sr.search(v['t']))):
+            if not hit and (fr.search(v['t']) or (sr and sr_ok(sr, v['t'], c['n']))):
                 hit = (0, '')
             if not hit and fr.search(v.get('desc', '')):
                 hit = (0, '')
@@ -146,6 +166,7 @@ def main():
         word_idx[sd[0][0]].add(cid)
         word_idx[sd[1][0]].add(cid)
     rx_cache = {}
+    short_cache = {}
 
     def rx_full(cid):
         if cid not in rx_cache:
@@ -191,13 +212,24 @@ def main():
                 fr = rx_full(cid)
                 d = date.fromisoformat(c['dec']) if c.get('dec') else date.fromisoformat(c['from'])
                 in_window = (d - timedelta(days=30) <= ed <= d + timedelta(days=700)) if c.get('pending') else (d - timedelta(days=540) <= ed <= d + timedelta(days=460))
-                sr = rx[cid][1] if cid in rx else None
+                if cid in rx:
+                    sr = rx[cid][1]
+                elif cid in info and in_window:
+                    sr = short_cache[cid] if cid in short_cache else short_cache.setdefault(cid, short_rx(c))
+                else:
+                    sr = None
                 hit = None
                 for t, topic in chapters:                               # a chapter that names the case
-                    if fr.search(topic) or (in_window and sr and sr.search(topic) and ' v. ' not in topic):
+                    if fr.search(topic) or (in_window and sr and sr_ok(sr, topic, c['n']) and ' v. ' not in topic):
                         hit = (t, topic); break
                 if not hit and fr.search(title):                        # the title names the case
                     hit = (0, '')
+                if not hit and in_window and sr and sr_ok(sr, title, c['n']) and ' v. ' not in title:   # or its one distinctive party name
+                    hit = (0, '')
+                if not hit and in_window and sr:                        # an agenda line names it by that party name
+                    for l in short:
+                        if sr_ok(sr, l, c['n']) and ' v. ' not in l and not READING.search(l):
+                            hit = (0, l); break
                 if not hit:
                     for l in short:                                     # an agenda line names it in full
                         if fr.search(l) and not READING.search(l):
