@@ -276,12 +276,16 @@ def main():
     a = sys.argv[1:]
     if not a or a[0] == '--queue':
         q, cites = queue()
+        done = load_store()
+        q = [c for c in q if c['id'] not in done]        # cases already briefed (or skipped) are not listed again
         n = int(a[1]) if len(a) > 1 else 40
-        print(len(q), 'cases without a summary')
+        print(len(q), 'cases without a summary still to brief')
         for c in q[:n]:
             print(c['id'], '|', c['n'], '|', c.get('cit'), '|', c.get('dec'), '|', cites(c), 'citations')
     elif a[0] == '--fetch':
         q, _ = queue()
+        done = load_store()
+        q = [c for c in q if c['id'] not in done]
         for c in q[:int(a[1]) if len(a) > 1 else 40]:
             print(c['id'], len(opinion_text(c)), flush=True)
     elif a[0] == '--generate':
