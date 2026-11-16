@@ -86,6 +86,7 @@ for c in CASES:
         if m.group(2) == 'U.S.':
             by_vol[m.group(1)].append(c)
 dk_case = {}
+site_by_id = {c["id"]: c for c in CASES}
 for c in CASES:
     for dk in re.split(r'[,;\s]+', (c.get('d') or '').lower()):
         if dk:
@@ -583,6 +584,134 @@ def usc_text(title, sec):
             'src': f'https://www.govinfo.gov/link/uscode/{title}/{sec}?type=usc&year=mostrecent&link-type=html'}
 
 
+# ------------------------------------------------------------------ relevance and summaries
+USC_TITLES = {1: 'General Provisions', 2: 'The Congress', 3: 'The President', 4: 'Flag and Seal, Seat of Government, and the States',
+              5: 'Government Organization and Employees', 6: 'Domestic Security', 7: 'Agriculture', 8: 'Aliens and Nationality',
+              9: 'Arbitration', 10: 'Armed Forces', 11: 'Bankruptcy', 12: 'Banks and Banking', 13: 'Census', 14: 'Coast Guard',
+              15: 'Commerce and Trade', 16: 'Conservation', 17: 'Copyrights', 18: 'Crimes and Criminal Procedure', 19: 'Customs Duties',
+              20: 'Education', 21: 'Food and Drugs', 22: 'Foreign Relations and Intercourse', 23: 'Highways', 24: 'Hospitals and Asylums',
+              25: 'Indians', 26: 'Internal Revenue Code', 27: 'Intoxicating Liquors', 28: 'Judiciary and Judicial Procedure', 29: 'Labor',
+              30: 'Mineral Lands and Mining', 31: 'Money and Finance', 32: 'National Guard', 33: 'Navigation and Navigable Waters',
+              34: 'Crime Control and Law Enforcement', 35: 'Patents', 36: 'Patriotic and National Observances', 37: 'Pay and Allowances of the Uniformed Services',
+              38: "Veterans' Benefits", 39: 'Postal Service', 40: 'Public Buildings, Property, and Works', 41: 'Public Contracts',
+              42: 'The Public Health and Welfare', 43: 'Public Lands', 44: 'Public Printing and Documents', 45: 'Railroads', 46: 'Shipping',
+              47: 'Telecommunications', 48: 'Territories and Insular Possessions', 49: 'Transportation', 50: 'War and National Defense',
+              51: 'National and Commercial Space Programs', 52: 'Voting and Elections', 54: 'National Park Service and Related Programs'}
+PAREN = re.compile(r'\(\s*((?:holding|concluding|explaining|recognizing|finding|rejecting|observing|reasoning|declaring|upholding|striking down|'
+                   r'invalidating|deciding|ruling|stating|noting|describing|construing|interpreting)\b(?:[^()]|\([^()]*\)){25,420})\)')
+
+
+def parenthetical(text, it, limit=1):
+    """The description a source attaches to a citation: "467 U.S. 837, 842-843 (1984) (holding that ...)"."""
+    out = []
+    for rx in cite_patterns(it):
+        for m in rx.finditer(text):
+            tail = text[m.end(): m.end() + 140]
+            pm = PAREN.search(text, m.end(), m.end() + 600)
+            if not pm or pm.start() - m.end() > 120 or re.search(r'\d+\s+(?:U\.\s*S\.|S\.\s*Ct\.|F\.)', text[m.end(): pm.start()]):
+                continue
+            t = norm_ws(pm.group(1))
+            t = t[0].upper() + t[1:]
+            out.append(t.rstrip(' .;,') + '.')
+            if len(out) >= limit:
+                return out
+    return out
+
+
+ABBR = re.compile(r'(?:\b[A-Z]|\b(?:Mr|Ms|Dr|Jr|Sr|St|No|v|Co|Inc|Corp|Ltd|Ass|Dept|Gov|Gen|Sec|U\.S|Stat|Cir|App))$')
+
+
+def split_sents(t):
+    out = []
+    for piece in re.split(r'(?<=[.!?])\s+(?=[A-Z])', t):
+        if out and ABBR.search(out[-1][:-1]):
+            out[-1] += ' ' + piece
+        else:
+            out.append(piece)
+    return out
+HELD = re.compile(r'\b(held|holds|ruled|concluded|determined|found|reasoned|decided)\b')
+
+
+def held_sentences(t, cap=420):
+    """The sentences of a summary from the first one that says what the Court held, without the vote and author."""
+    t = norm_ws(t)
+    t = re.sub(r'^(?:Yes|No|Yes and no|No and yes)[.,:;]\s*', '', t)
+    sents = [x.strip() for x in split_sents(t) if x.strip()]
+    i = next((n for n, x in enumerate(sents) if HELD.search(x)), 0)
+    out = ''
+    for x in sents[i:]:
+        if out and len(out) + len(x) > cap:
+            break
+        out = (out + ' ' + x.rstrip('.') + '.').strip()
+    out = re.sub(r'^In an? (?:\d+-\d+ |unanimous |per curiam |plurality )?(?:opinion|decision)[^,]{0,90}, ', '', out)
+    out = re.sub(r'^(?:Justice|Chief Justice) [A-Z][^,]{2,40}, writing for [^,]{3,60}, ', '', out)
+    return (out[:1].upper() + out[1:]) if out else ''
+
+
+def oyez_conclusion(cid):
+    p = 'data/raw/oyez/cases/' + cid.replace('/', '_') + '.json'
+    if not os.path.exists(p):
+        return ''
+    d = json.load(open(p, encoding='utf-8'))
+    t = html.unescape(re.sub(r'<[^>]+>', ' ', d.get('conclusion') or ''))
+    return held_sentences(t) if t.strip() else ''
+
+
+HEADNOTES = {}
+
+
+def headnote(cid):
+    """The 'Held:' part of the official syllabus, or the first headnote, from docs/data/headnotes (build_headnotes.py)."""
+    if not HEADNOTES:
+        for p in glob.glob('docs/data/headnotes/*.js'):
+            t = open(p, encoding='utf-8').read()
+            HEADNOTES.update(json.loads(t[t.index('HEADNOTES,') + 10:-2]))
+        HEADNOTES.setdefault('_', {})
+    h = (HEADNOTES.get(cid) or {}).get('h') or ''
+    if not h:
+        return '', ''
+    m = re.search(r'(?:^|\n)Held: (.+)', h)
+    src = 'Syllabus (U.S. Reports)' if (HEADNOTES[cid].get('src') == 'loc') else 'Headnote (U.S. Reports)'
+    first = (m.group(1) if m else h.split('\n')[0])
+    first = re.sub(r'\s*Pp?\. \d+(?:-\d+)?\.?\s*$', '', first.split('\n')[0]).strip()
+    if len(first) > 420:
+        cut = first[:420]
+        first = cut[:cut.rfind(' ')] + ' …'
+    return first, src
+
+
+AIB = {}
+
+
+def ai_holding(cid):
+    if not AIB and os.path.exists('data/raw/aibriefs/briefs.json'):
+        AIB.update(json.load(open('data/raw/aibriefs/briefs.json', encoding='utf-8')))
+        AIB.setdefault('_', {})
+    return ((AIB.get(cid) or {}).get('holding') or '').strip()
+
+
+def site_summary(cid):
+    """What the site already says the case held: the official holding, Oyez's description or conclusion, the U.S. Reports
+    syllabus or headnote, or (labelled) the AI brief's holding."""
+    c = site_by_id.get(cid) or {}
+    if c.get('h'):
+        return c['h'], 'Holding (supremecourt.gov)'
+    if c.get('ds'):
+        t = re.sub(r'^A case in which the Court (held|considered|decided|determined|ruled|found|concluded)\s+',
+                   lambda m: 'The Court ' + m.group(1) + ' ', c['ds'])
+        return t, 'Oyez'
+    t = oyez_conclusion(cid)
+    if t:
+        return t, 'Oyez'
+    t, src = headnote(cid)
+    if t:
+        return t, src
+    t = ai_holding(cid)
+    if t:
+        return t, 'AI-generated brief'
+    return '', ''
+
+
 # ------------------------------------------------------------------ per case
 SIDE_LABEL = {'petitioner': 'Petitioner', 'respondent': 'Respondent', 'reply': 'Reply', 'united-states': 'United States'}
 
@@ -650,6 +779,36 @@ def build_case(dk, man, transcripts):
         for bi in sorted(it['by']):
             for q in find_quotes(texts[bi], it, limit=2):
                 it['q'].append({'src': 'brief', 'b': bi, 'text': q['text'], 'cite': q['cite']})
+    # distinctive short names (party name of a case, "section <n>" of a statute) for counting mentions
+    shorts = collections.Counter()
+    names = {}
+    for k in order:
+        it = items[k]
+        if it['t'] == 'case':
+            sn = short_name(it['label'])
+            if sn:
+                names[k] = sn
+                shorts[sn] += 1
+        elif it['t'] == 'usc':
+            names[k] = 'sec:' + it['sec']
+            shorts['sec:' + it['sec']] += 1
+    own = set(w.lower() for w in re.findall(r"[A-Za-z][A-Za-z'’\-]+", (case or {}).get('n', '')))
+    # a name that is also a party in another cited case (Laitram v. Deepsouth / Deepsouth v. Laitram) is ambiguous
+    anywhere = collections.Counter(w for k in order if items[k]['t'] == 'case'
+                                   for w in set(re.findall(r"[A-Z][A-Za-z'’\-]+", items[k]['label'])))
+    name_rx = {}
+    for k, sn in names.items():
+        if shorts[sn] > 1 or (not sn.startswith('sec:') and (sn.lower() in own or anywhere[sn] > 1)):
+            continue
+        name_rx[k] = re.compile(r'(?:\b[Ss]ection\s+|§\s*)' + re.escape(sn[4:]) + r'\b(?![(\w])' if sn.startswith('sec:') else r'\b' + re.escape(sn) + r'(?:[’\']s)?\b')
+
+    def mentions(text, it, k):
+        n = sum(len(rx.findall(text)) for rx in cite_patterns(it))
+        if k in name_rx:
+            n = max(n, len(name_rx[k].findall(text)))
+        return n
+    for k in order:
+        items[k]['op'] = items[k]['ar'] = 0
     # the opinion
     op_path = f'{RAW}/{dk}/opinion.txt'
     has_op = os.path.exists(op_path) and man.get('opinion')
@@ -663,8 +822,15 @@ def build_case(dk, man, transcripts):
             flat.append(seg)
         otext = ' '.join(flat)
         part_at = lambda pos: [lab for o, lab in offs if o <= pos][-1]
+        body_at = next((o for o, lab in offs if lab != 'Syllabus'), 0)
+        obody = otext[body_at:]
         for k in order:
             it = items[k]
+            it['op'] = mentions(obody, it, k)
+            if it['t'] in ('case', 'usc') and it['op']:
+                ph = parenthetical(obody, it)
+                if ph:
+                    it['sum'], it['sumSrc'] = ph[0], 'opinion'
             for q in find_quotes(otext, it, limit=4):
                 lab = part_at(q['pos'])
                 if lab == 'Syllabus':
@@ -676,53 +842,43 @@ def build_case(dk, man, transcripts):
     for tp in transcripts:
         turns += transcript_turns(tp)
     if turns:
-        shorts = collections.Counter()
-        names = {}
-        for k in order:
-            it = items[k]
-            if it['t'] == 'case':
-                s = short_name(it['label'])
-                if s:
-                    names[k] = s
-                    shorts[s] += 1
-            elif it['t'] == 'usc':
-                names[k] = 'sec:' + it['sec']
-                shorts['sec:' + it['sec']] += 1
-        own = set(w.lower() for w in re.findall(r"[A-Za-z][A-Za-z'’\-]+", (case or {}).get('n', '')))
-        # a name that is also a party in another cited case (Laitram v. Deepsouth / Deepsouth v. Laitram) is ambiguous
-        anywhere = collections.Counter(w for k in order if items[k]['t'] == 'case'
-                                       for w in set(re.findall(r"[A-Z][A-Za-z'’\-]+", items[k]['label'])))
-        for k, s in names.items():
-            if shorts[s] > 1 or (not s.startswith('sec:') and (s.lower() in own or anywhere[s] > 1)):
-                continue
-            rx = re.compile(r'\b[Ss]ection\s+' + re.escape(s[4:]) + r'\b(?![(\w])' if s.startswith('sec:') else r'\b' + re.escape(s) + r'(?:[’\']s)?\b')
-            got = 0
-            for who, txt in turns:
-                m = rx.search(txt)
-                if not m:
-                    continue
-                items[k]['q'].append({'src': 'argument', 'who': who, 'text': sentences_around(txt, m.start(), m.end())})
-                got += 1
-                if got >= 3:
-                    break
-    # statutory text for the most-cited sections
-    usc = [k for k in order if items[k]['t'] == 'usc']
-    rank = lambda k: (len(items[k]['by']) + 2 * sum(q['src'] == 'opinion' for q in items[k]['q']) + sum(q['src'] != 'opinion' for q in items[k]['q']) * 0.5,
-                      -len(items[k]['label']))
-    for k in sorted(usc, key=rank, reverse=True)[:6]:
+        for k, rx in name_rx.items():
+            items[k]['ar'] = sum(1 for who, txt in turns if rx.search(txt))
+    # what each relevant case held: the opinion's own description (above), else the site's summary of the case,
+    # else a brief's description of it
+    for k in order:
         it = items[k]
-        if len(it['by']) < 2 and not it['q']:
+        if it['t'] != 'case' or it.get('sum'):
+            continue
+        if it.get('id'):
+            t, src = site_summary(it['id'])
+            if t:
+                it['sum'], it['sumSrc'] = t, src
+                continue
+        for bi in sorted(it['by']):
+            ph = parenthetical(texts[bi], it)
+            if ph:
+                it['sum'], it['sumSrc'] = ph[0], 'brief:' + str(bi)
+                break
+    # statutes: section heading and text for the most relevant sections
+    usc = [k for k in order if items[k]['t'] == 'usc']
+    rank = lambda k: (3 * items[k]['op'] + items[k]['ar'] + len(items[k]['by']), -len(items[k]['label']))
+    for k in sorted(usc, key=rank, reverse=True)[:15]:
+        it = items[k]
+        if not (it['op'] or it['ar'] or len(it['by']) >= 2):
             continue
         tx = usc_text(it['title'], it['sec'])
         if tx:
             it['stext'] = tx
+            it['head'] = tx['head']
+        it['tname'] = USC_TITLES.get(int(it['title']) if str(it['title']).isdigit() else 0, '')
     out_items = []
     for k in order:
         it = items[k]
-        o = {x: it[x] for x in ('t', 'label', 'cite', 'y', 'court', 'id', 'url', 'subs', 'clauses', 'text', 'stext', 'sc') if it.get(x)}
+        o = {x: it[x] for x in ('t', 'label', 'cite', 'y', 'court', 'id', 'url', 'subs', 'clauses', 'text', 'stext', 'sc', 'op', 'ar',
+                                'sum', 'sumSrc', 'head', 'tname') if it.get(x)}
         o['by'] = {str(b): p for b, p in it['by'].items()}
-        if it['q']:
-            o['q'] = it['q']
+        o['label'] = re.sub(r'^\s*(?:CASES|Cases|STATUTES|Statutes|AUTHORITIES)\s+', '', o['label']).strip()
         out_items.append(o)
     return {'d': dk, 'id': (case or {}).get('id'), 'n': (case or {}).get('n'), 'briefs': briefs, 'opinion': man.get('opinion') if has_op else None,
             'tr': bool(turns), 'items': out_items}

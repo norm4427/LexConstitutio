@@ -68,6 +68,17 @@ def sides(name):
     return words(m.group(1)), words(m.group(2))
 
 
+def raw_sides(name):
+    """The first capitalized word of each side, common or short ones included ("Trump", "Roy"): for full-name patterns
+    of a case that has at least one distinctive party name."""
+    m = re.match(r'^\s*(?:The\s+)?(.+?)\s+v\.\s+(?:The\s+)?(.+?)(?:\s*\(\d\))?$', name)
+    if not m:
+        return None
+    first = lambda s: next((w for w in re.findall(r"[A-Z][A-Za-z'’\-]{2,}", s) if w.lower() not in ('the', 'inc', 'ltd', 'llc', 'corp')), None)
+    a, b = first(m.group(1)), first(m.group(2))
+    return (a, b) if a and b else None
+
+
 def main():
     S = load_js('docs/data/scotus.js')['cases']
     K = load_js('docs/data/docket.js')
@@ -158,17 +169,33 @@ def main():
     every.update({c['id']: c for c in pend})
     word_idx = collections.defaultdict(set)
     sides_of = {}
+    one_sided = {}
     for cid, c in every.items():
         sd = info[cid][0] if cid in info else sides(c['n'])
-        if not sd or not (sd[0] and sd[1]):
+        raw = raw_sides(c['n'])
+        if not sd or not raw or not (sd[0] or sd[1]):
             continue
-        sides_of[cid] = sd
-        word_idx[sd[0][0]].add(cid)
-        word_idx[sd[1][0]].add(cid)
+        # one distinctive party name is enough when the other side's first word ("Trump", "Roy") completes the pattern
+        left = sd[0][0] if sd[0] else raw[0]
+        right = sd[1][0] if sd[1] else raw[1]
+        if not (sd[0] and sd[1]) and len(raw[0]) + len(raw[1]) < 8:
+            continue
+        sides_of[cid] = ([left], [right])
+        if not (sd[0] and sd[1]):
+            m = re.match(r'^\s*(?:The\s+)?(.+?)\s+v\.\s+(?:The\s+)?(.+?)(?:\s*\(\d\))?$', c['n'])
+            # the common-named side written out in full right beside "v." ("Trump v. Barbara", "United States v. Rahimi")
+            gl = re.escape(re.sub(r',.*$', '', m.group(1)).strip())
+            one_sided[cid] = re.compile(re.escape(re.sub(r'\s*\(\d\)$', '', c['n'])) + '|' + (
+                r'\b' + gl + r'\s+v\.\s+(?:[\w.,&\'’-]+\s+){0,2}?' + re.escape(right) + r'\b' if not sd[0] else
+                r'\b' + re.escape(left) + r'\b[^\n.]{0,40}?\s+v\.\s+' + re.escape(re.sub(r',.*$', '', m.group(2)).strip()) + r'\b'))
+        for w in (sd[0][:1] + sd[1][:1]):
+            word_idx[w].add(cid)
     rx_cache = {}
     short_cache = {}
 
     def rx_full(cid):
+        if cid in one_sided:
+            return one_sided[cid]
         if cid not in rx_cache:
             sd = sides_of[cid]
             rx_cache[cid] = re.compile(re.escape(re.sub(r'\s*\(\d\)$', '', every[cid]['n'])) + '|' + r'\b' + re.escape(sd[0][0]) +
@@ -212,6 +239,8 @@ def main():
                 fr = rx_full(cid)
                 d = date.fromisoformat(c['dec']) if c.get('dec') else date.fromisoformat(c['from'])
                 in_window = (d - timedelta(days=30) <= ed <= d + timedelta(days=700)) if c.get('pending') else (d - timedelta(days=540) <= ed <= d + timedelta(days=460))
+                if cid in one_sided and not in_window:            # a common name far from the decision: only the case's exact name
+                    fr = re.compile(re.escape(re.sub(r'\s*\(\d\)$', '', c['n'])))
                 if cid in rx:
                     sr = rx[cid][1]
                 elif cid in info and in_window:

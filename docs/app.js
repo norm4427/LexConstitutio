@@ -1159,8 +1159,8 @@
         <p class="attrib">Counsel listed on the <a href="${esc(P.docket)}" target="_blank" rel="noopener">Supreme Court docket for No. ${esc(P.d)}</a>${P.also ? ` (and No. ${P.also.map(esc).join(', ')})` : ''}, with the firm or office the docket gives. Contact details are left out.</p>` : ''}
     </section>`;
   }
-  /* The Authorities tab: what the briefs rely on (from their Tables of Authorities), and the passages of those
-     authorities as the briefs, the opinion and the argument actually quote them. */
+  /* The Authorities tab: the cases and statutes the opinion and the argument discuss most, each with a short sourced
+     summary, then everything the briefs cite (from their Tables of Authorities). */
   function renderAuthorities(el, A, c) {
     const B = A.briefs;
     const items = A.items;
@@ -1171,41 +1171,42 @@
     const meta = it => it.t === 'case' ? [it.cite, it.court ? `${it.court} ${it.y || ''}`.trim() : it.y].filter(Boolean).map(esc).join(' · ') : it.subs && it.subs.length > 1 ? 'Subsections cited: ' + it.subs.slice(0, 8).map(esc).join(', ') + (it.subs.length > 8 ? '…' : '') : '';
     const chips = it => Object.entries(it.by).map(([i, p]) => `<span class="au-chip au-${esc(B[i].side)}" title="${esc(B[i].label || briefName(B[i]))}, page${/[,–-]|passim/.test(p) ? 's' : ''} ${esc(p)}">${esc(shortOf(i))}</span>`).join('');
     const clauseLinks = it => it.clauses ? `<div class="au-clauses">Annotated Constitution: ${it.clauses.map(([id, name]) => `<a href="${hashFor('corner/constitution', { c: id })}">${esc(name)}</a>`).join(' · ')}</div>` : '';
-    const srcOrder = { opinion: 0, brief: 1, argument: 2 };
-    const quoteHtml = q => {
-      const who = q.src === 'brief' ? `<a href="${esc(B[q.b].url)}" target="_blank" rel="noopener">${esc(briefName(B[q.b]))}</a>` : q.src === 'opinion' ? (A.opinion ? `<a href="${esc(A.opinion)}" target="_blank" rel="noopener">${esc(q.who)}</a>` : esc(q.who)) : `Oral argument · ${esc(q.who)}`;
-      return `<figure class="au-q au-q-${q.src}"><blockquote>${q.src === 'argument' ? '' : '“'}${esc(q.text)}${q.src === 'argument' ? '' : '”'}</blockquote><figcaption>${who}${q.cite ? ` · <span>${esc(q.cite)}</span>` : ''}</figcaption></figure>`;
-    };
-    const stextHtml = (s, open) => `<details class="au-stext"${open ? ' open' : ''}><summary>Text of ${esc(s.head || 'the section')} <small>U.S. Code${s.ed ? ', ' + esc(s.ed) + ' edition' : ''} (govinfo)</small></summary>
+    const stextHtml = s => `<details class="au-stext"><summary>Text of ${esc(s.head || 'the section')} <small>U.S. Code${s.ed ? ', ' + esc(s.ed) + ' edition' : ''} (govinfo)</small></summary>
       <div class="au-stat">${s.paras.map(([ind, t]) => `<p style="margin-left:${ind * 1.1}em">${esc(t)}</p>`).join('')}${s.more ? '<p class="muted-line">…</p>' : ''}</div>
       <a class="link-arrow" href="${esc(s.src)}" target="_blank" rel="noopener">Full section at govinfo.gov ↗</a></details>`;
-    const score = it => (it.q || []).reduce((s, q) => s + (q.src === 'opinion' ? 3 : q.src === 'argument' ? 1.5 : 1), 0) + Object.keys(it.by).length + (it.stext ? 1 : 0);
-    const quoted = items.filter(it => (it.q && it.q.length) || it.stext || (it.t === 'const' && it.text)).sort((a, b) => score(b) - score(a));
+    const sumSource = it => { const x = it.sumSrc || ''; return x === 'opinion' ? 'as the Court’s opinion describes it' : x.startsWith('brief:') ? 'as ' + briefName(B[+x.slice(6)] || {}) + ' describes it' : x === 'AI-generated brief' ? 'AI-generated summary' : x.replace(/^Holding \((.+)\)$/, '$1').replace(/ \(U\.S\. Reports\)$/, ', U.S. Reports'); };
+    const rel = it => 3 * (it.op || 0) + (it.ar || 0) + 0.5 * Object.keys(it.by).length;
+    let top = items.filter(it => (it.op || 0) + (it.ar || 0) > 0 && it.t !== 'reg' && it.t !== 'rule').sort((a, b) => rel(b) - rel(a));
+    const byMentions = top.length > 0;
+    if (!byMentions) top = items.filter(it => Object.keys(it.by).length >= 2 && (it.t === 'case' || it.t === 'usc' || it.t === 'const')).sort((a, b) => rel(b) - rel(a));
+    top = top.slice(0, 30);
+    const mention = it => [it.op ? `named ${it.op} time${it.op === 1 ? '' : 's'} in the opinion` : '', it.ar ? `in ${it.ar} exchange${it.ar === 1 ? '' : 's'} at argument` : ''].filter(Boolean).join(' · ');
     const card = (it, i) => {
-      const qs = (it.q || []).slice().sort((a, b) => srcOrder[a.src] - srcOrder[b.src]);
+      const what = it.t === 'usc' ? [it.head, it.tname ? 'Title ' + (it.label.match(/^(\d+)/) || [, ''])[1] + ', ' + it.tname : ''].filter(Boolean).join(' — ') : '';
       return `<article class="au-card${i >= 10 ? ' au-more' : ''}"${i >= 10 ? ' hidden' : ''}>
-        <header><h3>${authLink(it, title(it))}</h3><div class="au-meta">${meta(it)}${chips(it)}</div></header>
+        <header><h3>${authLink(it, title(it))}</h3><div class="au-meta">${meta(it)}${chips(it)}</div>${mention(it) ? `<div class="au-ment">${esc(mention(it))}</div>` : ''}</header>
         ${it.t === 'const' && it.text ? `<blockquote class="au-const">${esc(it.text)}</blockquote>${clauseLinks(it)}` : ''}
-        ${it.stext ? stextHtml(it.stext, i < 3 && !qs.length) : ''}
-        ${qs.map(quoteHtml).join('')}
+        ${what ? `<p class="au-sum"><span>Pertains to</span>${esc(what)}</p>` : ''}
+        ${it.sum ? `<p class="au-sum${it.sumSrc === 'AI-generated brief' ? ' au-ai' : ''}"><span>${it.t === 'case' ? 'Held' : 'Summary'} <em>· ${esc(sumSource(it))}</em></span>${esc(it.sum)}</p>` : ''}
+        ${it.stext ? stextHtml(it.stext) : ''}
       </article>`;
     };
     const groups = [['const', 'Constitutional provisions'], ['case', 'Cases'], ['usc', 'Statutes'], ['law', 'Public laws'], ['reg', 'Regulations'], ['rule', 'Federal rules']];
     const sorted = list => list.slice().sort((a, b) => (Object.keys(b.by).length - Object.keys(a.by).length) || (b.sc || 0) - (a.sc || 0) || a.label.localeCompare(b.label, 'en', { numeric: true }));
     const row = it => `<li data-sides="${[...sides(it)].join(' ')}"><div class="au-row-t">${authLink(it, title(it))}</div><div class="au-row-m">${meta(it) ? `<span>${meta(it)}</span>` : ''}${chips(it)}</div>
       ${it.t === 'const' ? clauseLinks(it) : ''}</li>`;
-    const nOp = items.filter(it => (it.q || []).some(q => q.src === 'opinion')).length;
+    const nOp = items.filter(it => it.op).length;
     el.innerHTML = `<section class="au">
-      <p class="au-intro">${fmt(items.length)} authorities cited in the Tables of Authorities of ${B.length} merits brief${B.length === 1 ? '' : 's'}${A.opinion ? `; ${nOp} of them quoted in the Court's opinion` : ''}${A.tr ? '; with the passages where the argument transcript names them' : ''}. Quotations are reproduced exactly as they appear in each source and attributed to it.</p>
+      <p class="au-intro">${fmt(items.length)} authorities cited in the Tables of Authorities of ${B.length} merits brief${B.length === 1 ? '' : 's'}${A.opinion ? `; ${nOp} of them named in the Court's opinion` : ''}${A.tr ? '; ranked by how often the opinion and the oral argument discuss them' : ''}.</p>
       <div class="briefs au-briefs">${B.map((b, i) => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(briefName(b))}</b><span>${esc(b.label)}</span><em>${b.n ? `${b.n} authorities · ` : ''}${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}PDF ↗</em></a>`).join('')}</div>
-      ${quoted.length ? `<h2>In their own words</h2><p class="muted-line au-sub">The authorities the case turned on, with the passages quoted from them${A.opinion ? ' in the opinion,' : ''} in the briefs${A.tr ? ' and at oral argument' : ''}, and the text of the main statutes.</p>
-        <div class="au-cards">${quoted.map(card).join('')}</div>
-        ${quoted.length > 10 ? `<button class="btn btn-ghost btn-sm" id="au-all">Show all ${quoted.length} quoted authorities</button>` : ''}` : ''}
+      ${top.length ? `<h2>Most relevant authorities</h2><p class="muted-line au-sub">${byMentions ? `The cases and statutes ${A.opinion ? 'the Court’s opinion' : ''}${A.opinion && A.tr ? ' and ' : ''}${A.tr ? 'the oral argument' : ''} discuss most` : 'Cited in more than one brief (no opinion or argument transcript yet)'}, with what each case held or what each statute covers.</p>
+        <div class="au-cards">${top.map(card).join('')}</div>
+        ${top.length > 10 ? `<button class="btn btn-ghost btn-sm" id="au-all">Show ${top.length - 10} more</button>` : ''}` : ''}
       <h2>Cited in the briefs</h2>
       <div class="au-tools"><div class="seg" role="group" aria-label="Side"><button data-side="" class="on">All</button><button data-side="both">Both sides</button><button data-side="pet">Petitioner's side</button><button data-side="res">Respondent's side</button></div>
         <span class="au-legend"><span class="au-chip au-pet">Pet.</span> petitioner <span class="au-chip au-res">Resp.</span> respondent <span class="au-chip au-us">U.S.</span> United States · hover a tag for page numbers</span></div>
       ${groups.map(([t, label]) => { const list = sorted(items.filter(it => it.t === t)); return list.length ? `<div class="au-group"><h3 class="au-gh">${label} <span>${list.length}</span></h3><ul class="au-list">${list.map(row).join('')}</ul></div>` : ''; }).join('')}
-      <p class="attrib">Authorities read from each brief's Table of Authorities (briefs from the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener">Supreme Court docket for No. ${esc(A.d)}</a>); entries that could not be read confidently are left out, as are secondary sources. Quotations: a passage in quotation marks followed directly by a citation to the authority in the brief or opinion; at argument, the sentence in which a speaker names it. Statutory text: U.S. Code (govinfo.gov, public domain). Case links go to this site's page when the case is here, otherwise to Justia or CourtListener.</p>
+      <p class="attrib">Authorities read from each brief's Table of Authorities (briefs from the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener">Supreme Court docket for No. ${esc(A.d)}</a>); entries that could not be read confidently are left out, as are secondary sources. Mentions: the authority's citation or distinctive party name (or "section <i>n</i>") in the opinion, and the argument exchanges that name it. Summaries: the opinion's own description of a cited case where it gives one ("holding that …"), otherwise the case's holding or summary on this site (supremecourt.gov, Oyez, the U.S. Reports syllabus, or an AI-generated brief, as labelled), otherwise a brief's description; statutes by their U.S. Code section heading. Statutory text: U.S. Code (govinfo.gov, public domain). Case links go to this site's page when the case is here, otherwise to Justia or CourtListener.</p>
     </section>`;
     const all = el.querySelector('#au-all');
     if (all) all.addEventListener('click', () => { el.querySelectorAll('.au-more').forEach(x => { x.hidden = false; }); all.remove(); });
@@ -1328,12 +1329,12 @@
     const caseName = c.n.toLowerCase().replace(/\s*\(\d\)$/, '');
     const relatedArticles = caseName.length < 10 ? [] : articles.filter(a => a._t.includes(caseName) || a._ab.includes(caseName))
       .sort((x, y) => (y.c ?? -1) - (x.c ?? -1)).slice(0, 6);
-    // tabs: the overview (summary, opinions, briefs, audio); the authorities the briefs rely on, with quotations; and,
+    // tabs: the overview (summary, opinions, briefs, audio); the authorities the briefs rely on, ranked by discussion; and,
     // for pending cases, the predicted outcome. Switching tabs does not re-render the page, so argument audio keeps playing.
     const adk = (AI && (AI[c.id] || (pend && AI[pend.id]))) || null;
     const hasParties = c.s !== 1 || ((window.PARTIES_INDEX || []).includes(String(c.t)));
     const hasMedia = (window.MEDIA_INDEX || []).includes(c.id);
-    const TABS = [['', 'Overview'], adk ? ['authorities', 'Authorities & quotes'] : null, hasParties ? ['parties', 'Parties & advocates'] : null, hasMedia ? ['media', 'In the media'] : null, pend ? ['prediction', 'Predicted outcome'] : null].filter(Boolean);
+    const TABS = [['', 'Overview'], adk ? ['authorities', 'Authorities'] : null, hasParties ? ['parties', 'Parties & advocates'] : null, hasMedia ? ['media', 'In the media'] : null, pend ? ['prediction', 'Predicted outcome'] : null].filter(Boolean);
     let tab = (params && params.get('tab')) || '';
     if (!TABS.some(t => t[0] === tab)) tab = '';
     const tabHref = k => `#/case/${c.id}${k ? '?tab=' + k : ''}`;
@@ -1445,7 +1446,7 @@
     if (!pend && adk) loadAuth(adk).then(A => {
       const el = document.getElementById('case-briefs');
       if (token !== routeToken || !el || !A.briefs.length) return;
-      el.innerHTML = `<h2>Merits briefs</h2>${briefTiles(A.briefs)}<p class="attrib">From the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court docket for No. ${esc(A.d)}</a>. What the briefs cite, with quotations: <a href="${esc(tabHref('authorities'))}" data-goto-tab="authorities" style="color:var(--accent)">Authorities &amp; quotes →</a></p>`;
+      el.innerHTML = `<h2>Merits briefs</h2>${briefTiles(A.briefs)}<p class="attrib">From the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court docket for No. ${esc(A.d)}</a>. What the briefs cite, and the cases and statutes that matter most: <a href="${esc(tabHref('authorities'))}" data-goto-tab="authorities" style="color:var(--accent)">Authorities →</a></p>`;
       el.querySelector('[data-goto-tab]').addEventListener('click', e => { e.preventDefault(); app.querySelector('.case-tabs [data-tab="authorities"]').click(); window.scrollTo({ top: 0 }); });
     }).catch(() => {});
     if (c.s === 1) {   // listed from the Supreme Court Database only; Oyez has no record of it
