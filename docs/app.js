@@ -868,7 +868,7 @@
   let caseById = null;
   function viewScotus(params) { withData([['scotus', 'SCOTUS'], ['case_impact', 'CASE_IMPACT']], (S, I) => renderScotus(S, params, I)); }
   function renderScotus(S, params, I) {
-    const st = { q: params.get('q') || '', tag: params.get('tag') || '', era: params.get('era') || '', audio: params.get('audio') === '1', con: params.get('con') === '1', sort: params.get('sort') || 'newest', page: Math.max(1, +params.get('page') || 1), v: params.get('v') === 'justices' ? 'justices' : '' };
+    const st = { q: params.get('q') || '', tag: params.get('tag') || '', era: params.get('era') || '', audio: params.get('audio') === '1', con: params.get('con') === '1', sort: params.get('sort') || 'newest', page: Math.max(1, +params.get('page') || 1) };
     const pq = parseQuery(st.q);
     const era = ERAS.find(e => e.id === st.era);
     const filt = (skipTag) => S.cases.filter(c => {
@@ -913,16 +913,14 @@
         </aside>
         <div>
           <div class="toolbar"><div class="count"><button class="btn btn-ghost btn-sm filter-toggle" id="filter-toggle">Filters</button> <span id="sc-count"><b>${fmt(list.length)}</b> case${list.length === 1 ? '' : 's'}</span></div>
-            <div class="sc-tools"><div class="seg" role="group" aria-label="List"><button data-view="" class="${st.v ? '' : 'on'}">Cases</button><button data-view="justices" class="${st.v ? 'on' : ''}">Justices</button></div>
-            ${st.v ? '' : `<div class="seg" role="group" aria-label="Sort">
+            <div class="sc-tools"><div class="seg" role="group" aria-label="Sort">
               <button data-sort="newest" class="${st.sort === 'newest' ? 'on' : ''}">Newest</button>
               <button data-sort="oldest" class="${st.sort === 'oldest' ? 'on' : ''}">Oldest</button>
               <button data-sort="cited" class="${st.sort === 'cited' ? 'on' : ''}" title="Cited most often by later Supreme Court opinions">Most cited</button>
-            </div>`}</div></div>
-          ${st.v ? '<div id="sc-justices"><p class="muted-line"><span class="spinner sm"></span> Loading the justices…</p></div>' : `
+            </div></div></div>
           ${st.sort === 'cited' ? '<p class="muted-line" style="margin:-4px 0 12px">Ranked by how many later Supreme Court opinions cite each case (Caselaw Access Project, Harvard Law School Library). Its data runs to about 2020, so recent decisions are not yet scored.</p>' : ''}
           ${slice.length ? `<div class="cards">${slice.map(c => caseCard(c, imp(c.id))).join('')}</div>` : '<div class="empty"><h3>No cases found</h3><p>Try fewer keywords or another era.</p></div>'}
-          ${pager(list.length, page, 'scotus')}`}
+          ${pager(list.length, page, 'scotus')}
         </div>
       </div></div>`;
     document.getElementById('sc-form').addEventListener('submit', e => { e.preventDefault(); go({ q: document.getElementById('sc-q').value.trim() }); });
@@ -932,23 +930,7 @@
     app.querySelectorAll('[data-tag]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); go({ tag: a.dataset.tag }); }));
     document.getElementById('filter-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
     app.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => go({ sort: b.dataset.sort })));
-    app.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { keepScrollOnce = true; go({ v: b.dataset.view }); }));
-    if (!st.v) { bindPager(n => go({ page: n })); return; }
-    // Justices view: the same compact list, of the justices who served in the selected era (and match the search)
-    const tk = routeToken;
-    loadData('justices', 'JUSTICES').then(J => {
-      const box = document.getElementById('sc-justices');
-      if (tk !== routeToken || !box) return;
-      const from = j => +yearOf(j.roles[0].start), to = j => j.roles[j.roles.length - 1].end ? +yearOf(j.roles[j.roles.length - 1].end) : 9999;
-      const js = J.justices.filter(j => (!era || (from(j) < era.to && to(j) >= era.from)) && (!pq.terms.length || pq.terms.every(t => j.name.toLowerCase().includes(t))))
-        .sort((a, b) => (isSitting(b) - isSitting(a)) || (isSitting(a) ? isChiefNow(b) - isChiefNow(a) || from(a) - from(b) : to(b) - to(a) || from(b) - from(a)));
-      document.getElementById('sc-count').innerHTML = `<b>${fmt(js.length)}</b> justice${js.length === 1 ? '' : 's'}`;
-      box.innerHTML = js.length ? `<ul class="sc-jlist">${js.map(j => { const r = j.roles; const appt = [...new Set(r.map(x => x.appointer).filter(Boolean))].join(', '); return `<li><a href="#/justice/${esc(j.id)}">
-        <span class="sc-jimg">${j.img ? `<img src="${esc(j.img)}" alt="" loading="lazy">` : ''}</span>
-        <span class="sc-jt"><b>${esc(j.name)}</b><span>${r.some(x => x.pos === 'Chief Justice') ? 'Chief Justice · ' : ''}${servedLabel(j)}${appt ? ' · appointed by ' + esc(appt) : ''}</span></span>
-        ${isSitting(j) ? '<span class="tag">Sitting</span>' : ''}</a></li>`; }).join('')}</ul>
-        <p class="attrib">The era filter shows every justice who served during it. Case-area filters apply to the case list only. <a href="#/justices" style="color:var(--accent)">Portrait grid of all justices →</a></p>` : '<div class="empty"><h3>No justices match</h3></div>';
-    }).catch(() => { const box = document.getElementById('sc-justices'); if (box) box.innerHTML = '<p class="muted-line">Could not load the justices.</p>'; });
+    bindPager(n => go({ page: n }));
   }
   const topPct = m => { const v = (1 - m[1]) * 100; return v < 0.1 ? v.toFixed(2) : v.toFixed(1); };
   const impactTitle = m => `Cited in ${fmt(m[2])} later Supreme Court opinion${m[2] === 1 ? '' : 's'}; citation PageRank in the top ${topPct(m)}% of American cases (Caselaw Access Project)`;
