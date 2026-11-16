@@ -1074,19 +1074,38 @@
     const tile = v => {
       const meta = [v.date ? fmtDate(v.date) : '', v.start ? `starts at ${clock(v.start)}` : ''].filter(Boolean).join(' · ');
       const thumb = videoThumb({ t: v.t, ch: v.ch, len: v.sec ? clock(v.sec) : '' }, iconKey);
+      if (v.kind === 'pod' && !(v.id && v.embed)) return `<div class="md-v"><button class="vtile md-pod" data-audio="${esc(v.audio || '')}" data-title="${esc(v.t)}" data-ch="${esc(v.ch)}" data-link="${esc(v.link || '')}" data-start="${v.start || 0}">${thumb}<span class="vm">${esc(meta)}${meta ? ' · ' : ''}podcast audio</span></button>${v.topic ? `<p class="md-topic">${esc(v.topic)}</p>` : ''}</div>`;
       return v.embed
         ? `<div class="md-v"><button class="vtile" data-video="${esc(v.id)}" data-title="${esc(v.t)}" data-ch="${esc(v.ch)}" data-start="${v.start || 0}">${thumb}<span class="vm">${esc(meta)}</span></button>${v.topic ? `<p class="md-topic">Chapter: ${esc(v.topic)}</p>` : ''}</div>`
         : `<div class="md-v"><a class="vtile" href="https://www.youtube.com/watch?v=${esc(v.id)}${v.start ? '&t=' + v.start + 's' : ''}" target="_blank" rel="noopener">${thumb}<span class="vm">${esc(meta)}${meta ? ' · ' : ''}watch on YouTube ↗</span></a></div>`;
     };
-    const isShow = v => /Advisory Opinions|SCOTUSblog|Strict Scrutiny|Divided Argument/.test(v.ch || '');
+    const isShow = v => v.kind === 'pod' || /Advisory Opinions|SCOTUSblog|Strict Scrutiny|Divided Argument/.test(v.ch || '');
     const shows = M.videos.filter(isShow), others = M.videos.filter(v => !isShow(v));
     el.innerHTML = `<section class="md">
       ${shows.length ? `<h2>Podcasts and shows</h2><div class="vgrid md-grid">${shows.map(tile).join('')}</div>
-        <p class="attrib">Episodes of ${[...new Set(shows.map(v => v.ch + (v.by && v.by !== v.ch ? ' (' + v.by + ')' : '')))].map(esc).join(', ')} that discuss this case, played through YouTube's embedded player. An episode starts at its chapter on the case when the show's description marks one.</p>` : ''}
+        <p class="attrib">Episodes of ${[...new Set(shows.map(v => v.ch + (v.by && v.by !== v.ch ? ' (' + v.by + ')' : '')))].map(esc).join(', ')} that discuss this case: the episode's video through YouTube's embedded player when the show posts one, otherwise the episode's audio from the show's public podcast feed. An episode starts at its chapter on the case when the show notes mark one; matches come from episode titles and show notes.</p>` : ''}
       ${others.length ? `<h2>Videos</h2><div class="vgrid md-grid">${others.map(tile).join('')}</div><p class="attrib">Videos whose titles name this case, played through YouTube's embedded player.</p>` : ''}
       ${M.print.length ? `<h2>In the newspapers</h2><div class="md-print">${M.print.map(p => `<a class="md-clip" href="${esc(p.url)}" target="_blank" rel="noopener">${p.img ? `<img src="${esc(p.img)}" alt="Page of ${esc(p.paper)}, ${esc(p.date)}" loading="lazy">` : ''}<b>${esc(p.paper)}</b><span>${esc(fmtDate(p.date))}${p.page ? ' · page ' + p.page : ''}</span><em>View the page ↗</em></a>`).join('')}</div>
         <p class="attrib">Newspaper pages printed in the weeks after the decision that name both parties and the Supreme Court, from <a href="https://www.loc.gov/collections/chronicling-america/" target="_blank" rel="noopener">Chronicling America</a> (Library of Congress; public domain). Search the page for the case name to find the story.</p>` : ''}
     </section>`;
+    el.querySelectorAll('.md-pod').forEach(b => b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openAudio(b.dataset); }));
+  }
+  /* a podcast episode's audio, streamed from the publisher's feed, in a modal; the audio dock takes over when it plays */
+  function openAudio(d) {
+    const m = document.createElement('div');
+    m.className = 'modal';
+    m.innerHTML = `<div class="modal-box md-audio" role="dialog" aria-label="${esc(d.title)}">
+      <div class="md-audio-body"><small>${esc(d.ch)}</small><b>${esc(d.title)}</b>
+        <audio controls autoplay preload="metadata" src="${esc(d.audio)}"></audio></div>
+      <div class="modal-foot"><div><span>Audio from the ${esc(d.ch)} podcast feed${+d.start ? ' · starts at the chapter on this case' : ''}</span></div>
+        <div style="display:flex;gap:8px">${d.link ? `<a class="btn btn-ghost btn-sm" href="${esc(d.link)}" target="_blank" rel="noopener">Show page ↗</a>` : ''}<button class="btn btn-primary btn-sm" data-close>Close</button></div></div></div>`;
+    const a = m.querySelector('audio');
+    if (+d.start > 0) a.addEventListener('loadedmetadata', () => { a.currentTime = +d.start; }, { once: true });
+    const close = () => { a.pause(); m.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-close]')) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(m);
   }
   const scriptLoading = {};
   function loadScriptOnce(src) {
