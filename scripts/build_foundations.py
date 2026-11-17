@@ -38,13 +38,32 @@ MAP = {
 SKIP_CLASS = re.compile(r'textbox|figure|wp-caption|learning|link-to-learning|footnote|media|glossary|review|key-terms')
 
 
+FIG = r'Figures? \d+\.\d+[a-z]?(?:\s*(?:and|,|–|-)\s*\d+\.\d+[a-z]?)*'
+
+
+def drop_refs(t):
+    """Remove references to the textbook's figures and notes, which the site doesn't show:
+    "(Figure 13.2)", "(see Figure 4.12)", "The Citadel, shown in Figure 5.2, must" -> "The Citadel must", "[29]"."""
+    t = re.sub(r'\[\d{1,3}\]', '', t)
+    t = re.sub(r'\s*\((?:see |as shown in )?' + FIG + r'\)', '', t)
+    t = re.sub(r'\s*\((?:see )?' + FIG + r'\.(?=\s|$)', '.', t)          # "(Figure 12.17. While" (unclosed in the source)
+    t = re.sub(r',\s*(?:as\s+)?(?:shown|seen|pictured|illustrated) in ' + FIG + r'\s*,', '', t)
+    t = re.sub(r',?\s*(?:as\s+)?(?:shown|seen|pictured|illustrated) in ' + FIG, '', t)
+    t = re.sub(r'\s+([.,;:])', r'\1', t)
+    t = re.sub(r'(?<!\.)\.\.(?!\.)', '.', t)          # "century. (Figure 12.18)." left two stops
+    return re.sub(r'\s{2,}', ' ', t).strip()
+
+
 class Blocks(HTMLParser):
-    """Headings and body paragraphs of a Pressbooks chapter, skipping boxes, figures and captions."""
+    """Headings and body paragraphs of a Pressbooks chapter, skipping boxes, figures, captions and footnote markers."""
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.out, self.skip, self.cur, self.tag, self.on = [], 0, [], None, False
+        self.out, self.skip, self.cur, self.tag, self.on, self.sup = [], 0, [], None, False, 0
 
     def handle_starttag(self, tag, attrs):
+        if tag == 'sup':          # footnote reference marks ([2]); the notes themselves aren't shown
+            self.sup += 1
+            return
         cls = dict(attrs).get('class') or ''
         if tag in ('div', 'figure', 'aside', 'section', 'table', 'ul', 'ol') and (self.skip or SKIP_CLASS.search(cls) or tag in ('figure', 'aside', 'table')):
             self.skip += 1
@@ -55,17 +74,20 @@ class Blocks(HTMLParser):
             self.tag, self.cur = tag, []
 
     def handle_endtag(self, tag):
+        if tag == 'sup':
+            self.sup = max(0, self.sup - 1)
+            return
         if self.skip and tag in ('div', 'figure', 'aside', 'section', 'table', 'ul', 'ol'):
             self.skip -= 1
             return
         if self.tag == tag:
-            t = re.sub(r'\s+', ' ', ''.join(self.cur)).strip()
+            t = drop_refs(re.sub(r'\s+', ' ', ''.join(self.cur)).strip())
             if t:
                 self.out.append((tag, t))
             self.tag = None
 
     def handle_data(self, d):
-        if self.tag and not self.skip:
+        if self.tag and not self.skip and not self.sup:
             self.cur.append(d)
 
 
@@ -94,6 +116,15 @@ def subsections(blocks):
     if cur['paras']:
         secs.append(cur)
     return secs
+
+
+def report_refs(out):
+    """Print any figure or note reference the patterns above left, for a look."""
+    for tid, t in out['topics'].items():
+        for b in t.get('basics', []):
+            for p in b['paras']:
+                if re.search(r'\bFig(?:ure)?s?\.? \d|\[\d+\]|\bTable \d', p):
+                    print('  reference left in', tid, ':', p[:140])
 
 
 def main():
@@ -131,6 +162,7 @@ def main():
         out[topic] = {'basics': [p[2] for p in picked], 'src': srcs, 'clauses': clauses}
         print(f'{topic:22} {len(picked)} subsections, {words} words from {", ".join(s["title"][:30] for s in srcs)}')
     data = {'src': 'OpenStax, American Government 3e (Rice University), CC BY 4.0', 'topics': out}
+    report_refs(data)
     open('docs/data/foundations.js', 'w', encoding='utf-8').write('window.FOUNDATIONS=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
 
 

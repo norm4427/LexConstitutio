@@ -163,6 +163,9 @@ sub find_excerpt {
     last unless $out =~ /^(.{0,600}?(?:\d[^.]{0,40}|\)|\d\)))\.["')]?\s+(?=(?:[A-Z][a-z]+)(?:,| [a-z]))/s;
     $out = substr($out, length $1); $out =~ s/^[."')]*\s+//;
   }
+  # a footnote mark glued to a word ("all that Congress can delegate2 In these cir- 'A Hamilton...") means the scan's
+  # footnote text follows: the excerpt ends at the mark
+  $out = "$1." if $out =~ /^(.{120,}?[a-z])\d{1,2}\s+[A-Z'"]/s;
   $out =~ s/\.\s+[IVX]{1,4}\s+(?=[A-Z][a-z])/. /g;                      # a section numeral between sentences ("itself. III Like")
   $out =~ s/\s*" `\[T\]he line' "\s*/ /;                                 # an unclosed quotation fragment in the slip opinion
   $out =~ s/\s*\b\d{1,3}\s*(?=[A-Z])//g if length $out > 0 && 0;
