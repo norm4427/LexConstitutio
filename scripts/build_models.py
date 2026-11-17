@@ -47,11 +47,15 @@ decision below and its issue) and "pending-case" (only what a pending case shows
 Baselines on the same votes: always the petitioner, the justice's more common vote in earlier terms, the better
 constant guess picked with hindsight, and the previous version of these models (logistic regression on the docket
 predictors alone).
-Vote splits: logit P(justice j votes for the petitioner) = model log-odds + u + v * lean_j, with u ~ N(mu, s_u^2)
-shared by all justices (cases where the Court is unanimous) and v ~ N(0, s_v^2) multiplying each justice's lean
-(ideological splits); s_u and s_v may depend on case salience (amicus briefs, spread of the justices' questioning).
-Fitted by maximum likelihood on the validation terms, compared on the test terms with independent votes, one shared
-shift, and the historical split frequencies.
+Vote splits: a latent-factor model whose marginals are pinned to the per-justice predictions p_j. Given a shift u ~
+N(0, s_u^2) shared by all justices (cases where the Court is unanimous) and v ~ N(0, s_v^2) multiplying each justice's
+lean (ideological splits), votes are independent with logit P = a_j + u + v * lean_j, where a_j is solved for each case
+so that averaging over u and v gives back exactly p_j. So P(9-0 for the petitioner) <= min p_j, P(9-0 for the
+respondent) <= min (1 - p_j), and the expected number of petitioner votes = sum p_j; check_splits() stops the build if
+any case breaks this. s_u and s_v (optionally depending on case salience: amicus briefs, spread of the justices'
+questioning) are fitted by maximum likelihood on the validation terms and compared on the test terms with independent
+votes, the Court-wide factor alone and the historical split frequencies; the pairwise agreement the model implies is
+compared with the actual agreement of each pair of justices on the test cases.
 Run from the repo root:  python scripts/build_models.py   (after build_arguments.py and build_case_facts.py)
 """
 import json, os, re, sys, time, warnings
@@ -413,31 +417,49 @@ def verdict_of(acc, ci, best):
 GH = np.polynomial.hermite_e.hermegauss(12)
 
 
-def split_probs(lo, lean, s, theta, kind):
-    """P(k votes for the petitioner), k = 0..n, for each case. lo, lean: (cases, n); s: (cases, m) salience.
-    kind 'indep' | 'shift' | 'two' | 'two+s'. theta: parameter vector."""
+def _nodes(ncase, s, theta, kind):
+    """Quadrature nodes (U, V, weights) and per-case factor scales (su, sv)."""
     x, w = GH
     w = w / w.sum()
-    ncase, n = lo.shape
     if kind == 'indep':
-        U = np.zeros((1,)); V = np.zeros((1,)); W = np.ones(1)
-        mu, su, sv = 0.0, np.zeros(ncase), np.zeros(ncase)
+        return np.zeros(1), np.zeros(1), np.ones(1), np.zeros(ncase), np.zeros(ncase)
+    if kind == 'shift':
+        su, sv = np.full(ncase, np.exp(theta[0])), np.zeros(ncase)
+    elif kind == 'two':
+        su, sv = np.full(ncase, np.exp(theta[0])), np.full(ncase, np.exp(theta[1]))
     else:
-        mu = theta[0]
-        if kind == 'shift':
-            su, sv = np.full(ncase, np.exp(theta[1])), np.zeros(ncase)
-        elif kind == 'two':
-            su, sv = np.full(ncase, np.exp(theta[1])), np.full(ncase, np.exp(theta[2]))
-        else:
-            m = s.shape[1]
-            su = np.exp(theta[1] + s @ theta[3:3 + m])
-            sv = np.exp(theta[2] + s @ theta[3 + m:3 + 2 * m])
-        U, V = np.meshgrid(x, x if kind != 'shift' else np.zeros(1), indexing='ij')
-        WW = np.outer(w, w if kind != 'shift' else np.ones(1))
-        U, V, W = U.ravel(), V.ravel(), WW.ravel()
-    # logits: (cases, nodes, n)
-    L = lo[:, None, :] + mu + su[:, None, None] * U[None, :, None] + sv[:, None, None] * V[None, :, None] * lean[:, None, :]
-    q = 1 / (1 + np.exp(-L))
+        m = s.shape[1]
+        su = np.exp(theta[0] + s @ theta[2:2 + m])
+        sv = np.exp(theta[1] + s @ theta[2 + m:2 + 2 * m])
+    U, V = np.meshgrid(x, x if kind != 'shift' else np.zeros(1), indexing='ij')
+    WW = np.outer(w, w if kind != 'shift' else np.ones(1))
+    return U.ravel(), V.ravel(), WW.ravel(), su, sv
+
+
+def _conditional(p, lean, s, theta, kind):
+    """Each justice's vote probability conditional on the two shared factors, (cases, nodes, n), with the intercepts
+    solved (Newton) so that averaging over the factors gives back exactly the justice's own predicted probability p.
+    Latent-factor model: votes are independent given a shift shared by the whole Court (u) and a shift multiplied by
+    the justice's lean (v); the marginals are pinned to the per-justice predictions."""
+    p = np.clip(np.asarray(p, float), 1e-4, 1 - 1e-4)
+    U, V, W, su, sv = _nodes(p.shape[0], s, theta, kind)
+    shift = su[:, None, None] * U[None, :, None] + sv[:, None, None] * V[None, :, None] * lean[:, None, :]
+    a = np.log(p / (1 - p))
+    for _ in range(60):
+        q = 1 / (1 + np.exp(-(a[:, None, :] + shift)))
+        f = np.einsum('cnj,n->cj', q, W) - p
+        fp = np.einsum('cnj,n->cj', q * (1 - q), W)
+        step = np.clip(f / np.maximum(fp, 1e-12), -2, 2)
+        a -= step
+        if np.abs(f).max() < 1e-10:
+            break
+    return 1 / (1 + np.exp(-(a[:, None, :] + shift))), W
+
+
+def split_probs(p, lean, s, theta, kind):
+    """P(k of the n justices vote for the petitioner), k = 0..n, for each case; p: (cases, n) per-justice probabilities."""
+    q, W = _conditional(p, lean, s, theta, kind)
+    n = q.shape[2]
     pb = np.zeros(q.shape[:2] + (n + 1,))
     pb[..., 0] = 1
     for j in range(n):
@@ -446,15 +468,41 @@ def split_probs(lo, lean, s, theta, kind):
     return np.einsum('cnk,n->ck', pb, W)
 
 
-def split_fit(lo, lean, s, k, kind):
-    npar = {'indep': 0, 'shift': 2, 'two': 3, 'two+s': 3 + 2 * s.shape[1]}[kind]
-    nll = lambda th: -np.mean(np.log(np.maximum(split_probs(lo, lean, s, th, kind)[np.arange(len(k)), k], 1e-12)))
+def pair_agreement(p, lean, s, theta, kind):
+    """Model-implied probability that justices i and j vote on the same side, (cases, n, n)."""
+    q, W = _conditional(p, lean, s, theta, kind)
+    same = q[:, :, :, None] * q[:, :, None, :] + (1 - q[:, :, :, None]) * (1 - q[:, :, None, :])
+    return np.einsum('cnij,n->cij', same, W)
+
+
+def check_splits(dist, p, label):
+    """The split distribution must agree with the per-justice probabilities: P(all for the petitioner) <= the smallest
+    P(petitioner), P(all for the respondent) <= the smallest P(respondent), expected petitioner votes = their sum."""
+    dist, p = np.asarray(dist, float), np.asarray(p, float)
+    n = len(p)
+    bad = []
+    if abs(dist.sum() - 1) > 1e-6:
+        bad.append(f'sums to {dist.sum():.6f}')
+    if dist[n] > p.min() + 1e-6:
+        bad.append(f'P({n}-0 reverse) {dist[n]:.4f} > min P(reverse) {p.min():.4f}')
+    if dist[0] > (1 - p).min() + 1e-6:
+        bad.append(f'P({n}-0 affirm) {dist[0]:.4f} > min P(affirm) {(1 - p).min():.4f}')
+    ek = float(np.dot(np.arange(n + 1), dist))
+    if abs(ek - p.sum()) > 1e-4:
+        bad.append(f'expected reverse votes {ek:.5f} != sum of marginals {p.sum():.5f}')
+    if bad:
+        raise SystemExit(f'split check failed for {label}: ' + '; '.join(bad))
+
+
+def split_fit(p, lean, s, k, kind):
+    npar = {'indep': 0, 'shift': 1, 'two': 2, 'two+s': 2 + 2 * s.shape[1]}[kind]
+    nll = lambda th: -np.mean(np.log(np.maximum(split_probs(p, lean, s, th, kind)[np.arange(len(k)), k], 1e-12)))
     if npar == 0:
         return np.zeros(0), nll(np.zeros(0))
-    th0 = np.zeros(npar); th0[1] = np.log(2.0)
-    if npar > 2:
-        th0[2] = np.log(0.5)
-    r = minimize(nll, th0, method='L-BFGS-B', bounds=[(-3, 3), (-3, 2.5)] + [(-4, 2.5)] * (npar > 2) + [(-2, 2)] * max(0, npar - 3))
+    th0 = np.zeros(npar); th0[0] = np.log(2.0)
+    if npar > 1:
+        th0[1] = np.log(0.5)
+    r = minimize(nll, th0, method='L-BFGS-B', bounds=[(-3, 2.5)] + [(-4, 2.5)] * (npar > 1) + [(-2, 2)] * max(0, npar - 2))
     return r.x, r.fun
 
 
@@ -658,7 +706,7 @@ def main():
     nine = g.size()
     cases = nine[nine == 9].index
     W9 = W[W.caseId.isin(cases)].sort_values(['caseId', 'justiceName'])
-    lo = np.log(np.clip(W9.p.values, 1e-4, 1 - 1e-4) / (1 - np.clip(W9.p.values, 1e-4, 1 - 1e-4))).reshape(-1, 9)
+    lo = W9.p.values.reshape(-1, 9)      # per-justice probabilities (the split model keeps them as its marginals)
     ln = W9.lean.values.reshape(-1, 9)
     ln = ln / np.std(ln)
     lean_sd = float(np.std(W9.lean.values))
@@ -691,6 +739,18 @@ def main():
         test_ll[kd] = round(float(np.mean(np.log(np.maximum(pr[np.arange(it.sum()), kk[it]], 1e-12)))), 4)
     test_ll['historical frequencies'] = round(float(np.mean(np.log(emp[kk[it]]))), 4)
     prt = split_probs(lo[it], ln[it], S[it], fits[best_kind], best_kind)
+    for i in range(len(prt)):
+        check_splits(prt[i], lo[it][i], f'test case {cid[it][i]}')
+    # pairwise agreement: model-implied vs actual, on the test cases (the same nine justices throughout)
+    ag = pair_agreement(lo[it], ln[it], S[it], fits[best_kind], best_kind).mean(0)
+    ag0 = pair_agreement(lo[it], ln[it], S[it], fits['indep'], 'indep').mean(0)
+    yv = W9.y.values.reshape(-1, 9)[it]
+    act = np.array([[float((yv[:, i] == yv[:, j]).mean()) for j in range(9)] for i in range(9)])
+    iu = np.triu_indices(9, 1)
+    names = W9.justiceName.values.reshape(-1, 9)[it][0]
+    pair_mae = float(np.abs(ag - act)[iu].mean()); pair_mae0 = float(np.abs(ag0 - act)[iu].mean())
+    pairs = sorted([[code2id[names[i]], code2id[names[j]], round(float(ag[i, j]), 3), round(float(act[i, j]), 3)] for i, j in zip(*iu)], key=lambda r: -r[3])
+    print(f'  pairwise agreement on test cases: mean abs error {pair_mae:.3f} (independent votes {pair_mae0:.3f})', flush=True)
     win_hit = float(((prt[:, 5:].sum(1) >= 0.5) == (kk[it] >= 5)).mean())
     rev_base = float(max((kk[it] >= 5).mean(), (kk[it] < 5).mean()))
     unan_pred = float((prt[:, 0] + prt[:, 9]).mean())
@@ -702,7 +762,8 @@ def main():
              'hit': round(win_hit, 4), 'revBase': round(rev_base, 4), 'unanPred': round(unan_pred, 4), 'unanAct': round(unan_act, 4),
              'confN': int(conf.sum()), 'confHit': round(float(((prt[conf, 5:].sum(1) >= 0.5) == (kk[it][conf] >= 5)).mean()), 4) if conf.any() else None,
              'testDist': [round(float(x), 4) for x in prt.mean(0)], 'testEmp': [round(float(x), 4) for x in np.bincount(kk[it], minlength=10) / it.sum()],
-             'salience': {'mu': sal_mu, 'sd': sal_sd}, 'leanSd': lean_sd}
+             'salience': {'mu': sal_mu, 'sd': sal_sd}, 'leanSd': lean_sd,
+             'pairMae': round(pair_mae, 4), 'pairMaeIndep': round(pair_mae0, 4), 'pairs': pairs, 'marginals': 'pinned'}
     print('splits: cv', cvll, '| test', test_ll, '| chosen', best_kind, fits[best_kind], flush=True)
     print(f'  winner hit {win_hit:.3f} vs always-majority-side {rev_base:.3f}; predicted unanimity {unan_pred:.3f} vs actual {unan_act:.3f}; confident cases {conf.sum()} hit {calib["confHit"]}', flush=True)
 
@@ -776,7 +837,7 @@ def main():
             om = own_model(cats, num).fit(X.loc[mj, cats + num], y[mj])
             po = om.predict_proba(XP.loc[mp, cats + num])[:, 1]
             final[mp] = po if ch == 'own' else (po + pp[mp]) / 2
-    PV['p'] = final
+    PV["p"] = np.clip(final, 0.001, 0.999)
     for jid_code in CURRENT:
         out[code2id[jid_code]]['pred'] = [[cid, round(float(p), 3)] for cid, p in zip(PV.loc[PV.justiceName == jid_code, 'c'].map(lambda c: c['id']), PV.loc[PV.justiceName == jid_code, 'p'])]
     leanP = PV['lean'] if 'lean' in PV else J['lean']
@@ -784,11 +845,13 @@ def main():
     for i, r in P.iterrows():
         m = (PV.caseId == r.caseId).values
         sub = PV[m].set_index('justiceName').loc[CURRENT]
-        lo_c = np.log(np.clip(sub.p.values, 1e-4, 1 - 1e-4) / (1 - np.clip(sub.p.values, 1e-4, 1 - 1e-4)))[None, :]
+        p_show = np.round(sub.p.values, 3)                      # exactly the probabilities shown for each justice
+        lo_c = p_show[None, :]
         ln_c = (J.loc[PV.index[m], 'lean'].values / lean_sd)[None, :]
         amt_c = np.log1p(np.expm1(r.amPetL) + np.expm1(r.amResL))
         S_c = np.array([[(amt_c - sal_mu[0]) / sal_sd[0] if r.amKnown else 0, (r.argSpread - sal_mu[1]) / sal_sd[1] if r.argSpread > 0 else 0]])
         dist = split_probs(lo_c, ln_c, S_c, fits[best_kind], best_kind)[0]
+        check_splits(dist, p_show, r.c['id'])
         c = r.c
         cases_out.append({'id': c['id'], 'n': c['n'], 'd': c['d'], 'lowerCourt': r.lowerCourt, 'src': r.srcGroup, 'pet': r.petParty, 'res': r.resParty,
                           'jur': r.jurisdiction, 'area': ISSUE_AREA.get(int(r.issueD), ''), 'areaP': r.issueP, 'page': bool(r.ok),
