@@ -304,6 +304,79 @@ def wiki():
     print('wiki done', flush=True)
 
 
+def _norm(t):
+    return re.sub(r'[^a-z0-9 ]+', '', html.unescape(t or '').lower().replace('’', "'")).split()
+
+
+def _similar(a, b):
+    A, B = set(_norm(a)), set(_norm(b))
+    return len(A & B) / max(1, min(len(A), len(B))) if A and B else 0
+
+
+# YouTube channels of shows whose episodes may have a video (the Data API search is restricted to them)
+SHOW_CHANNEL_IDS = {'Advisory Opinions': 'UCaqFv9hD-XJmPMzC5Yvtneg', 'Strict Scrutiny': 'UCk-Km4tcqAbhpnbrvj1pJFw',
+                    'Divided Argument': 'UCu4dm15fbc4jWrOC-AtfDdg'}
+
+
+def epfind():
+    """Find a page or a video for podcast episodes that build_media.py could not pair (data/raw/media/unlinked.json):
+    1. YouTube Data API search (needs YT_API_KEY; 100 quota units a search, so at most YT_SEARCHES, default 95, a run),
+       restricted to the show's channel when known; a result counts only when its title matches the episode's, it was
+       published within a week of the episode, and videos.list reports it public and embeddable.
+    2. The episode's Apple Podcasts page (iTunes Search API): same show, matching title.
+    Results are cached in data/raw/media/epfind/<key>.json; re-runs skip what was already tried."""
+    os.makedirs(f'{RAW}/epfind', exist_ok=True)
+    todo = json.load(open(f'{RAW}/unlinked.json', encoding='utf-8')) if os.path.exists(f'{RAW}/unlinked.json') else []
+    key = os.environ.get('YT_API_KEY')
+    budget = int(os.environ.get('YT_SEARCHES', 95))
+    n_yt = n_ap = 0
+    for ep in todo:
+        k = re.sub(r'\W+', '-', (ep['show'] + '-' + ep['t']).lower())[:120]
+        dest = f'{RAW}/epfind/{k}.json'
+        rec = json.load(open(dest, encoding='utf-8')) if os.path.exists(dest) else {}
+        if key and 'yt' not in rec and ep.get('yt', True) and budget > 0:
+            budget -= 1
+            d = date.fromisoformat(ep['date'])
+            q = {'part': 'snippet', 'type': 'video', 'maxResults': 5, 'q': ep['t'], 'key': key,
+                 'publishedAfter': (d - timedelta(days=7)).isoformat() + 'T00:00:00Z', 'publishedBefore': (d + timedelta(days=8)).isoformat() + 'T00:00:00Z'}
+            if ep['show'] in SHOW_CHANNEL_IDS:
+                q['channelId'] = SHOW_CHANNEL_IDS[ep['show']]
+            try:
+                r = json.loads(get('https://www.googleapis.com/youtube/v3/search?' + urllib.parse.urlencode(q)))
+                best = None
+                for it in r.get('items', []):
+                    sn = it['snippet']
+                    if _similar(sn['title'], ep['t']) >= 0.8 and (ep['show'] in SHOW_CHANNEL_IDS or any(w in sn['channelTitle'].lower() for w in ep['show'].lower().split() if len(w) > 3)):
+                        best = it['id']['videoId']
+                        break
+                rec['yt'] = None
+                if best:
+                    v = json.loads(get(f'https://www.googleapis.com/youtube/v3/videos?part=status,contentDetails&id={best}&key={key}'))
+                    st = (v.get('items') or [{}])[0].get('status', {})
+                    if st.get('embeddable') and st.get('privacyStatus') == 'public':
+                        rec['yt'] = best
+                        n_yt += 1
+            except Exception as e:
+                print('  search failed', ep['t'][:50], e, flush=True)
+                if '403' in str(e):
+                    budget = 0          # quota used up for today
+            time.sleep(0.3)
+        if 'apple' not in rec and not rec.get('yt'):
+            try:
+                r = json.loads(get('https://itunes.apple.com/search?' + urllib.parse.urlencode({'term': ep['t'], 'entity': 'podcastEpisode', 'limit': 10})))
+                rec['apple'] = None
+                for it in r.get('results', []):
+                    if _similar(it.get('collectionName', ''), ep['show']) >= 0.8 and _similar(it.get('trackName', ''), ep['t']) >= 0.85:
+                        rec['apple'] = it.get('trackViewUrl')
+                        n_ap += 1
+                        break
+            except Exception as e:
+                print('  apple failed', ep['t'][:50], e, flush=True)
+            time.sleep(3.2)             # the iTunes Search API allows about 20 calls a minute
+        json.dump(rec, open(dest, 'w', encoding='utf-8'))
+    print('epfind: youtube', n_yt, 'apple', n_ap, 'of', len(todo), flush=True)
+
+
 if __name__ == '__main__':
     for w in sys.argv[1:] or ['pod', 'yt', 'search', 'loc']:
-        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod, 'wiki': wiki}[w]()
+        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod, 'wiki': wiki, 'epfind': epfind}[w]()

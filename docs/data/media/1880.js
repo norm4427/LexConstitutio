@@ -1,0 +1,1 @@
+window.MEDIA=window.MEDIA||{};Object.assign(window.MEDIA,{"scdb/1880-103":{"videos":[],"print":[],"web":[{"u":"https://www.congress.gov/crs-product/R42811","t":"Congressional Investigations of the Department of Justice, 1920-2012: History, Law, and Practice","o":"Congressional Research Service","d":"2012-11-05","pw":0}]}});

@@ -1,0 +1,1 @@
+window.MEDIA=window.MEDIA||{};Object.assign(window.MEDIA,{"scdb/1910-112":{"videos":[],"print":[],"web":[{"u":"https://www.congress.gov/crs-product/RS22700","t":"Resale Price Maintenance No Longer a Per Se Antitrust Offense: Leegin Creative Leather Products v. PSKS, Inc.","o":"Congressional Research Service","d":"2008-12-10","pw":0}]}});

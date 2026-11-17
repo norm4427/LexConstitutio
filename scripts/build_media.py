@@ -26,6 +26,8 @@ GENERIC = set('united states state states city county commissioner people secret
               'town village school district government federal national american the of in re ex parte matter inc co corp company '
               'corporation association et al new york california texas ohio pennsylvania virginia illinois georgia florida '
               'trump biden obama president first second little brown white black green young king long free'.split())
+# episode pages on the shows' own sites (for episodes whose feed item links only the show's home page)
+EPISODE_PAGE = re.compile(r'^https?://(?:www\.)?(?:thedispatch\.com/podcast/[^/]+/[^/?#]+|constitutioncenter\.org/(?:news-debate/)?(?:podcasts?|we-the-people)/[^?#]+|crooked\.com/podcast/[^/?#]+|fedsoc\.org/(?:podcasts|multimedia)/[^?#]+|scotusblog\.com/\d{4}/\d\d/[^?#]+)', re.I)
 CHAPTER = re.compile(r'^\s*[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*[-–—:|]?\s*(.+?)\s*$')
 CHAPTER_END = re.compile(r'^\s*(.{4,140}?)\s*[-–—:|(\[]\s*((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*$')
 READING = re.compile(r'\(\d{4}\)|\b\d+ U\.\s?S\.|\b\d+ (?:S\. ?Ct|F\.\d?d?|F\. Supp)|Cir\.|\bet al\.|Order,|Brief|Opinion,|Petition|https?://|\bLII\b', re.I)
@@ -354,6 +356,8 @@ def main():
             root = ET.parse(path).getroot()
         except ET.ParseError:
             continue
+        # a link shared by many items is the show's home page, not the episode's
+        feed_links = collections.Counter((i.findtext('link') or '').strip() for i in root.iter('item'))
         for it in root.iter('item'):
             title = (it.findtext('title') or '').strip()
             try:
@@ -363,6 +367,15 @@ def main():
             enc = it.find('enclosure')
             audio = enc.get('url') if enc is not None else None
             notes = it.findtext('content:encoded', namespaces=NS) or it.findtext('description') or ''
+            ep_link = (it.findtext('link') or '').strip()
+            if feed_links[ep_link] > 3:
+                ep_link = ''
+            if not ep_link:                       # the episode's page on the show's own site, linked from its notes
+                for u in re.findall(r'https?://[^\s"<>\']+', _html.unescape(notes)):
+                    u = u.rstrip('.,);')
+                    if EPISODE_PAGE.search(u):
+                        ep_link = u
+                        break
             note_vids = list(dict.fromkeys(YT_ID.findall(_html.unescape(notes + ' ' + (it.findtext('link') or '')))))
             notes = _html.unescape(re.sub(r'<[^>]+>', '', re.sub(r'<br\s*/?>|</p>|</li>|</div>', '\n', notes)))
             lines = [l.strip(' \t—–-•*') for l in notes.split('\n') if l.strip()]
@@ -407,7 +420,7 @@ def main():
                 if not hit:
                     continue
                 item = {'kind': 'pod', 't': title, 'ch': show, 'by': by, 'date': ed.isoformat(), 'start': hit[0], 'topic': hit[1][:140],
-                        'sec': dur(it.findtext('itunes:duration', namespaces=NS)), 'audio': audio, 'link': it.findtext('link') or ''}
+                        'sec': dur(it.findtext('itunes:duration', namespaces=NS)), 'audio': audio, 'link': ep_link}
                 if not (yt and yt.get('embed', True)):
                     for nv in note_vids[:3]:            # the episode's own YouTube video, linked from its notes
                         if same_episode(nv, title, show):
@@ -423,6 +436,29 @@ def main():
                 if not any(x.get('t') == title and x.get('ch') == show for x in lst):
                     lst.append(item)
     print('podcast episodes read:', n_ep)
+    # episodes still without a video or an episode page: what media_fetch.py epfind found for them (a YouTube video on
+    # the show's channel, or the episode's Apple Podcasts page); the rest go to unlinked.json for the next epfind run
+    YT_SINCE = {'Advisory Opinions': '2023-03-01', 'Strict Scrutiny': '2024-04-01', 'Divided Argument': '2025-01-01'}
+    unlinked, seen_ep = [], set()
+    for m in media.values():
+        for x in m['videos']:
+            if x.get('kind') != 'pod' or x.get('id'):
+                continue
+            k = re.sub(r'\W+', '-', (x['ch'] + '-' + x['t']).lower())[:120]
+            fp = f'{RAW}/epfind/{k}.json'
+            f = json.load(open(fp, encoding='utf-8')) if os.path.exists(fp) else {}
+            if f.get('yt'):
+                x.update({'id': f['yt'], 'embed': True})
+                continue
+            if not x.get('link') and f.get('apple'):
+                x['link'] = f['apple']
+            yt_possible = x['date'] >= YT_SINCE.get(x['ch'], '0000') and x['ch'] not in ('More Perfect',)
+            if (show_key := (x['ch'], x['t'])) not in seen_ep and (not x.get('link') or (yt_possible and x['ch'] in YT_SINCE)) and ('yt' not in f or 'apple' not in f):
+                seen_ep.add(show_key)
+                unlinked.append({'show': x['ch'], 't': x['t'], 'date': x['date'], 'yt': yt_possible})
+    unlinked.sort(key=lambda e: (not e['yt'], e['date']), reverse=False)
+    json.dump(unlinked, open(f'{RAW}/unlinked.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
+    print('episodes without a video or page, queued for epfind:', len(unlinked))
     # a YouTube copy of a podcast episode replaces the separate video entry (on every case page)
     all_pod_ids = {x.get('id') for m in media.values() for x in m['videos'] if x.get('kind') == 'pod' and x.get('id')}
     for m in media.values():
@@ -563,6 +599,74 @@ def main():
             media[c['id']]['wiki'] = 'https://en.wikipedia.org/wiki/' + urllib.parse.quote(pg['title'].replace(' ', '_'))
             n_wiki += 1
     print('cases with web coverage from Wikipedia citations:', n_wiki)
+    # --- more coverage: every SCOTUSblog link in the case's Wikipedia article (case files, argument previews, opinion
+    # analyses) and its other external links with a label; SCOTUSblog itself is not crawled (its robots.txt asks not to)
+    for c in list(cases) + pend:
+        name = re.sub(r'\s*\(\d\)$', '', c['n'])
+        m_ = media.get(c['id'])
+        pg = wiki.get(name)
+        if not pg or not m_ or not m_.get('wiki'):
+            continue                                   # only articles already verified against the case above
+        w = pg['text']
+        have = {x['u'].rstrip('/') for x in m_.get('web', [])}
+        extra = []
+        for u, label in re.findall(r'\[(https?://[^\s\]]+)\s+([^\]]{3,200})\]', w):
+            u2 = u.rstrip('/')
+            if u2 in have or PRIMARY.search(u):
+                continue
+            host = urlparse(u).netloc.lower().removeprefix('www.')
+            if (host.endswith('.gov') or host.endswith('.mil')) and not host.endswith('congress.gov'):
+                continue
+            have.add(u2)
+            extra.append({'u': u, 't': plain(label), 'o': 'SCOTUSblog' if 'scotusblog.com' in host else host, 'd': '', 'pw': 1 if PAYWALL.search(host) else 0})
+        for u in re.findall(r'https?://(?:www\.)?scotusblog\.com/(?:case-files/cases|cases/case-files)/[^\s|\]}<]+', w):
+            m_['sb'] = u.replace('http://', 'https://')
+            break
+        if extra:
+            m_['web'] = (m_.get('web', []) + extra)[:40]
+    # --- Congressional Research Service reports (public domain; cached by crs_fetch.py from EveryCRSReport.com) that
+    # discuss the case: its full name, or both party names joined by "v.", at least twice (or once in the title)
+    import csv
+    crs_meta = {}
+    if os.path.exists('data/raw/crs/reports.csv'):
+        for row in csv.DictReader(open('data/raw/crs/reports.csv', encoding='utf-8')):
+            crs_meta[row['number']] = row
+    pairs = {}
+    for cid, sd in sides_of.items():
+        pairs.setdefault((sd[0][0], sd[1][0]), []).append(cid)
+    n_crs = 0
+    for fp in glob.glob('data/raw/crs/html/*.html'):
+        num = os.path.basename(fp)[:-5]
+        meta = crs_meta.get(num)
+        if not meta:
+            continue
+        txt = _html.unescape(re.sub(r'<[^>]+>', ' ', re.sub(r'<img[^>]*>', '', open(fp, encoding='utf-8', errors='replace').read())))
+        found = collections.Counter()
+        for m in re.finditer(r"([A-Z][\w.'’&-]+)(?:,? [A-Z][\w.'’&-]+){0,5},? v\.\s+(?:the\s+)?([A-Z][\w.'’&-]+)", txt):
+            # map "First ... v. Second" to cases whose distinctive party names are the first such words
+            left = [x for x in re.findall(r"[A-Z][A-Za-z'’\-]{3,}", m.group(0).split(' v.')[0]) if x.lower() not in GENERIC]
+            right = [x for x in re.findall(r"[A-Z][A-Za-z'’\-]{3,}", m.group(0).split(' v.')[1]) if x.lower() not in GENERIC]
+            if left and right:
+                for cid in pairs.get((left[0], right[0]), []):
+                    found[cid] += 1
+        for cid, n in found.items():
+            cands = pairs[(sides_of[cid][0][0], sides_of[cid][1][0])]
+            if len(cands) > 1:
+                continue                                   # two cases share those names: not sure which one
+            if n >= 2 or (meta['title'] and every[cid]['n'].split(' v. ')[0] in meta['title']):
+                url = f"https://www.congress.gov/crs-product/{num}"
+                m_ = media[cid]
+                if any(x['u'] == url for x in m_.get('web', [])):
+                    continue
+                m_.setdefault('web', []).append({'u': url, 't': meta['title'], 'o': 'Congressional Research Service', 'd': (meta.get('latestPubDate') or '')[:10], 'pw': 0, 'n': n})
+                n_crs += 1
+    for m_ in media.values():
+        if m_.get('web'):
+            crs = sorted([x for x in m_['web'] if x['o'] == 'Congressional Research Service'], key=lambda x: -x.get('n', 0))[:6]
+            m_['web'] = [x for x in m_['web'] if x['o'] != 'Congressional Research Service'] + crs
+            for x in m_['web']:
+                x.pop('n', None)
+    print('CRS report links:', n_crs)
     # --- write by term
     tmap = {c['id']: str(c.get('t')) for c in S}          # every case, Supreme Court Database-only ones included
     tmap.update({c['id']: str(c.get('t')) for c in pend})

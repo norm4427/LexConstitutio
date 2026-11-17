@@ -1,0 +1,1 @@
+window.MEDIA=window.MEDIA||{};Object.assign(window.MEDIA,{"scdb/1935-046":{"videos":[],"print":[],"web":[{"u":"https://www.congress.gov/crs-product/R45319","t":"The Supreme Court’s Overruling of Constitutional Precedent","o":"Congressional Research Service","d":"2018-09-24","pw":0}]}});
