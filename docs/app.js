@@ -125,6 +125,10 @@
   /* ------------------------------------------------------------ helpers */
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = n => n.toLocaleString('en-US');
+  // counts quoted in the site's descriptions (data/site-stats.js, written by scripts/site_stats.py)
+  const SS = window.SITE_STATS || {};
+  const stat = (k, dflt) => (SS[k] != null ? SS[k] : dflt);
+  const about = n => n >= 1000 ? fmt(Math.floor(n / 100) * 100) : fmt(n);
   const authorHref = n => '#/author/' + encodeURIComponent(normName(n));
   const articleHref = a => '#/article/' + encodeURIComponent(a.id);
   function toast(msg) {
@@ -274,9 +278,9 @@
     const general = journals.filter(j => !j.specialist);
     app.innerHTML = `<div class="fade-in">
       <section class="hero"><div class="hero-inner">
-        <span class="eyebrow">An index of constitutional scholarship</span>
-        <h1>The constitutional law literature, <em>in one place.</em></h1>
-        <p class="lede">Search and browse ${fmt(articles.length)} constitutional law articles from ${journals.length} leading law reviews. Everything is organized by topic, author, and journal, and links back to the full text.</p>
+        <span class="eyebrow">Constitutional law, from the founding to today</span>
+        <h1>The Constitution, its cases and its scholars, <em>in one place.</em></h1>
+        <p class="lede">Search ${fmt(articles.length)} law review articles from ${journals.length} journals, read ${about(stat('cases', 29000))} Supreme Court decisions with summaries, opinions and argument audio, learn the doctrine topic by topic, and go back to what the founding generation actually said.</p>
         <form class="bigsearch" id="bigsearch">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input id="bigsearch-input" type="search" placeholder='Try "unitary executive" or Amar' autocomplete="off" aria-label="Search the index">
@@ -285,18 +289,22 @@
         <div class="suggest"><span>Popular:</span>${SUGGESTIONS.map(s => `<a class="chip" href="${hashFor('search', { q: s })}">${esc(s)}</a>`).join('')}</div>
         <div class="stats">
           <div class="stat"><b>${fmt(articles.length)}</b><span>Articles</span></div>
-          <div class="stat"><b>${fmt(authorIndex.size)}</b><span>Authors</span></div>
+          <div class="stat"><b>${fmt(stat('cases', 0))}</b><span>Supreme Court cases</span></div>
+          <div class="stat"><b>${fmt(stat('libraryWorks', 0))}</b><span>Full texts in the library</span></div>
           <div class="stat"><b>${journals.length}</b><span>Law reviews</span></div>
-          <div class="stat"><b>${topics.filter(t => t.parent).length}</b><span>Topics</span></div>
         </div>
       </div></section>
 
       <section class="section">
         <div class="features">
-          <a class="feature" href="#/guide"><span class="f-icon">◎</span><b>Beginner's Guide</b><span>Twenty core topics for newcomers, then an advanced, doctrine-by-doctrine treatment with tests and excerpts from the opinions.</span><em>Start learning →</em></a>
-          <a class="feature" href="#/corner"><span class="f-icon">❦</span><b>Originalist's Corner</b><span>Blackstone, The Federalist, the Convention debates, Story and the first Congresses' statutes, organized by topic.</span><em>Read the sources →</em></a>
-          <a class="feature" href="#/scotus"><span class="f-icon">⚖</span><b>Supreme Court</b><span>Case summaries, opinion PDFs, and oral arguments you can play here with a synced transcript.</span><em>Browse decisions →</em></a>
+          <a class="feature" href="#/scotus"><span class="f-icon">⚖</span><b>Supreme Court</b><span>${about(stat('cases', 29000))} decisions since ${stat('firstYear', 1791)}: summaries, opinions, argument audio with a transcript that follows along, the authorities cited, the parties and advocates, media coverage and predicted outcomes for pending cases.</span><em>Browse decisions →</em></a>
+          <a class="feature" href="#/guide"><span class="f-icon">◎</span><b>Beginner's Guide</b><span>${stat('guideTopics', 20)} core topics with plain-English overviews, videos and lectures, then ${stat('doctrineSections', 50)} sections of advanced doctrine with the tests and excerpts from the opinions.</span><em>Start learning →</em></a>
+          <a class="feature" href="#/corner"><span class="f-icon">❦</span><b>Originalist's Corner</b><span>What the founding generation said about each part of the Constitution: Blackstone, the Convention, <i>The Federalist</i> and the Anti-Federalists, the first Congresses and the early commentators, side by side.</span><em>Read the sources →</em></a>
+          <a class="feature" href="#/library"><span class="f-icon">❧</span><b>Library</b><span>${stat('libraryWorks', 29)} full texts to read, highlight and annotate: founding-era treatises and pamphlets, later historical documents, the <i>Constitution Annotated</i> and ${fmt(stat('crsSidebars', 1400))} CRS Legal Sidebars.</span><em>Open the library →</em></a>
+          <a class="feature" href="#/books"><span class="f-icon">❐</span><b>Books</b><span>${stat('books', 290)} books on constitutional law, history and the Court, ${stat('essentialBooks', 73)} of them marked essential, with law review book reviews.</span><em>Browse books →</em></a>
+          <a class="feature" href="#/quiz"><span class="f-icon">✎</span><b>Learning Center</b><span>Flashcards on ${fmt(stat('flashcards', 1700))} cases and terms with spaced review, quizzes on every guide topic, and games.</span><em>Start studying →</em></a>
           <a class="feature" href="#/impact"><span class="f-icon">↗</span><b>Most influential articles</b><span>The most-cited constitutional scholarship, by topic, decade and journal.</span><em>See rankings →</em></a>
+          <a class="feature" href="#/search"><span class="f-icon">⌕</span><b>Articles</b><span>${fmt(articles.length)} articles from ${journals.length} law reviews, tagged by topic and constitutional clause, with citation counts.</span><em>Search the index →</em></a>
         </div>
       </section>
 
@@ -358,7 +366,7 @@
     const t = topicById[st.topic];
     const hasQ = pq.terms.length || pq.phrases.length;
 
-    let title = 'Browse the index', sub = `${fmt(articles.length)} articles across ${journals.length} law reviews.`, crumbs = '';
+    let title = 'Browse the index', sub = `${fmt(articles.length)} constitutional law articles from ${journals.length} law reviews and specialist journals, tagged by topic and clause, with citation counts and links to the full text.`, crumbs = '';
     if (clauseName && !t && !hasQ) {
       title = clauseName; sub = 'Articles about this clause: their title or subject keywords concern it, or their abstract names it.';
       crumbs = `<a href="#/corner/constitution">The Annotated Constitution</a><span>/</span><a href="${hashFor('corner/constitution', { c: st.clause })}">${esc(clauseName)}</a><span>/</span><span>Articles</span>`;
@@ -713,7 +721,7 @@
     app.innerHTML = `<div class="fade-in"><div class="prose">
       <div class="crumbs"><a href="#/">Home</a><span>/</span><span>About</span></div>
       <h1>About Lex Constitutio</h1>
-      <p>Lex Constitutio is a topic-organized index of constitutional law scholarship, in the spirit of PhilPapers. It collects publicly available bibliographic metadata (titles, authors, abstracts, and subject keywords) from law review repositories. It keeps the articles about constitutional law and arranges them in a browsable taxonomy.</p>
+      <p>Lex Constitutio brings together the materials of American constitutional law. It began as a topic-organized index of constitutional law scholarship, in the spirit of PhilPapers: ${fmt(articles.length)} articles from ${journals.length} law reviews, collected from the publicly available metadata (titles, authors, abstracts and subject keywords) in their repositories. Around it are ${fmt(stat('cases', 29000))} Supreme Court decisions, a beginner's guide and advanced doctrine, the Originalist's Corner and its library of ${stat('libraryWorks', 29)} full texts, ${stat('books', 290)} books, and a learning center with flashcards, quizzes and games. Articles and books remain with their publishers: follow the links to read them.</p>
       <h2>How articles are collected</h2>
       <p>Many journals publish through institutional repositories that expose an open <a href="https://www.openarchives.org/pmh/" target="_blank" rel="noopener">OAI-PMH</a> feed. A few others publish through public WordPress APIs. Articles from specialist journals (<em>Constitutional Commentary</em>, <em>Hastings Constitutional Law Quarterly</em>, the <em>William &amp; Mary Bill of Rights Journal</em>) are all included. From general law reviews, an article is included if:</p>
       <ul><li>the repository tags it with a constitutional law discipline, or</li><li>its title names a constitutional provision, doctrine, or institution, or</li><li>its abstract does so more than once.</li></ul>
@@ -729,8 +737,8 @@
       <h2>Advanced doctrine</h2>
       <p>The advanced half of the Beginner's Guide is an original doctrinal treatment written for this site. It is organized after the chapter structure of Erwin Chemerinsky's <em>Constitutional Law: Principles and Policies</em> and covers judicial power, legislative and executive power, federalism, state action, due process, economic liberties, equal protection, fundamental rights, speech and religion. Excerpts from opinions are public-domain text extracted from the official <em>United States Reports</em> (Library of Congress) and supremecourt.gov slip opinions, or from Wikisource transcriptions. The open casebooks at opencasebook.org (H2O, CC BY-NC-SA) are cited as further reading.</p>
       <p>The in-depth commentary in each section comes from the <em>Constitution of the United States of America: Analysis and Interpretation</em> ("Constitution Annotated"), prepared by the Congressional Research Service of the Library of Congress. The site uses the 2022 GPO edition, a public-domain U.S. government work. Essays are extracted from the official PDFs on GovInfo with their footnotes omitted.</p>
-      <h2>Originalist's Corner</h2>
-      <p>The Corner indexes the full texts of Blackstone's <em>Commentaries</em>, St. George Tucker's annotated Blackstone, Joseph Story's <em>Commentaries on the Constitution</em>, James Kent's <em>Commentaries</em>, Vattel's <em>Law of Nations</em> and Locke's <em>Two Treatises</em> (via the Lonang Institute). It also covers <em>The Federalist</em> (Project Gutenberg), Madison's Notes of the Convention debates and founding documents (the Avalon Project at Yale Law School), and the acts of the first five Congresses (<em>Statutes at Large</em>, vol. 1, via Wikisource). Passages are matched to topics automatically and should be read in context. The full texts of <em>The Federalist</em>, the founding documents and the statutes can be read in the site's library.</p>
+      <h2>Originalist's Corner and the library</h2>
+      <p>The Originalist's Corner collects what the founding generation and the early commentators said about each part of the Constitution, for anyone who wants to read the Constitution as it was understood when it was adopted, and for its critics. It indexes the full texts of Blackstone's <em>Commentaries</em>, St. George Tucker's annotated Blackstone, Joseph Story's <em>Commentaries on the Constitution</em>, James Kent's <em>Commentaries</em>, Vattel's <em>Law of Nations</em> and Locke's <em>Two Treatises</em> (via the Lonang Institute). It also covers <em>The Federalist</em> (Project Gutenberg), Madison's Notes of the Convention debates and founding documents (the Avalon Project at Yale Law School), and the acts of the first five Congresses (<em>Statutes at Large</em>, vol. 1, via Wikisource). Passages are matched to topics automatically and should be read in context. The library holds ${stat('libraryWorks', 29)} full texts to read, highlight and take notes on (kept in your browser): <em>The Federalist</em>, the founding documents and the early statutes; the treatises, pamphlets, debates and state papers of the founding era from Wikisource (CC BY-SA), Project Gutenberg (public domain) and the Text Creation Partnership's transcriptions of early American and English imprints (CC0); later historical documents; and the <em>Constitution Annotated</em> and ${fmt(stat('crsSidebars', 1400))} Legal Sidebars of the Congressional Research Service (U.S. government works).</p>
       <h2>Supreme Court, lectures and guide</h2>
       <p>Case summaries, oral argument audio and synchronized transcripts are loaded from <a href="https://www.oyez.org" target="_blank" rel="noopener">Oyez</a> (text licensed <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>; flashcard and summary text is excerpted or adapted). Oyez is a registered trademark of Oyez, Inc. Vote splits and each justice’s vote come from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener">Supreme Court Database</a> (Harold J. Spaeth et al., Version 2026 Release 01 and Legacy 07), and for later decisions from the lineup in the Court’s own opinion. The same database supplies the pre-1955 cases that Oyez does not cover, and the justice ratings, Statistics tables and vote models are this site’s calculations from it (ideal-point scores from <a href="https://mqscores.quantitative.emory.edu/" target="_blank" rel="noopener">Martin and Quinn</a>; table format after the <em>Harvard Law Review</em>’s annual “The Statistics”). Opinion PDFs link to supremecourt.gov for recent terms and to the Library of Congress's <em>United States Reports</em> collection for older ones. Lecture and explainer videos are embedded from the YouTube channels of the institutions that published them. Guide overviews are drawn from Wikipedia (CC BY-SA 4.0), with links to Cornell LII's Wex.</p>
     </div></div>`;
@@ -894,7 +902,7 @@
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Supreme Court</span></div>
         <h1>Supreme Court decisions</h1>
-        <p>${fmt(S.cases.length)} cases. About ${fmt(Math.round(S.cases.filter(c => c.s !== 1).length / 100) * 100)} have summaries, opinion PDFs, and oral argument audio you can play here, with a transcript that follows along; the rest, mostly from before 1955, are listed from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court Database</a> with their citation, date, votes and opinion. Summaries and audio come from <a href="https://www.oyez.org" target="_blank" rel="noopener" style="color:var(--accent)">Oyez</a>. Opinions come from supremecourt.gov and the Library of Congress.</p>${scotusTabs('decided')}</div>
+        <p>${fmt(S.cases.length)} decisions since ${stat('firstYear', 1791)}. About ${fmt(Math.round(S.cases.filter(c => c.s !== 1).length / 100) * 100)} have <a href="https://www.oyez.org" target="_blank" rel="noopener" style="color:var(--accent)">Oyez</a>'s summary and the question presented, with oral argument audio you can play here and a transcript that follows along. The rest, mostly from before 1955, come from the <a href="http://scdb.wustl.edu/" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court Database</a> with their citation, votes and opinion, the reporter's headnotes or the official syllabus from the <i>U.S. Reports</i>, and for ${fmt(stat('aiBriefs', 300))} landmark cases a case brief written by AI and labelled as such. Case pages add the authorities the briefs rely on, the parties and advocates, coverage in the media and, for pending cases, a predicted outcome. Opinions come from supremecourt.gov and the Library of Congress.</p>${scotusTabs('decided')}</div>
       <div class="layout">
         <aside class="sidebar" id="sidebar">
           <div class="side-block"><h4>Search cases</h4><form id="sc-form"><input class="input" id="sc-q" type="search" value="${esc(st.q)}" placeholder="Case name, issue, docket…"></form></div>
@@ -1115,7 +1123,7 @@
   /* "In the media": podcast and video episodes about the case (starting where the episode turns to it), other videos
      that name it, and newspaper pages printed after the decision (Chronicling America, public domain). */
   function renderMedia(el, M, c) {
-    if (!M) { el.innerHTML = '<p class="muted-line">Nothing found yet.</p>'; return; }
+    M = M || {};
     M.videos = M.videos || []; M.print = M.print || [];
     const clock = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
     const ICON_BY_TAG = { speech: 'free-speech', religion: 'religion', guns: 'second-amendment', equality: 'equal-protection', dueprocess: 'due-process', crimpro: 'fourth-amendment', federalism: 'federalism', seppowers: 'separation-of-powers', admin: 'administrative-state', voting: 'voting', security: 'executive-power' };
@@ -1128,30 +1136,47 @@
       const thumb = videoThumb({ t: v.t, ch: v.ch, len: v.sec ? clock(v.sec) : '' }, iconKey);
       return `<div class="md-v"><button class="vtile" data-video="${esc(v.id)}" data-title="${esc(v.t)}" data-ch="${esc(v.ch)}" data-start="${v.start || 0}">${thumb}<span class="vm">${esc(meta)}</span></button>${v.topic ? `<p class="md-topic">Chapter: ${esc(v.topic)}</p>` : ''}</div>`;
     };
+    const SHOW_HOME = { 'Advisory Opinions': 'https://thedispatch.com/podcast/advisoryopinions/', 'We the People': 'https://constitutioncenter.org/news-debate/podcasts',
+      'More Perfect': 'https://www.wnycstudios.org/podcasts/radiolabmoreperfect', '5-4': 'https://www.fivefourpod.com/', 'Strict Scrutiny': 'https://crooked.com/podcast-series/strict-scrutiny/',
+      'Divided Argument': 'https://www.dividedargument.com/' };
     const linkOf = v => v.id ? `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}${v.start ? '&t=' + v.start + 's' : ''}`
-      : /^https?:\/\//.test(v.link || '') ? v.link
-      : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`"${v.ch}" ${v.t}`);
-    const where = v => v.id ? 'YouTube' : /^https?:\/\//.test(v.link || '') ? v.link.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : 'search YouTube';
-    const row = v => `<li><a href="${esc(linkOf(v))}" target="_blank" rel="noopener"><b>${esc(v.t)}</b></a>
-      <span class="md-lm">${esc(v.ch)}${v.date ? ' · ' + esc(fmtDate(v.date)) : ''}${v.start ? ' · discussion starts at ' + clock(v.start) : ''}${v.sec ? ' · ' + clock(v.sec) : ''} · <a href="${esc(linkOf(v))}" target="_blank" rel="noopener">${esc(where(v))} ↗</a></span>
-      ${v.topic ? `<span class="md-topic">${esc(v.topic)}</span>` : ''}</li>`;
+      : /^https?:\/\//.test(v.link || '') ? v.link : SHOW_HOME[v.ch] || '';
+    const where = v => v.id ? 'YouTube' : /^https?:\/\//.test(v.link || '') ? v.link.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : SHOW_HOME[v.ch] ? 'the show’s site' : '';
+    const listen = v => v.audio ? `<button class="link-btn md-listen" data-audio="${esc(v.audio)}" data-title="${esc(v.t)}" data-ch="${esc(v.ch)}" data-link="${esc(linkOf(v))}" data-start="${v.start || 0}">▶ Listen here</button>` : '';
+    const row = v => { const L = linkOf(v); return `<li>${L ? `<a href="${esc(L)}" target="_blank" rel="noopener"><b>${esc(v.t)}</b></a>` : `<b>${esc(v.t)}</b>`}
+      <span class="md-lm">${esc(v.ch)}${v.date ? ' · ' + esc(fmtDate(v.date)) : ''}${v.start ? ' · discussion starts at ' + clock(v.start) : ''}${v.sec ? ' · ' + clock(v.sec) : ''}${v.id ? '' : listen(v) ? ' · ' + listen(v) : ''}${L ? ` · <a href="${esc(L)}" target="_blank" rel="noopener">${esc(where(v))} ↗</a>` : ''}</span>
+      ${v.topic ? `<span class="md-topic">${esc(v.topic)}</span>` : ''}</li>`; };
     const isShow = v => v.kind === 'pod' || /Advisory Opinions|SCOTUSblog|Strict Scrutiny|Divided Argument/.test(v.ch || '');
     const shows = M.videos.filter(isShow), others = M.videos.filter(v => !isShow(v));
     const block = (list, h, note) => {
       const em = list.filter(embedded), ln = list.filter(v => !embedded(v)).sort((x, y) => (y.date || '').localeCompare(x.date || ''));
-      return list.length ? `<h2>${h}</h2>${em.length ? `<div class="vgrid md-grid">${em.map(tile).join('')}</div>` : ''}${ln.length ? `<ul class="md-links">${ln.map(row).join('')}</ul>` : ''}<p class="attrib">${note}</p>` : '';
+      return list.length ? `<h2>${h}</h2>${em.length ? `<div class="vgrid md-grid">${em.map(tile).join('')}</div>` : ''}${ln.length ? `<ul class="md-links">${ln.map(row).join('')}</ul>` : ''}${note ? `<p class="attrib">${note}</p>` : ''}` : '';
     };
+    // reference pages built from the case's citation (Justia, Cornell LII, Oyez, CourtListener, the U.S. Reports at the
+    // Library of Congress), plus the Wikipedia article and SCOTUSblog case file when the build found them
+    const um = (c.cit || '').match(/^(\d+) U\.S\. (\d+)$/), sct = (c.cit || '').match(/^(\d+) S\. Ct\. (\d+)$/);
+    const refs = [];
+    if (M.sb) refs.push([M.sb, 'SCOTUSblog case file']);
+    if (c.ju) refs.push([c.ju, 'Justia']);
+    if (um) refs.push([`https://www.law.cornell.edu/supremecourt/text/${um[1]}/${um[2]}`, 'Cornell LII']);
+    else if (c.d && /^\d{2}-\d+$/.test(c.d.trim())) refs.push([`https://www.law.cornell.edu/supremecourt/text/${c.d.trim()}`, 'Cornell LII']);
+    if (c.s !== 1 && !c.pending) refs.push([`https://www.oyez.org/cases/${c.id}`, 'Oyez']);
+    if (um) refs.push([`https://www.courtlistener.com/c/U.S./${um[1]}/${um[2]}/`, 'CourtListener']);
+    else if (sct) refs.push([`https://www.courtlistener.com/c/S.%20Ct./${sct[1]}/${sct[2]}/`, 'CourtListener']);
+    if (c.pdf && /loc\.gov/.test(c.pdf)) refs.push([c.pdf, 'U.S. Reports (Library of Congress)']);
+    if (M.wiki) refs.push([M.wiki, 'Wikipedia']);
     el.innerHTML = `<section class="md">
-      ${block(shows, 'Podcasts and shows', `Episodes of ${[...new Set(shows.map(v => v.ch))].map(esc).join(', ')} that discuss this case. Videos the show posts on YouTube play here through YouTube's embedded player; other episodes link to the show's own page (or a YouTube search for the episode). The listed time is where the show notes mark the discussion of the case. Matches come from episode titles and show notes.`)}
+      ${block(shows, 'Podcasts and shows', '')}
       ${block(others, 'Videos', 'Videos whose titles name this case: embedded through YouTube’s player when the owner allows it, otherwise linked.')}
+      ${refs.length ? `<h2>Case pages</h2><div class="md-refs">${refs.map(([u, label]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)} <span class="md-pw free">Free</span></a>`).join('')}</div>` : ''}
       ${(M.web || []).length ? `<h2>Coverage and commentary</h2>
         <p class="md-legend"><span class="md-pw pw">Paywall</span> subscription needed for most readers (some sites allow a few free articles a month) <span class="md-pw free">Free</span> free to read, as far as we know</p>
         <ul class="md-web">${M.web.map(w => `<li><a href="${esc(w.u)}" target="_blank" rel="noopener nofollow">${esc(w.t)} <span class="ext">↗</span></a><div><span class="md-pw ${w.pw ? 'pw' : 'free'}">${w.pw ? 'Paywall' : 'Free'}</span><b>${esc(w.o)}</b>${w.d ? `<span>${esc(w.d.length === 10 ? fmtDate(w.d) : w.d)}</span>` : ''}</div></li>`).join('')}</ul>
-        <p class="attrib">News and analysis cited in the case's <a href="${esc(M.wiki)}" target="_blank" rel="noopener">Wikipedia article</a>, linked to the original publishers; nothing is copied. Paywall labels come from a list of outlets that require subscriptions and may not reflect each article.</p>` : ''}
+        <p class="attrib">News and analysis cited or linked in the case's ${M.wiki ? `<a href="${esc(M.wiki)}" target="_blank" rel="noopener">Wikipedia article</a>` : 'Wikipedia article'}, and Congressional Research Service reports that discuss the case, linked to the original publishers; nothing is copied. Paywall labels come from a list of outlets that require subscriptions and may not reflect each article.</p>` : ''}
       ${M.print.length ? `<h2>In the newspapers</h2><div class="md-print">${M.print.map(p => `<a class="md-clip" href="${esc(p.url)}" target="_blank" rel="noopener">${p.img ? `<img src="${esc(p.img)}" alt="Page of ${esc(p.paper)}, ${esc(p.date)}" loading="lazy">` : ''}<b>${esc(p.paper)}</b><span>${esc(fmtDate(p.date))}${p.page ? ' · page ' + p.page : ''}</span><em>View the page ↗</em></a>`).join('')}</div>
         <p class="attrib">Newspaper pages printed in the weeks after the decision that name both parties and the Supreme Court, from <a href="https://www.loc.gov/collections/chronicling-america/" target="_blank" rel="noopener">Chronicling America</a> (Library of Congress; public domain). Search the page for the case name to find the story.</p>` : ''}
     </section>`;
-
+    el.querySelectorAll('.md-listen').forEach(b => b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openAudio(b.dataset); }));
   }
   /* a podcast episode's audio, streamed from the publisher's feed, in a modal; the audio dock takes over when it plays */
   function openAudio(d) {
@@ -1380,7 +1405,7 @@
     // for pending cases, the predicted outcome. Switching tabs does not re-render the page, so argument audio keeps playing.
     const adk = (AI && (AI[c.id] || (pend && AI[pend.id]))) || null;
     const hasParties = c.s !== 1 || ((window.PARTIES_INDEX || []).includes(String(c.t)));
-    const hasMedia = (window.MEDIA_INDEX || []).includes(c.id);
+    const hasMedia = true;   // the case pages row is always there; podcasts, coverage and newspapers when found
     const TABS = [['', 'Overview'], adk ? ['authorities', 'Authorities'] : null, hasParties ? ['parties', 'Parties & advocates'] : null, hasMedia ? ['media', 'In the media'] : null, pend ? ['prediction', 'Predicted outcome'] : null].filter(Boolean);
     let tab = (params && params.get('tab')) || '';
     if (!TABS.some(t => t[0] === tab)) tab = '';
@@ -1471,13 +1496,11 @@
           .catch(e => { if (token === routeToken) el.innerHTML = `<p class="muted-line">${esc(e.message)}.</p>`; });
       } else if (k === 'media') {
         const el = app.querySelector('[data-panel="media"]');
-        // a case listed in the index but with nothing to show (or a file that fails to load) loses the tab
-        const noMedia = () => { if (token !== routeToken) return; const t = app.querySelector('.case-tabs [data-tab="media"]'); if (t) t.remove(); showTab(''); history.replaceState(null, '', tabHref('')); };
-        loadScriptOnce(`data/media/${c.t}.js`).then(() => {
-          const M = (window.MEDIA || {})[c.id];
-          if (!M || !((M.videos || []).length || (M.print || []).length || (M.web || []).length)) return noMedia();
-          if (token === routeToken) renderMedia(el, M, c);
-        }).catch(noMedia);
+        // cases in the media index load their term's file; every case gets its case pages row regardless (and a file
+        // that fails to load just leaves that row)
+        const draw = M => { if (token === routeToken) renderMedia(el, M, c); };
+        if ((window.MEDIA_INDEX || []).includes(c.id)) loadScriptOnce(`data/media/${c.t}.js`).then(() => draw((window.MEDIA || {})[c.id])).catch(() => draw(null));
+        else draw(null);
       } else if (k === 'parties') {
         const el = app.querySelector('[data-panel="parties"]');
         const pp = (window.PARTIES_INDEX || []).includes(String(c.t)) ? loadScriptOnce(`data/parties/${c.t}.js`).then(() => (window.PARTIES || {})[c.id] || null).catch(() => null) : Promise.resolve(null);
@@ -1802,7 +1825,7 @@
       <section class="hero guide-hero"><div class="hero-inner" style="padding:64px 24px 54px">
         <span class="eyebrow">Beginner's Guide</span>
         <h1 style="max-width:18ch">The essential guide to <em>constitutional law.</em></h1>
-        <p class="lede">Start with ${G.topics.length} core topics, each with a plain-English overview, short explainer videos, the landmark cases, and readable articles. Then go deeper in the <a href="#/guide" data-jump="advanced" style="color:var(--accent)">advanced doctrine</a> below: every major doctrine, test and case, with excerpts from the opinions themselves.</p>
+        <p class="lede">Start with ${G.topics.length} core topics, each with a plain-English overview, short explainer videos and longer lectures from law schools, the landmark cases, and readable articles. Then go deeper in the <a href="#/guide" data-jump="advanced" style="color:var(--accent)">advanced doctrine</a> below: every major doctrine, test and case, with excerpts from the opinions themselves.</p>
         <div class="suggest" style="margin-top:22px"><a class="chip on" href="#/guide" data-jump="beginner">Beginner topics</a><a class="chip" href="#/guide" data-jump="advanced">Advanced doctrine</a><a class="chip" href="#/corner">Originalist's Corner</a></div>
       </div></section>
       <div id="beginner"></div>
@@ -2579,7 +2602,17 @@
         <p class="lede">Choose a topic and read what Blackstone, the Convention debates, <i>The Federalist</i> and the Anti-Federalists, the acts of the first Congresses, Tucker, Story, Rawle, Kent, Cooley, Vattel and Locke said about it, side by side. The ${fmt(Object.keys(C.passages).length)} passages are drawn from the full texts of ${srcs.length} bodies of founding-era material.</p>
         <div class="suggest" style="margin-top:22px"><a class="chip on" href="#/corner/constitution">The Annotated Constitution →</a><a class="chip" href="#/corner/constitution?mode=dict">Founding-era dictionary →</a><a class="chip" href="#/library">Browse the library →</a></div>
       </div></section>
-      <section class="section" style="padding-top:44px">
+      <section class="section corner-what-sec"><div class="corner-what">
+        <h2>What is the Originalist's Corner?</h2>
+        <p><b>Originalism</b> reads the Constitution according to the meaning its words had when they were adopted. Originalists, and the judges and scholars who disagree with them, argue from the same evidence: the English law the framers inherited, the political philosophy they read, the debates at the Convention and over ratification, and how the first Congresses and early commentators applied the text. The Corner puts that evidence in one place.</p>
+        <ul>
+          <li><b>Topics.</b> For each of ${C.topics.filter(t => t.n).length} subjects, from judicial review to the right to bear arms, passages from every source side by side (${fmt(Object.keys(C.passages).length)} in all), each linked to its place in the full text.</li>
+          <li><b>The Annotated Constitution.</b> Every clause with the founding-era commentary on it, the Constitution Annotated's overview, the leading cases, and a founding-era dictionary for its words.</li>
+          <li><b>The library.</b> The full texts behind the passages, and more: Locke, Montesquieu and Sidney, Blackstone, the Revolutionary pamphlets, Madison's notes and Farrand's records, <i>The Federalist</i> and the Anti-Federalists, the first Congresses' acts and the early commentators, to read, highlight and annotate.</li>
+        </ul>
+        <p class="muted-line">Passages are matched to topics automatically, so read them in context. All texts are in the public domain or freely licensed.</p>
+      </div></section>
+      <section class="section" style="padding-top:28px">
         <div class="section-head"><div><h2>Topics</h2><p>Each topic gathers the most relevant passages from every source.</p></div></div>
         <div class="corner-grid">${C.topics.filter(t => t.n).map(t => `<a class="corner-card" href="#/corner/${t.id}">
           <b>${esc(t.name)}</b><span>${esc(t.desc)}</span><em>${t.n} passages · ${Object.keys(C.index[t.id] || {}).length} sources</em></a>`).join('')}</div>
@@ -3579,7 +3612,7 @@
     const seg = path.split('/');
     routeToken++;
     const navKey = { docket: 'scotus', justices: 'scotus', justice: 'scotus', stats: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', journals: 'search', book: 'books', notes: 'saved' }[seg[0]] || seg[0] || 'home';
-    document.querySelectorAll('.topnav a[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === navKey));
+    document.querySelectorAll('.topbar a[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === navKey));
     document.querySelectorAll('audio').forEach(a => a.pause());
     const top = document.getElementById('topsearch-input');
     if (navKey === 'search') top.value = params.get('q') || ''; else if (navKey !== 'search') top.value = '';
@@ -3646,7 +3679,10 @@
     const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = t; localStorage.setItem('cl-theme', t);
   });
-  document.getElementById('footer-updated').textContent = 'Updated ' + DATA.generated;
+  {
+    const m = String(window.LC_VER || '').match(/^(\d{4})(\d{2})(\d{2})/);
+    document.getElementById('footer-updated').textContent = 'Last updated ' + (m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : DATA.generated);
+  }
   window.addEventListener('hashchange', route);
   persistSaved();
   persistRead();

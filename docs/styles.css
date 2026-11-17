@@ -330,7 +330,7 @@ mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: in
   .sidebar { position: static; max-height: none; display: none; }
   .sidebar.open { display: block; }
   .filter-toggle { display: inline-flex; }
-  .topnav a[data-nav="search"], .topnav a[data-nav="journals"] { display: none; }
+  .topnav a[data-nav="journals"] { display: none; }
 }
 @media (max-width: 720px) {
   .topbar-inner { flex-wrap: wrap; gap: 12px; }
@@ -539,3 +539,25 @@ body.ws-on #app, body.ws-on .footer, body.ws-on > .np, body.ws-on > .hl-pop { di
 .src-group .section-head p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 70ch; }
 .src-more { background: none; border: 0; cursor: pointer; font: inherit; white-space: nowrap; }
 .jgrid.one-row { grid-template-rows: auto; grid-auto-rows: 0; row-gap: 0; overflow: hidden; }
+/* top bar: section links, then the ★ list and theme toggle; on phones the sections become their own swipeable row */
+.topactions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.topactions .nav-dd > a { padding: 7px 12px; border-radius: 999px; color: var(--ink-2); font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.topactions .nav-dd > a:hover, .topactions .nav-dd > a.active { background: var(--bg-sunk); color: var(--ink); }
+@media (max-width: 860px) {
+  .topbar-inner { flex-wrap: wrap; row-gap: 8px; }
+  .brand { order: 1; }
+  .topactions { order: 2; margin-left: auto; }
+  .topsearch { order: 3; flex-basis: 100%; max-width: none; }
+  .topnav { order: 4; flex: 1 1 100%; margin: 0 -24px; padding: 0 24px; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding: 0 24px; scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 28px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 28px), transparent 100%); }
+  .topnav::-webkit-scrollbar { display: none; }
+  .topnav a { scroll-snap-align: start; flex-shrink: 0; }
+}
+/* Originalist's Corner: the "What is the Originalist's Corner?" explanation under the hero */
+.corner-what-sec { padding-top: 34px; padding-bottom: 0; }
+.corner-what { max-width: 860px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg-elev); padding: 22px 26px 16px; }
+.corner-what h2 { margin: 0 0 10px; font-family: var(--serif, Georgia, serif); font-size: 24px; }
+.corner-what p, .corner-what li { font-size: 15.5px; line-height: 1.6; color: var(--ink-2); }
+.corner-what ul { margin: 10px 0 12px; padding-left: 20px; }
+.corner-what li { margin-bottom: 6px; }
+.corner-what .muted-line { font-size: 13px; color: var(--ink-3); }

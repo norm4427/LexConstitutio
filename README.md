@@ -83,6 +83,7 @@ bash scripts/corner.sh && bash scripts/wikisource_retry.sh   # founding-era sour
 perl scripts/build_corner.pl           # writes corner.js and library-*.js
 python scripts/library_books.py         # full texts for the book reader (docs/data/lib/, lib-index.js) from Wikisource and Project Gutenberg; cached in data/raw/library/
 python scripts/library_gov.py           # the Constitution Annotated and CRS Legal Sidebars in the book reader (after conan_extract.py and crs_fetch.py)
+python scripts/site_stats.py            # writes site-stats.js: the counts quoted in the home page, section intros and About (run after rebuilding data)
 perl scripts/build_advanced.pl         # writes advanced.js from scripts/advanced/*.md
 bash scripts/conan_fetch.sh && python scripts/conan_extract.py && perl scripts/build_conan.pl   # Constitution Annotated commentary (PDFs in data/raw/conan from GovInfo)
 perl scripts/build_quizzes.pl          # writes quizzes.js from scripts/quizzes/*.txt
