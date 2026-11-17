@@ -2527,7 +2527,7 @@
     if (c.wiki) secs.push(['overview', 'Overview', `${c.wiki.paras.map(p => `<p>${esc(p)}</p>`).join('')}<p class="attrib">From Wikipedia, <a href="${esc(c.wiki.url)}" target="_blank" rel="noopener">${esc(c.wiki.title)}</a> (CC BY-SA 4.0).</p>`]);
     if (c.conan && c.conan.overview) secs.push(['commentary', 'Commentary', `<h5>${esc(c.conan.overview.title)}</h5>${c.conan.overview.paras.map(p => `<p>${p}</p>`).join('')}
       ${c.conan.dev.length ? `<h5 style="margin-top:18px">How interpretation has developed</h5><div class="ac-dev">${c.conan.dev.map(d => `<details><summary>${esc(d.title)}</summary><p>${d.p}</p></details>`).join('')}</div>` : ''}
-      <p class="attrib">From the <i>Constitution Annotated</i> (Congressional Research Service, 2022 ed.), essays ${esc(c.conan.overview.id)}${c.conan.dev.length ? ' and following' : ''}; public domain.</p>`]);
+      <p class="attrib">From the <i>Constitution Annotated</i> (Congressional Research Service, 2022 ed.), essays ${esc(c.conan.overview.id)}${c.conan.dev.length ? ' and following' : ''}; public domain. <a href="#/library/book/conan/e/${encodeURIComponent(c.conan.overview.id)}">Read these essays in full in the library →</a></p>`]);
     if (c.cases.length) secs.push(['cases', `Leading cases <small>${c.nCases > c.cases.length ? `top ${c.cases.length} of ${fmt(c.nCases)}` : ''}</small>`, `<p class="ac-intro">Cases the Supreme Court Database classifies under this provision, ranked by how often later Supreme Court opinions cite them.</p>
       <ol class="mini-list ranked">${c.cases.map(id => { const k = caseById.get(id); if (!k) return ''; const m = I.c[id]; return `<li><a class="t" href="#/case/${esc(id)}">${esc(k.n)}</a><div class="m">${esc(k.cit || '')}${k.y ? ' · ' + k.y : ''}${m ? ` · ${fmt(m[2])} later Supreme Court citations` : ''}</div></li>`; }).join('')}</ol>`]);
     if (c.articles.length) secs.push(['scholarship', `Scholarship <small>${c.nArticles > c.articles.length ? `most cited ${c.articles.length} of ${fmt(c.nArticles)}` : ''}</small>`, `<ol class="mini-list ranked">${c.articles.map(id => { const a = artById.get(id); if (!a) return ''; return `<li><a class="t" href="${articleHref(a)}">${esc(a.t)}</a><div class="m">${esc((a.a || []).slice(0, 2).join(', '))}${a.a && a.a.length > 2 ? ' et al.' : ''} · ${esc(jname(a.j))}${a.y ? ' ' + a.y : ''}${a.c != null ? ` · ${fmt(a.c)} citations` : ''}</div></li>`; }).join('')}</ol>
@@ -2622,19 +2622,36 @@
       loadLibChapter(id, n).then(C => { if (tk === routeToken) C ? renderLibChapter(B, C) : viewNotFound(); });
     }).catch(() => viewNotFound());
   }
+  // a Constitution Annotated essay by its id: open the part that holds it and scroll to the essay
+  function viewLibEssay(id, essay) {
+    app.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    loadLibBook(id).then(B => {
+      const n = B && B.essays && B.essays[essay];
+      if (!n) return viewNotFound();
+      try { sessionStorage.setItem('cl-bk-jump', essay); } catch (e) { /* private mode */ }
+      location.replace(`#/library/book/${id}/${n}`);
+    }).catch(() => viewNotFound());
+  }
+  const libCrumbs = B => B.shelf === 'gov' ? '<a href="#/">Home</a><span>/</span><a href="#/library">Library</a>' : `<a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a>`;
   const fmtWords = w => w >= 1000 ? Math.round(w / 1000) + 'k words' : w + ' words';
   const readMins = w => Math.max(1, Math.round(w / 230));
   function renderLibCover(B) {
     const pos = libPos(B.id), total = B.toc.reduce((s, c) => s + c[1], 0);
     app.innerHTML = `<div class="fade-in"><div class="bk-cover">
-      <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a><span>/</span><span>${esc(B.title)}</span></div>
+      <div class="crumbs">${libCrumbs(B)}<span>/</span><span>${esc(B.title)}</span></div>
       <div class="bk-title"><span class="eyebrow">${esc(B.author)} · ${esc(B.year)}</span><h1>${esc(B.title)}</h1>
         <p class="muted-line">${B.toc.length} parts · ${fmtWords(total)} · about ${Math.round(readMins(total) / 60)} hours of reading</p>
         <div class="bk-actions">${pos ? `<a class="btn btn-primary" href="#/library/book/${esc(B.id)}/${pos.n}">Continue reading · ${esc((B.toc[pos.n - 1] || [''])[0])}</a><a class="btn btn-ghost" href="#/library/book/${esc(B.id)}/1">Start from the beginning</a>` : `<a class="btn btn-primary" href="#/library/book/${esc(B.id)}/1">Start reading</a>`}</div></div>
       <h2>Contents</h2>
+      ${B.toc.length > 40 ? `<form class="lec-search bk-filter" onsubmit="return false"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="bk-filter" type="search" placeholder="Filter the ${B.toc.length} parts…" aria-label="Filter the contents"></form>` : ''}
       <ol class="bk-toc">${B.toc.map(([t, w], i) => `<li class="${pos && pos.n === i + 1 ? 'here' : ''}"><a href="#/library/book/${esc(B.id)}/${i + 1}"><span>${esc(t)}</span><em>${readMins(w)} min</em></a></li>`).join('')}</ol>
+      ${window.LexAnnot && LexAnnot.count('book:' + B.id) ? `<h2>Your highlights</h2><div class="bk-hl bk-hl-cover" id="bk-hl-cover">${LexAnnot.listHtml('book:' + B.id, { href: k => `#/library/book/${B.id}/${k}`, title: B.title, author: B.author })}</div>` : ''}
       <p class="attrib">${esc(B.license)}. Source: <a href="${esc(B.src)}" target="_blank" rel="noopener">${esc(B.srcName)}</a>. Headers, page numbers and footnote markers are omitted.</p>
     </div></div>`;
+    const flt = document.getElementById('bk-filter');
+    if (flt) flt.addEventListener('input', () => { const q = flt.value.trim().toLowerCase(); app.querySelectorAll('.bk-toc li').forEach(li => { li.hidden = !!q && !li.textContent.toLowerCase().includes(q); }); });
+    const hl = document.getElementById('bk-hl-cover');
+    if (hl) LexAnnot.bindList(hl, 'book:' + B.id, { href: k => `#/library/book/${B.id}/${k}`, title: B.title, author: B.author });
   }
   function renderLibChapter(B, C) {
     const n = C.n, N = B.toc.length;
@@ -2654,6 +2671,7 @@
       <aside class="bk-drawer" id="bk-drawer" hidden><div class="bk-drawer-in">
         <h4>Contents</h4><ol>${B.toc.map(([t, w], i) => `<li class="${i + 1 === n ? 'here' : ''}"><a href="${chHref(i + 1)}"><span>${esc(t)}</span><em>${readMins(w)} min</em></a></li>`).join('')}</ol>
         ${heads.length > 2 ? `<h4>In this part</h4><ol class="bk-sec">${heads.map(([i, t]) => `<li><a href="#" data-jump="${i}">${esc(t.length > 90 ? t.slice(0, 88) + '…' : t)}</a></li>`).join('')}</ol>` : ''}
+        ${window.LexAnnot ? '<h4>Your highlights<span data-hl-count></span></h4><div class="bk-hl" data-hl-list></div>' : ''}
       </div></aside>
       <article class="bk-page">
         <div class="bk-chead"><span>Part ${n} of ${N} · ${readMins(words)} min read</span><h1>${esc(C.t)}</h1></div>
@@ -2669,9 +2687,17 @@
     root.querySelectorAll('[data-size]').forEach(b => b.addEventListener('click', () => {
       const v = Math.max(-2, Math.min(4, readerSize() + +b.dataset.size)); localStorage.setItem('cl-reader-size', v); root.style.setProperty('--bk-size', v);
     }));
+    const bkTop = () => (parseFloat(root.style.getPropertyValue('--bk-top')) || 0) + 3 + root.querySelector('.bk-bar').offsetHeight;
+    const ann = window.LexAnnot ? LexAnnot.mount({ doc: 'book:' + B.id, ch: String(n), chLabel: C.t, cite: `${B.author}, ${B.title}, ${C.t}`, title: B.title, author: B.author,
+      href: k => chHref(k), textEl: root.querySelector('.bk-text'), root, toolsEl: root.querySelector('.bk-tools'), topFn: bkTop,
+      onGo: () => { drawer.hidden = true; tb.setAttribute('aria-expanded', 'false'); } }) : {};
     // progress bar and saved place (part and how far into it)
     const pos = libPos(B.id);
-    if (pos && pos.n === n && pos.f > 0.02) requestAnimationFrame(() => window.scrollTo({ top: pos.f * (document.documentElement.scrollHeight - innerHeight) }));
+    let essayJump = null; try { essayJump = sessionStorage.getItem('cl-bk-jump'); sessionStorage.removeItem('cl-bk-jump'); } catch (e) { /* private mode */ }
+    const essayEl = essayJump && [...root.querySelectorAll('.bk-text h3')].find(h => h.textContent.startsWith(essayJump + ' '));
+    if (essayEl) requestAnimationFrame(() => essayEl.scrollIntoView({ block: 'start' }));
+    else if (ann.hasJump) { /* scrolled to the chosen highlight */ }
+    else if (pos && pos.n === n && pos.f > 0.02) requestAnimationFrame(() => window.scrollTo({ top: pos.f * (document.documentElement.scrollHeight - innerHeight) }));
     else window.scrollTo({ top: 0 });
     const bar = document.getElementById('bk-bar'); let tmr = 0;
     const onScroll = () => {
@@ -2682,7 +2708,7 @@
     };
     const onKey = e => {
       if (!document.body.contains(bar)) { document.removeEventListener('keydown', onKey); return; }
-      if (e.target.closest('input,textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.closest('input,textarea,[contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'ArrowRight' && n < N) location.hash = chHref(n + 1);
       if (e.key === 'ArrowLeft' && n > 1) location.hash = chHref(n - 1);
     };
@@ -2731,19 +2757,25 @@
     if (kind === 'federalist') return withData([['library-federalist', 'LIB_FEDERALIST']], F => seg[2] ? renderFederalist(F, +seg[2]) : renderLibraryList('federalist', F, params));
     if (kind === 'documents' || kind === 'doc') return withData([['library-documents', 'LIB_DOCUMENTS']], D => seg[2] ? renderLibDoc(D, seg[2]) : renderLibraryList('documents', D, params));
     if (kind === 'statutes' || kind === 'statute') return withData([['library-statutes', 'LIB_STATUTES']], S => seg[2] ? renderStatute(S, seg[2]) : renderLibraryList('statutes', S, params));
+    if (kind === 'book' && seg[2] && seg[3] === 'e' && seg[4]) return viewLibEssay(seg[2], decodeURIComponent(seg[4]));
     if (kind === 'book' && seg[2]) return viewLibBook(seg[2], +seg[3] || 0);
     viewNotFound();
   }
   function renderLibraryHome() {
+    const idx = window.LIB_INDEX || [], yr = b => +((String(b.year).match(/\d{4}/) || [9999])[0]);
+    const card = b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${fmt(b.chapters)} parts · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`;
+    const founding = idx.filter(b => b.shelf !== 'gov').sort((a, b) => yr(a) - yr(b)), gov = idx.filter(b => b.shelf === 'gov');
     app.innerHTML = `<div class="fade-in">
-      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>Library</span></div>
-        <h1>The founding-era library</h1><p>Full texts you can read here: every number of <i>The Federalist</i>, the founding documents and early state constitutions, every act of the first five Congresses, and the treatises the founders and early commentators relied on.</p></div>
-      <section class="section" style="padding-top:28px"><div class="jgrid">
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Library</span></div>
+        <h1>The library</h1><p>Full texts you can read here, highlight and take notes on: <i>The Federalist</i>, the founding documents and early state constitutions, every act of the first five Congresses, the treatises and pamphlets the founders and early commentators relied on, and the Library of Congress&rsquo;s <i>Constitution Annotated</i> and CRS Legal Sidebars. Everything here is in the public domain or freely licensed.</p></div>
+      <section class="section" style="padding-top:28px"><div class="section-head"><div><h2>Founding-era texts</h2><p>The sources behind the <a href="#/corner">Originalist's Corner</a>, and the works that shaped the founders' thinking, in date order.</p></div></div><div class="jgrid">
         <a class="jcard" href="#/library/federalist"><div class="abbr">Hamilton, Madison & Jay · 1787–88</div><h3>The Federalist</h3><div class="foot"><span>85 essays</span><b>Read →</b></div></a>
         <a class="jcard" href="#/library/documents"><div class="abbr">1215–1802</div><h3>Founding documents & state constitutions</h3><div class="foot"><span>Magna Carta to the Danbury letter</span><b>Read →</b></div></a>
         <a class="jcard" href="#/library/statutes"><div class="abbr">1789–1799</div><h3>Acts of the First Congresses</h3><div class="foot"><span><i>Statutes at Large</i>, vol. 1</span><b>Read →</b></div></a>
-        ${(window.LIB_INDEX || []).map(b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${b.chapters} parts · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`).join('')}
-      </div></section></div>`;
+        ${founding.map(card).join('')}
+      </div></section>
+      ${gov.length ? `<section class="section" style="padding-top:8px"><div class="section-head"><div><h2>Congress&rsquo;s legal research</h2><p>U.S. government works from the Congressional Research Service at the Library of Congress: the annotated Constitution and the short legal analyses CRS writes for Congress.</p></div></div><div class="jgrid">${gov.map(card).join('')}</div></section>` : ''}
+    </div>`;
     if (!window.LIB_INDEX) loadScriptOnce('data/lib-index.js').then(() => { if (lastRoute.path === 'library') renderLibraryHome(); }).catch(() => { window.LIB_INDEX = []; });
   }
   function renderLibraryList(kind, items, params) {
@@ -2764,15 +2796,21 @@
     document.getElementById('lib-form').addEventListener('submit', e => { e.preventDefault(); location.hash = hashFor('library/' + kind, { q: document.getElementById('lib-q').value.trim() }); });
   }
   const ordinal = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
-  function readerPage(crumb, title, meta, paras, nav, extra) {
-    app.innerHTML = `<div class="fade-in"><div class="reader">
+  function readerPage(crumb, title, meta, paras, nav, extra, annot) {
+    app.innerHTML = `<div class="fade-in rd-wrap"><div class="reader">
       <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a><span>/</span>${crumb}</div>
       <h1>${esc(title)}</h1>
       <div class="publine">${meta}</div>
-      <div class="reader-body">${paras.map(p => `<p>${esc(p)}</p>`).join('')}</div>
+      ${annot && window.LexAnnot ? '<div class="rd-tools"><span class="muted-line">Select text to highlight it or quote it into your notes.</span><div class="rd-tools-b"></div></div>' : ''}
+      <div class="reader-body">${paras.map((p, i) => `<p id="bk-${i}">${esc(p)}</p>`).join('')}</div>
       ${extra || ''}
       ${nav || ''}
     </div></div>`;
+    if (!annot || !window.LexAnnot) return;
+    const root = app.querySelector('.rd-wrap');
+    const hdr = document.querySelector('header');
+    LexAnnot.mount(Object.assign({ textEl: root.querySelector('.reader-body'), root, toolsEl: root.querySelector('.rd-tools-b'),
+      topFn: () => hdr && getComputedStyle(hdr).position === 'sticky' ? hdr.getBoundingClientRect().height : 0 }, annot));
   }
   function renderFederalist(F, n) {
     const i = F.findIndex(f => f.n === n); const f = F[i];
@@ -2780,18 +2818,21 @@
     const prev = F[i - 1], next = F[i + 1];
     readerPage('<a href="#/library/federalist">The Federalist</a>', `The Federalist No. ${f.n}`, `${esc(f.title)}${f.author ? ' · ' + esc(f.author) : ''}`, f.paras,
       `<div class="guide-nav">${prev ? `<a href="#/library/federalist/${prev.n}"><small>← No. ${prev.n}</small>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a href="#/library/federalist/${next.n}" style="text-align:right"><small>No. ${next.n} →</small>${esc(next.title)}</a>` : '<span></span>'}</div>`,
-      '<p class="attrib">Text: Project Gutenberg eBook #1404 (public domain).</p>');
+      '<p class="attrib">Text: Project Gutenberg eBook #1404 (public domain).</p>',
+      { doc: 'federalist', ch: String(f.n), chLabel: `No. ${f.n}. ${f.title}`, cite: `${f.author ? f.author + ', ' : ''}The Federalist No. ${f.n}`, title: 'The Federalist', author: 'Hamilton, Madison & Jay', href: k => `#/library/federalist/${k}` });
   }
   function renderLibDoc(D, id) {
     const d = D.find(x => x.id === id);
     if (!d) return viewNotFound();
-    readerPage('<a href="#/library/documents">Founding documents</a>', d.title, String(d.year), d.paras, '', '<p class="attrib">Text: the Avalon Project at Yale Law School and Wikisource (public domain).</p>');
+    readerPage('<a href="#/library/documents">Founding documents</a>', d.title, String(d.year), d.paras, '', '<p class="attrib">Text: the Avalon Project at Yale Law School and Wikisource (public domain).</p>',
+      { doc: 'documents', ch: d.id, chLabel: d.title, cite: `${d.title} (${d.year})`, title: 'Founding documents', author: '', href: k => `#/library/doc/${k}` });
   }
   function renderStatute(S, id) {
     const s = S.find(x => x.id === id);
     if (!s) return viewNotFound();
     readerPage('<a href="#/library/statutes">Acts of the First Congresses</a>', s.title, `${ordinal(s.cong)} Congress, ${ordinal(s.sess)} Session, ${esc(s.chap)}${s.date ? ' · ' + esc(s.date) : ''} · 1 Stat.`, s.paras, '',
-      `<p class="attrib">Text: <i>United States Statutes at Large</i>, vol. 1, transcribed on Wikisource (public domain).</p>`);
+      `<p class="attrib">Text: <i>United States Statutes at Large</i>, vol. 1, transcribed on Wikisource (public domain).</p>`,
+      { doc: 'statutes', ch: s.id, chLabel: s.title, cite: `${s.title}, ${ordinal(s.cong)} Cong., ${ordinal(s.sess)} Sess., ${s.chap}, 1 Stat.`, title: 'Acts of the First Congresses', author: '', href: k => `#/library/statute/${k}` });
   }
 
   /* ------------------------------------------------------------ quizzes */
