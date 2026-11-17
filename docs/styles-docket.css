@@ -149,11 +149,6 @@
 .md-clip b { font: 500 14px/1.25 var(--serif); }
 .md-clip span { font-size: 12px; color: var(--ink-3); }
 .md-clip em { font-style: normal; font-size: 12px; color: var(--accent); font-weight: 600; }
-.md-audio { max-width: 560px; background: var(--bg-elev); border: 1px solid var(--line); }
-.md-audio-body { padding: 22px 22px 8px; display: flex; flex-direction: column; gap: 6px; }
-.md-audio-body small { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); font-weight: 700; }
-.md-audio-body b { font: 500 20px/1.3 var(--serif); }
-.md-audio-body audio { width: 100%; margin-top: 8px; }
 
 /* Authorities tab: most relevant authorities */
 .au-ment { font-size: 12px; color: var(--accent); margin-top: 4px; font-variant-numeric: tabular-nums; }
@@ -190,5 +185,3 @@
 .md-refs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .md-refs a { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); font-size: 14px; font-weight: 600; }
 .md-refs a:hover { border-color: var(--accent); color: var(--accent); }
-.link-btn.md-listen { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); font-weight: 600; cursor: pointer; }
-.link-btn.md-listen:hover { text-decoration: underline; }

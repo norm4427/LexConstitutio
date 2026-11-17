@@ -1128,8 +1128,8 @@
     const clock = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
     const ICON_BY_TAG = { speech: 'free-speech', religion: 'religion', guns: 'second-amendment', equality: 'equal-protection', dueprocess: 'due-process', crimpro: 'fourth-amendment', federalism: 'federalism', seppowers: 'separation-of-powers', admin: 'administrative-state', voting: 'voting', security: 'executive-power' };
     const iconKey = ICON_BY_TAG[(c.tg || [])[0]] || 'judicial-review';
-    // embedded YouTube videos get the site's thumbnail tile; everything else is a compact link out (nothing is
-    // played on this site that the publisher has not offered for embedding)
+    // embedded YouTube videos get the site's thumbnail tile; everything else, podcast audio included, is a compact
+    // link to the episode's own page (nothing is played on this site that the publisher has not offered for embedding)
     const embedded = v => !!(v.id && v.embed);
     const tile = v => {
       const meta = [v.date ? fmtDate(v.date) : '', v.start ? `starts at ${clock(v.start)}` : ''].filter(Boolean).join(' · ');
@@ -1142,9 +1142,8 @@
     const linkOf = v => v.id ? `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}${v.start ? '&t=' + v.start + 's' : ''}`
       : /^https?:\/\//.test(v.link || '') ? v.link : SHOW_HOME[v.ch] || '';
     const where = v => v.id ? 'YouTube' : /^https?:\/\//.test(v.link || '') ? v.link.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : SHOW_HOME[v.ch] ? 'the show’s site' : '';
-    const listen = v => v.audio ? `<button class="link-btn md-listen" data-audio="${esc(v.audio)}" data-title="${esc(v.t)}" data-ch="${esc(v.ch)}" data-link="${esc(linkOf(v))}" data-start="${v.start || 0}">▶ Listen here</button>` : '';
     const row = v => { const L = linkOf(v); return `<li>${L ? `<a href="${esc(L)}" target="_blank" rel="noopener"><b>${esc(v.t)}</b></a>` : `<b>${esc(v.t)}</b>`}
-      <span class="md-lm">${esc(v.ch)}${v.date ? ' · ' + esc(fmtDate(v.date)) : ''}${v.start ? ' · discussion starts at ' + clock(v.start) : ''}${v.sec ? ' · ' + clock(v.sec) : ''}${v.id ? '' : listen(v) ? ' · ' + listen(v) : ''}${L ? ` · <a href="${esc(L)}" target="_blank" rel="noopener">${esc(where(v))} ↗</a>` : ''}</span>
+      <span class="md-lm">${esc(v.ch)}${v.date ? ' · ' + esc(fmtDate(v.date)) : ''}${v.start ? ' · discussion starts at ' + clock(v.start) : ''}${v.sec ? ' · ' + clock(v.sec) : ''}${L ? ` · <a href="${esc(L)}" target="_blank" rel="noopener">${esc(where(v))} ↗</a>` : ''}</span>
       ${v.topic ? `<span class="md-topic">${esc(v.topic)}</span>` : ''}</li>`; };
     const isShow = v => v.kind === 'pod' || /Advisory Opinions|SCOTUSblog|Strict Scrutiny|Divided Argument/.test(v.ch || '');
     const shows = M.videos.filter(isShow), others = M.videos.filter(v => !isShow(v));
@@ -1176,24 +1175,6 @@
       ${M.print.length ? `<h2>In the newspapers</h2><div class="md-print">${M.print.map(p => `<a class="md-clip" href="${esc(p.url)}" target="_blank" rel="noopener">${p.img ? `<img src="${esc(p.img)}" alt="Page of ${esc(p.paper)}, ${esc(p.date)}" loading="lazy">` : ''}<b>${esc(p.paper)}</b><span>${esc(fmtDate(p.date))}${p.page ? ' · page ' + p.page : ''}</span><em>View the page ↗</em></a>`).join('')}</div>
         <p class="attrib">Newspaper pages printed in the weeks after the decision that name both parties and the Supreme Court, from <a href="https://www.loc.gov/collections/chronicling-america/" target="_blank" rel="noopener">Chronicling America</a> (Library of Congress; public domain). Search the page for the case name to find the story.</p>` : ''}
     </section>`;
-    el.querySelectorAll('.md-listen').forEach(b => b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openAudio(b.dataset); }));
-  }
-  /* a podcast episode's audio, streamed from the publisher's feed, in a modal; the audio dock takes over when it plays */
-  function openAudio(d) {
-    const m = document.createElement('div');
-    m.className = 'modal';
-    m.innerHTML = `<div class="modal-box md-audio" role="dialog" aria-label="${esc(d.title)}">
-      <div class="md-audio-body"><small>${esc(d.ch)}</small><b>${esc(d.title)}</b>
-        <audio controls autoplay preload="metadata" src="${esc(d.audio)}" data-dock-title="${esc(d.ch + ': ' + d.title)}"></audio></div>
-      <div class="modal-foot"><div><span>Audio from the ${esc(d.ch)} podcast feed${+d.start ? ' · starts at the chapter on this case' : ''}</span></div>
-        <div style="display:flex;gap:8px">${d.link ? `<a class="btn btn-ghost btn-sm" href="${esc(d.link)}" target="_blank" rel="noopener">Show page ↗</a>` : ''}<button class="btn btn-primary btn-sm" data-close>Close</button></div></div></div>`;
-    const a = m.querySelector('audio');
-    if (+d.start > 0) a.addEventListener('loadedmetadata', () => { a.currentTime = +d.start; }, { once: true });
-    const close = () => { a.pause(); m.remove(); document.removeEventListener('keydown', onKey); };
-    const onKey = e => { if (e.key === 'Escape') close(); };
-    m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-close]')) close(); });
-    document.addEventListener('keydown', onKey);
-    document.body.appendChild(m);
   }
   const scriptLoading = {};
   function loadScriptOnce(src) {
