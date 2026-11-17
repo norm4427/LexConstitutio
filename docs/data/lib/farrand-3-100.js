@@ -1,0 +1,1 @@
+window.LIB_CHS=window.LIB_CHS||{};window.LIB_CHS["farrand-3-100"]={"id":"farrand-3","n":100,"t":"Appendix A · XCV: Ezra Stiles: Diary.","b":[["h","XCV. Ezra Stiles: Diary."],["p","[August] 27. Judge Elsworth a Member of the foederal Convention just returned fr. Philada visited me, & tells me the Convent. will not rise under three Weeks."]]};

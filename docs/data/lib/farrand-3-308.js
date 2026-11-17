@@ -1,0 +1,1 @@
+window.LIB_CHS=window.LIB_CHS||{};window.LIB_CHS["farrand-3-308"]={"id":"farrand-3","n":308,"t":"Appendix A · CCXCIX: Pierce Butler in the United States Senate.","b":[["h","ⅭⅭⅩⅭⅨ. Pierce Butler in the United States Senate."],["h","November, 23, 1803."],["p","It never was intended by the Constitution that the Vice President should have a vote in altering the Constitution."]]};

@@ -1,0 +1,1 @@
+window.LIB_CHS=window.LIB_CHS||{};window.LIB_CHS["farrand-3-163"]={"id":"farrand-3","n":163,"t":"Appendix A · CLIV: The Landholder [Oliver Ellsworth], Ⅶ.","b":[["h","ⅭⅬⅣ. The Landholder [Oliver Ellsworth], Ⅶ."],["p","I have often admired the spirit of candour, liberality, and justice, with which the Convention began and completed the important object of their mission.…"]]};

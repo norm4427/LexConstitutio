@@ -1,0 +1,1 @@
+window.LIB_CHS=window.LIB_CHS||{};window.LIB_CHS["farrand-3-36"]={"id":"farrand-3","n":36,"t":"Appendix A · XXXIII: George Washington: Diary.","b":[["h","XXXIII. George Washington: Diary."],["p","Saturday, [June] 2.—Major Jenifer, coming in with powers from the State of Maryland authorizing one member to represent it, added another State, now eleven, to the convention."]]};

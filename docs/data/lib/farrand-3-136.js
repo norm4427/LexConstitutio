@@ -1,0 +1,1 @@
+window.LIB_CHS=window.LIB_CHS||{};window.LIB_CHS["farrand-3-136"]={"id":"farrand-3","n":136,"t":"Appendix A · CXXX: James Madison to George Washington.","b":[["h","ⅭⅩⅩⅩ. James Madison to George Washington."],["h","New York, Octr. 14. 1787."],["p","I add…a pamphlet which Mr. Pinkney has submitted to the public, or rather as he professes, to the perusal of his friends;"]]};

@@ -264,12 +264,26 @@ def write_book(meta, parts):
             'chapters': len(parts), 'words': words, 'srcName': meta['srcName']}
 
 
+APPENDIX_NAMES = {'farrand-3': {
+    'Appendix B': 'Appendix B: The Delegates, Their Credentials and Attendance',
+    'Appendix C': 'Appendix C: The Virginia Plan (Randolph Resolutions)',
+    'Appendix D': 'Appendix D: The Pinckney Plan',
+    'Appendix E': 'Appendix E: The New Jersey Plan',
+    'Appendix F': "Appendix F: Hamilton's Plan",
+}}
+# works whose short pages are real documents (a two-line letter), not navigation pages
+SHORT_PAGES_OK = {'farrand-3'}
+
+
 def build(bid, title, author, year, root, corner, prefix=None):
     chapters = toc(bid, root, prefix) or [root]
+    # appendices in letter order (the root page can link them out of order), source order within each
+    order = {t: i for i, t in enumerate(chapters)}
+    chapters.sort(key=lambda t: ((re.search(r'/Appendix ([A-Z])\b', t) or re.search(r'$', '')).group(0), order[t]))
     parts = []
     for t in chapters:
         b = text_blocks(page_html(bid, t))
-        if sum(len(x[1].split()) for x in b) < 150:
+        if sum(len(x[1].split()) for x in b) < (20 if bid in SHORT_PAGES_OK else 150):
             continue
         name = t[len(root) + 1:] if t.startswith(root + '/') else t[len(prefix) - 4:] if prefix and t.startswith(prefix) else title
         name = name.replace('/', ' · ')
@@ -279,9 +293,11 @@ def build(bid, title, author, year, root, corner, prefix=None):
             if k is not None and k + 1 < len(hs) and not re.match(r'^(CHAPTER|BOOK)\b', hs[k + 1], re.I):
                 name += ': ' + smart_title(hs[k + 1])
         if re.search(r'· [IVXLC]+$', name):          # "Appendix A · CLVII" -> "Appendix A · CLVII: Gerry to ..."
-            first = next((x[1] for x in b if x[0] == 'h' and not re.fullmatch(r'[IVXLC]+\.?', x[1].strip())), '')
+            first = next((x[1] for x in b if x[0] == 'h' and not re.fullmatch(r'[IVXLCⅠ-ↈ]+[a-z]?\.?', x[1].strip())), '')
+            first = re.sub(r'^[IVXLCⅠ-ↈ]+[a-z]?\.\s*', '', first)      # "IX. James Madison to ..." -> "James Madison to ..."
             if first:
                 name += ': ' + (first if len(first) <= 90 else first[:88].rsplit(' ', 1)[0] + '…')
+        name = APPENDIX_NAMES.get(bid, {}).get(name, name)
         parts.append((name, b))
     src = 'https://en.wikisource.org/wiki/' + urllib.parse.quote(root.replace(' ', '_'))
     return write_book({'id': bid, 'title': title, 'author': author, 'year': year, 'src': src, 'srcName': 'Wikisource',

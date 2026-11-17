@@ -1,0 +1,1 @@
+window.LIB_CHS=window.LIB_CHS||{};window.LIB_CHS["farrand-3-3"]={"id":"farrand-3","n":3,"t":"Appendix A · III: No. 85.","b":[["p","III. Mr. Otto, chargé d’affairs de France, au Secrétaire d’Etat des Affaires Etrangères, comte de Montmorin"],["h","No. 85."],["h","A New York, le 10 avril, 1787."]]};
