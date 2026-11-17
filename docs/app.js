@@ -3499,7 +3499,7 @@
     keepScrollOnce = false; lastRoute = { path, params };
     const seg = path.split('/');
     routeToken++;
-    const navKey = { docket: 'scotus', justices: 'scotus', justice: 'scotus', stats: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', journals: 'search', book: 'books' }[seg[0]] || seg[0] || 'home';
+    const navKey = { docket: 'scotus', justices: 'scotus', justice: 'scotus', stats: 'scotus', impact: 'search', library: 'corner', doctrine: 'guide', case: 'scotus', article: 'search', author: 'search', topics: 'search', journals: 'search', book: 'books', notes: 'saved' }[seg[0]] || seg[0] || 'home';
     document.querySelectorAll('.topnav a[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === navKey));
     document.querySelectorAll('audio').forEach(a => a.pause());
     const top = document.getElementById('topsearch-input');
@@ -3512,6 +3512,7 @@
       case 'author': viewAuthor(seg.slice(1).join('/'), params); break;
       case 'journals': viewJournals(); break;
       case 'saved': viewSaved(params); break;
+      case 'notes': window.LexAnnot ? LexAnnot.renderNotesPage(app) : viewNotFound(); break;
       case 'impact': viewImpact(params); break;
       case 'scotus': viewScotus(params); break;
       case 'docket': viewDocket(params); break;

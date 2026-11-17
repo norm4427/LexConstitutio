@@ -288,19 +288,58 @@
 
   /* ---------------------------------------------------------------- the notes pane */
   let pane = null, saveTmr = 0, edRange = null;
-  const notesKey = doc => 'cl-notes:' + doc;
+  // notes are kept per chapter: cl-chnotes:<doc>|<chapter> = {h: html, doc, ch, chLabel, title, author, href, at}
+  const notesKey = (doc, ch) => 'cl-chnotes:' + doc + '|' + ch;
+  function readNote(doc, ch) { const v = ls.get(notesKey(doc, ch), null); return v && typeof v === 'object' ? v : null; }
+  function writeNote(c, html) {
+    const k = notesKey(c.doc, c.ch);
+    let ok = true;
+    if (!html) localStorage.removeItem(k);
+    else ok = ls.set(k, { h: html, doc: c.doc, ch: String(c.ch), chLabel: c.chLabel, title: c.title, author: c.author || '', href: c.href(c.ch), at: Date.now() });
+    updateNotesCount();
+    return ok;
+  }
+  function allNotes() {
+    const out = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('cl-chnotes:')) { const v = ls.get(k, null); if (v && v.h) out.push(v); }
+    }
+    return out;
+  }
+  function updateNotesCount() { const n = allNotes().length; document.querySelectorAll('#notes-count').forEach(x => { x.textContent = n; }); }
+  // stored notes are shown as HTML: keep only simple formatting (the editor pastes plain text, but stay safe)
+  const KEEP = new Set(['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'A', 'DIV', 'SPAN']);
+  function sanitize(html) {
+    const t = document.createElement('template'); t.innerHTML = html;
+    const walk = node => {
+      [...node.childNodes].forEach(n => {
+        if (n.nodeType === 1) {
+          walk(n);
+          if (!KEEP.has(n.tagName)) { n.replaceWith(...n.childNodes); return; }
+          [...n.attributes].forEach(a => {
+            const ok = (n.tagName === 'A' && a.name === 'href' && /^(https?:|#)/i.test(a.value)) || (a.name === 'class' && a.value === 'np-cite');
+            if (!ok) n.removeAttribute(a.name);
+          });
+        } else if (n.nodeType !== 3) n.remove();
+      });
+    };
+    walk(t.content);
+    return t.innerHTML;
+  }
   function paneHtml() {
     return `<div class="np-grip" title="Drag to resize" aria-hidden="true"></div>
       <div class="np-head"><div class="np-tabs" role="tablist"><button role="tab" data-tab="notes">Notes</button><button role="tab" data-tab="hl">Highlights<span data-hl-count></span></button></div>
         <button class="np-close" title="Close the notes pane" aria-label="Close the notes pane">×</button></div>
       <div class="np-body" data-panel="notes">
+        <div class="np-ch"></div>
         <div class="np-tools">
           <button data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button><button data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button>
           <button data-cmd="insertUnorderedList" title="Bulleted list">• List</button><button data-cmd="h3" title="Heading">H</button>
           <span class="np-sp"></span>
           <button data-act="quote" class="np-q" title="Insert the passage selected in the text, with a citation">❝ Insert quote</button>
         </div>
-        <div class="np-ed" contenteditable="true" spellcheck="true" aria-label="Your notes" data-ph="Your notes on this book. Select a passage in the text and choose “Quote to notes” (or “Insert quote” above) to bring it in with a citation."></div>
+        <div class="np-ed" contenteditable="true" spellcheck="true" aria-label="Your notes" data-ph="Your notes on this chapter. Select a passage in the text and choose “Quote to notes” (or “Insert quote” above) to bring it in with a citation."></div>
         <div class="np-actions">
           <button class="btn btn-primary btn-sm" data-act="onenote-copy" title="Copies your notes as formatted text: paste into a OneNote page with Ctrl+V">Copy for OneNote</button>
           <button class="btn btn-ghost btn-sm" data-act="dl-md">.md</button><button class="btn btn-ghost btn-sm" data-act="dl-html">.html</button>
@@ -341,14 +380,14 @@
     pane.innerHTML = paneHtml();
     document.body.appendChild(pane);   // not inside the page: an animated (transformed) ancestor would break position: fixed
     const ed = pane.querySelector('.np-ed');
-    ed.innerHTML = localStorage.getItem(notesKey(ctx.doc)) || '';
+    ed.innerHTML = sanitize((readNote(ctx.doc, ctx.ch) || {}).h || '');
+    pane.querySelector('.np-ch').innerHTML = `Notes on <b>${esc(ctx.chLabel)}</b> · <a href="#/notes">All my notes</a>`;
     const saved = pane.querySelector('.np-saved');
     const save = () => {
       clearTimeout(saveTmr);
       saveTmr = setTimeout(() => {
         const v = ed.innerText.trim() ? ed.innerHTML : '';
-        try { v ? localStorage.setItem(notesKey(ctx.doc), v) : localStorage.removeItem(notesKey(ctx.doc)); saved.textContent = ' · saved ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-        catch (e) { saved.textContent = ' · not saved: storage full'; }
+        saved.textContent = writeNote(ctx, v) ? ' · saved ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ' · not saved: storage full';
       }, 350);
     };
     pane._save = save;
@@ -375,11 +414,11 @@
         if (!info) return say('Select a passage in the text first');
         return insertQuote(info.t, ctx.cite, ctx.href(ctx.ch));
       }
-      if (act === 'onenote-copy') return copyRich(ed);
-      if (act === 'dl-md') return download(slug(ctx.title) + '-notes.md', `# Notes: ${ctx.title}\n\n` + htmlToMd(ed), 'text/markdown');
-      if (act === 'dl-html') return download(slug(ctx.title) + '-notes.html', notesDoc(ed), 'text/html');
+      if (act === 'onenote-copy') return copyRich(`<h1>Notes: ${esc(ctx.title)}</h1><h2>${esc(ctx.chLabel)}</h2>${ed.innerHTML}`, `Notes: ${ctx.title}\n${ctx.chLabel}\n\n${ed.innerText}`);
+      if (act === 'dl-md') return download(slug(ctx.title + ' ' + ctx.chLabel) + '-notes.md', `# Notes: ${ctx.title}\n\n## ${ctx.chLabel}\n\n` + htmlToMd(ed), 'text/markdown');
+      if (act === 'dl-html') return download(slug(ctx.title + ' ' + ctx.chLabel) + '-notes.html', notesDoc(`<h2>${esc(ctx.chLabel)}</h2>${ed.innerHTML}`, ctx.title), 'text/html');
       if (act === 'onenote-open') return openOneNote();
-      if (act === 'clear') { if (ed.innerText.trim() && confirm('Clear all your notes for this book? This can’t be undone.')) { ed.innerHTML = ''; save(); } }
+      if (act === 'clear') { if (ed.innerText.trim() && confirm('Clear your notes on this chapter? This can’t be undone.')) { ed.innerHTML = ''; save(); } }
     });
     // drag the left edge to resize
     const grip = pane.querySelector('.np-grip');
@@ -406,15 +445,13 @@
     keepCaret(ed); pane._save(); say('Quote added to your notes');
   }
   function keepCaret(ed) { const s = getSelection(); if (s.rangeCount && ed.contains(s.getRangeAt(0).commonAncestorContainer)) edRange = s.getRangeAt(0).cloneRange(); }
-  function notesDoc(ed) {
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Notes: ${esc(ctx.title)}</title>
+  function notesDoc(body, title) {
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Notes: ${esc(title)}</title>
 <style>body{font:16px/1.6 Georgia,serif;max-width:720px;margin:40px auto;padding:0 20px}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid #999;color:#333}.np-cite{font-size:.9em;color:#555}</style></head>
-<body><h1>Notes: ${esc(ctx.title)}</h1>${ed.innerHTML}<p style="color:#777;font-size:.85em">Exported from Lex Constitutio, ${esc(new Date().toLocaleDateString())}.</p></body></html>`;
+<body><h1>Notes: ${esc(title)}</h1>${body}<p style="color:#777;font-size:.85em">Exported from Lex Constitutio, ${esc(new Date().toLocaleDateString())}.</p></body></html>`;
   }
-  function copyRich(ed) {
-    if (!ed.innerText.trim()) return say('Your notes are empty');
-    const html = `<h1>Notes: ${esc(ctx.title)}</h1>${ed.innerHTML}`;
-    const text = `Notes: ${ctx.title}\n\n${ed.innerText}`;
+  function copyRich(html, text) {
+    if (!text.trim()) return say('Your notes are empty');
     if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
       navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })])
         .then(() => say('Copied: paste into OneNote with Ctrl+V'), () => legacyRich(html));
@@ -455,10 +492,66 @@
     say('OneNote opened in its own window: snap this one to the left (Windows key + ←)');
   }
 
+  /* ---------------------------------------------------------------- My notes (#/notes): every chapter's notes, by book */
+  const chOrder = (a, b) => (isNaN(a.ch) || isNaN(b.ch) ? String(a.ch).localeCompare(String(b.ch), undefined, { numeric: true }) : a.ch - b.ch);
+  function notesByBook() {
+    const books = new Map();
+    allNotes().forEach(n => { if (!books.has(n.doc)) books.set(n.doc, []); books.get(n.doc).push(n); });
+    return [...books.entries()].map(([doc, ns]) => ({ doc, title: ns[0].title, author: ns[0].author, notes: ns.sort(chOrder) }))
+      .sort((a, b) => String(a.title).localeCompare(String(b.title)));
+  }
+  function bookHtml(bk) { return bk.notes.map(n => `<h2>${esc(n.chLabel)}</h2>${sanitize(n.h)}`).join(''); }
+  function bookText(bk) {
+    const d = document.createElement('div');
+    return `Notes: ${bk.title}${bk.author ? ' (' + bk.author + ')' : ''}\n\n` + bk.notes.map(n => { d.innerHTML = sanitize(n.h); return `${n.chLabel}\n${'-'.repeat(Math.min(60, n.chLabel.length))}\n${d.innerText.trim()}\n`; }).join('\n');
+  }
+  function bookMd(bk) {
+    const d = document.createElement('div');
+    return `# Notes: ${bk.title}${bk.author ? ' (' + bk.author + ')' : ''}\n\n` + bk.notes.map(n => { d.innerHTML = sanitize(n.h); return `## ${n.chLabel}\n\n${htmlToMd(d)}\n[Read the chapter](${absUrl(n.href)})\n`; }).join('\n');
+  }
+  function renderNotesPage(el) {
+    const books = notesByBook(), total = books.reduce((s, b) => s + b.notes.length, 0);
+    const when = t => t ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    el.innerHTML = `<div class="fade-in">
+      <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>My notes</span></div>
+        <h1>My notes</h1><p>The notes you take in the library reader, one set for each chapter, grouped by book. They are kept in this browser only: copy or download them to keep them elsewhere.</p>
+        ${total ? `<div class="bk-actions"><button class="btn btn-ghost btn-sm" data-all="md">Download all as Markdown</button></div>` : ''}</div>
+      <div class="wrap nb-wrap">${books.length ? books.map((bk, i) => `<section class="nb" data-i="${i}">
+        <div class="nb-h"><div><h2>${esc(bk.title)}</h2><span>${esc(bk.author || '')}${bk.author ? ' · ' : ''}${bk.notes.length} chapter${bk.notes.length === 1 ? '' : 's'} with notes</span></div>
+          <div class="nb-acts"><button class="btn btn-primary btn-sm" data-act="rich">Copy for OneNote</button><button class="btn btn-ghost btn-sm" data-act="text">Copy as text</button><button class="btn btn-ghost btn-sm" data-act="md">.md</button><button class="btn btn-ghost btn-sm" data-act="html">.html</button></div></div>
+        ${bk.notes.map((n, j) => `<article class="nb-ch"><div class="nb-ch-h"><a href="${esc(n.href)}">${esc(n.chLabel)}</a><small>${when(n.at)}</small><button class="hl-x" data-del="${j}" title="Delete these notes" aria-label="Delete these notes">×</button></div><div class="nb-body np-ed">${sanitize(n.h)}</div></article>`).join('')}
+      </section>`).join('') : `<div class="empty"><h3>No notes yet</h3><p>Open a text in the <a href="#/library">library</a>, choose <b>Notes</b> and write; your notes for each chapter appear here.</p></div>`}</div></div>`;
+    el.querySelectorAll('.nb').forEach(sec => {
+      const bk = books[+sec.dataset.i];
+      sec.addEventListener('click', e => {
+        const b = e.target.closest('button'); if (!b) return;
+        if (b.dataset.del != null) {
+          const n = bk.notes[+b.dataset.del];
+          if (confirm(`Delete your notes on “${n.chLabel}”? This can’t be undone.`)) { localStorage.removeItem(notesKey(n.doc, n.ch)); updateNotesCount(); renderNotesPage(el); }
+          return;
+        }
+        const act = b.dataset.act;
+        if (act === 'rich') copyRich(`<h1>Notes: ${esc(bk.title)}</h1>${bookHtml(bk)}`, bookText(bk));
+        if (act === 'text') copyText(bookText(bk));
+        if (act === 'md') download(slug(bk.title) + '-notes.md', bookMd(bk), 'text/markdown');
+        if (act === 'html') download(slug(bk.title) + '-notes.html', notesDoc(bookHtml(bk), bk.title), 'text/html');
+      });
+    });
+    const all = el.querySelector('[data-all]');
+    if (all) all.addEventListener('click', () => download('lex-constitutio-notes.md', books.map(bookMd).join('\n\n'), 'text/markdown'));
+  }
+  function migrate(o) {
+    const old = localStorage.getItem('cl-notes:' + o.doc);
+    if (!old) return;
+    if (!readNote(o.doc, '_')) ls.set(notesKey(o.doc, '_'), { h: old, doc: o.doc, ch: '_', chLabel: 'Notes on the whole work', title: o.title, author: o.author || '', href: o.href(o.ch), at: Date.now() });
+    localStorage.removeItem('cl-notes:' + o.doc);
+  }
+
   /* ---------------------------------------------------------------- mounting */
   function mount(o) {
     // o: {doc, ch, chLabel, cite, title, author, href(ch) -> hash, textEl, root, toolsEl, topFn, drawerList}
     if (pane) pane.remove();
+    migrate(o);
     ctx = o; lastSel = null; pane = null; edRange = null; hidePop();
     o.toolsEl.insertAdjacentHTML('afterbegin', `<button class="btn btn-ghost btn-sm" data-np-toggle aria-pressed="false" title="Notes and highlights side by side with the text">Notes</button>`);
     o.toolsEl.querySelector('[data-np-toggle]').addEventListener('click', () => openPane(!pane || pane.hidden));
@@ -483,6 +576,8 @@
     count: doc => loadHl(doc).length,
     listHtml: (doc, opts) => listHtml(doc, opts),
     bindList,
-    hasNotes: doc => !!localStorage.getItem(notesKey(doc)),
+    renderNotesPage,
+    updateNotesCount,
   };
+  updateNotesCount();
 })();

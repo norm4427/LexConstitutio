@@ -485,3 +485,49 @@ mark.hl-flash { animation: hlFlash 1.4s ease-out 1; }
 }
 @media print { .np, .hl-pop { display: none !important; } .np-open { padding: 0 !important; } mark.hl { background: none; text-decoration: underline; } }
 .bk-filter { max-width: 420px; margin: 0 0 12px; }
+/* per-chapter notes: the pane's chapter line and the My notes page (#/notes) */
+.np-ch { padding: 8px 14px 0; font-size: 12.5px; color: var(--ink-3); }
+.np-ch b { color: var(--ink-2); font-weight: 600; }
+.nb-wrap { max-width: 860px; padding-top: 20px; padding-bottom: 40px; }
+.nb { border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px 6px; margin-bottom: 22px; background: var(--bg-elev); }
+.nb-h { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; align-items: flex-start; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.nb-h h2 { margin: 0 0 2px; font-family: var(--serif, Georgia, serif); font-size: 22px; }
+.nb-h span { font-size: 13px; color: var(--ink-3); }
+.nb-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.nb-ch { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.nb-ch:last-child { border-bottom: 0; }
+.nb-ch-h { position: relative; display: flex; align-items: baseline; gap: 10px; padding-right: 30px; }
+.nb-ch-h a { font-weight: 600; color: var(--ink); }
+.nb-ch-h small { color: var(--ink-3); font-size: 12px; }
+.nb-ch-h .hl-x { top: -3px; }
+.nb-body.np-ed { min-height: 0; padding: 6px 0 0; overflow: visible; }
+/* side-by-side view (docs/app-split.js): two sides of tabs, each tab the site in a frame */
+html.embed .topbar, html.embed .footer { display: none !important; }
+body.ws-on { overflow: hidden; }
+body.ws-on #app, body.ws-on .footer, body.ws-on > .np, body.ws-on > .hl-pop { display: none !important; }
+.ws { --ws-r: .5; display: flex; width: 100%; min-height: 300px; background: var(--bg-sunk); }
+.ws-pane { display: flex; flex-direction: column; min-width: 0; flex: 1 1 0; }
+.ws-pane:first-child { flex: 0 0 calc(var(--ws-r) * 100% - 3px); }
+.ws-pane:only-of-type { flex: 1 1 auto; }
+.ws-bar { display: flex; align-items: flex-end; gap: 3px; padding: 6px 6px 0; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; min-height: 41px; }
+.ws-pane.focus .ws-bar { box-shadow: inset 0 2px 0 var(--accent); }
+.ws-tab { display: flex; align-items: center; gap: 4px; flex: 0 1 220px; min-width: 90px; padding: 6px 4px 6px 12px; border: 1px solid transparent; border-bottom: 0; border-radius: 9px 9px 0 0; color: var(--ink-2); font-size: 13px; cursor: pointer; user-select: none; position: relative; }
+.ws-tab span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-tab:hover { background: color-mix(in srgb, var(--bg) 60%, transparent); }
+.ws-tab.on { background: var(--bg); border-color: var(--line); color: var(--ink); margin-bottom: -1px; padding-bottom: 7px; }
+.ws-tab.drop-before::before { content: ''; position: absolute; left: -3px; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: var(--accent); }
+.ws-x, .ws-btn { flex: none; border: 0; background: transparent; color: var(--ink-3); width: 24px; height: 24px; border-radius: 6px; font-size: 15px; line-height: 1; cursor: pointer; }
+.ws-x:hover, .ws-btn:hover { background: var(--bg-sunk); color: var(--ink); }
+.ws-sp { flex: 1; }
+.ws-btn { margin-bottom: 6px; }
+.ws-close { font-size: 18px; }
+.ws-body { flex: 1; position: relative; background: var(--bg); }
+.ws-body iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: none; background: var(--bg); }
+.ws-body iframe.on { display: block; }
+.ws-pane.drop-pane .ws-body { outline: 3px dashed var(--accent); outline-offset: -6px; }
+.ws-div { flex: none; width: 6px; cursor: col-resize; background: var(--line); }
+.ws-div:hover { background: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.ws.dragging iframe { pointer-events: none; }
+.ws.dragging { user-select: none; }
+.ws { position: relative; }
+.ws-new { position: absolute; top: 0; right: 0; bottom: 0; width: 38%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg)); border-left: 3px dashed var(--accent); z-index: 5; }
