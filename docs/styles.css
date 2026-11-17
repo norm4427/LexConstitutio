@@ -531,3 +531,11 @@ body.ws-on #app, body.ws-on .footer, body.ws-on > .np, body.ws-on > .hl-pop { di
 .ws.dragging { user-select: none; }
 .ws { position: relative; }
 .ws-new { position: absolute; top: 0; right: 0; bottom: 0; width: 38%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg)); border-left: 3px dashed var(--accent); z-index: 5; }
+/* Originalist's Corner: the sources grouped by section, first row shown ("View all" opens the rest) */
+.src-group { margin-top: 26px; }
+.src-group:first-of-type { margin-top: 8px; }
+.src-group .section-head { margin-bottom: 12px; }
+.src-group-h { margin: 0 0 2px; font-family: var(--serif, Georgia, serif); font-size: 22px; }
+.src-group .section-head p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 70ch; }
+.src-more { background: none; border: 0; cursor: pointer; font: inherit; white-space: nowrap; }
+.jgrid.one-row { grid-template-rows: auto; grid-auto-rows: 0; row-gap: 0; overflow: hidden; }

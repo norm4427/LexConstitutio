@@ -9,6 +9,10 @@ Project Gutenberg works (GUTENBERG): the HTML edition of each eBook is downloade
 of Project Gutenberg's official mirrors when the main site is down; cached in data/raw/library/gutenberg/<n>.html), the
 licence header and footer, tables of contents, footnotes and page numbers are dropped, and the text is split into parts
 at its chapter headings.
+Collections (COLLECTIONS) gather shorter works into one book, a part per essay or letter: pamphlets transcribed by the
+Text Creation Partnership's Evans collection (Evans-TCP, Phase I, released under CC0; the TEI XML is read from the TCP
+repositories on GitHub and cached in data/raw/library/tcp/; letters the transcribers could not read are shown as ◊) and
+single Wikisource pages.
 Output, one small file per part so the reader loads only what is read:
   docs/data/lib/<id>.js        window.LIB_BOOKS[id] = {id, title, author, year, src, srcName, license, toc: [[title, words], ...]}
   docs/data/lib/<id>-<n>.js    window.LIB_CHS['<id>-<n>'] = {id, n, t, b: [[kind, text], ...]}  kind: 'h' heading, 'p' paragraph
@@ -26,7 +30,6 @@ WIKISOURCE = [
      'Commentaries on the Constitution of the United States', 'story'),
     ('blackstone', 'Commentaries on the Laws of England', 'William Blackstone', '1765–1769',
      'Commentaries on the Laws of England', 'blackstone'),
-    ('locke', 'Two Treatises of Government', 'John Locke', '1689 (1764 ed.)', 'Two Treatises of Government (1764)', 'locke'),
     ('spirit-of-laws', 'The Spirit of Laws', 'Montesquieu', '1748 (Nugent trans., 1758 ed.)', 'The Spirit of Laws (1758)', ''),
     ('notes-virginia', 'Notes on the State of Virginia', 'Thomas Jefferson', '1785 (1802 ed.)', 'Notes on the State of Virginia (1802)', ''),
     ('cato', "Cato's Letters", 'John Trenchard and Thomas Gordon', '1720–1723', "Cato's Letters", '', "Cato's Letter No. "),
@@ -35,6 +38,8 @@ WIKISOURCE = [
     ('thoughts-government', 'Thoughts on Government', 'John Adams', '1776', 'Thoughts on Government', ''),
     ('summary-view', 'A Summary View of the Rights of British America', 'Thomas Jefferson', '1774',
      'A Summary View of the Rights of British America', ''),
+    ('farrand-3', 'The Records of the Federal Convention of 1787, Volume III: Letters, Recollections and Documents',
+     'Max Farrand (ed.)', '1787–1837 (pub. 1911)', 'The Records of the Federal Convention of 1787/Volume 3', ''),
 ]
 GUTENBERG = [
     # id, title, author, year, eBook numbers (volumes in order), Corner source id, options
@@ -46,6 +51,69 @@ GUTENBERG = [
     ('farmer-letters', 'Letters from a Farmer in Pennsylvania', 'John Dickinson', '1767–1768', [47111], '', {}),
     ('novanglus', 'Novanglus and Massachusettensis', 'John Adams and Daniel Leonard', '1774–1775', [45205], '', {}),
     ('grotius', 'The Rights of War and Peace', 'Hugo Grotius', '1625 (Campbell trans.)', [46564], '', {}),
+    ('lincoln-speeches', 'Noted Speeches of Abraham Lincoln, Including the Lincoln–Douglas Debate', 'Abraham Lincoln', '1838–1865', [48364], '', {}),
+]
+
+
+COLLECTIONS = [
+    ('locke', 'Two Treatises of Government', 'John Locke', '1690 (first edition)', 'locke', [
+        ('First Treatise · {head}', 'tcp', 'A48901', {'type': 'chapter', 'within': {'type': 'book', 'n': '1'}}),
+        ('Second Treatise · {head}', 'tcp', 'A48901', {'type': 'chapter', 'within': {'type': 'book', 'n': '2'}}),
+    ]),
+    ('sidney', 'Discourses Concerning Government', 'Algernon Sidney', '1698', '', [
+        ('Chapter I · {head}', 'tcp', 'A60214', {'type': 'section', 'within': {'type': 'chapter', 'n': '1'}}),
+        ('Chapter II · {head}', 'tcp', 'A60214', {'type': 'section', 'within': {'type': 'chapter', 'n': '2'}}),
+        ('Chapter III · {head}', 'tcp', 'A60214', {'type': 'section', 'within': {'type': 'chapter', 'n': '3'}}),
+    ]),
+    ('oceana', 'The Commonwealth of Oceana', 'James Harrington', '1656', '', [
+        ('{head}', 'tcp', 'A45613', {'type': 'part'}),
+        ('The Corollary', 'tcp', 'A45613', {'type': 'corollary'}),
+    ]),
+    # id, title, author line, year, Corner source id, [(part title, source, page or eBook, selector)]
+    # source 'tcp': selector picks divisions of the TEI body: {'type': ..., 'head': regex}; the part title may use {num}
+    # (the Roman numeral in the division's heading) or {head}; 'ws': a Wikisource page
+    ('antifederalists', 'The Anti-Federalists',
+     'Centinel, the Federal Farmer, the Pennsylvania Minority, Edmund Randolph, Mercy Otis Warren, James Monroe', '1787–1788', 'antifederalist', [
+        ('Centinel No. {num}', 'tcp', 'N16599', {'type': 'letter', 'head': r'^CENTINEL'}),
+        ('Federal Farmer, Letter {num}', 'tcp', 'N15980', {'type': 'letter'}),
+        ('The Address and Reasons of Dissent of the Minority of the Convention of Pennsylvania', 'tcp', 'N16599', {'type': 'reasons_of_dissent'}),
+        ('Edmund Randolph, Letter on the Federal Constitution', 'tcp', 'N16126', {'type': 'letter', 'head': r'^A LETTER OF HIS EXCELLENCY'}),
+        ('Mercy Otis Warren ("A Columbian Patriot"), Observations on the New Constitution', 'tcp', 'N16431', {'type': 'text'}),
+        ('James Monroe, Observations upon the Proposed Plan of Federal Government', 'tcp', 'N16547', {'type': 'text'}),
+        ('James Monroe, Observations upon the Proposed Plan of Federal Government (continued): the Plan Examined', 'tcp', 'N16547', {'type': 'discussion_of_constitution'}),
+    ]),
+    ('federalist-pamphlets', 'Federalist Pamphlets', 'James Wilson, Tench Coxe, Alexander Contee Hanson', '1787–1788', '', [
+        ("James Wilson, State House Yard Speech (October 6, 1787)", 'tcp', 'N16378', {'type': 'speech'}),
+        ('Tench Coxe, An Examination of the Constitution, No. {num}', 'tcp', 'N16378', {'type': 'part'}),
+        ('Alexander Contee Hanson ("Aristides"), Remarks on the Proposed Plan of a Federal Government', 'tcp', 'N16445', {'type': 'text'}),
+    ]),
+    # later periods (the library lists these apart from the founding era: era 'later')
+    ('union-slavery-war', 'Union, Slavery and Civil War: Documents, 1830–1865', 'Webster, Jackson, the Seneca Falls Convention, Douglass, Lincoln and others', '1830–1865', '', [
+        ("Daniel Webster, Second Reply to Hayne (1830)", 'ws', 'The Great Speeches and Orations of Daniel Webster/The Reply to Hayne', None),
+        ("Andrew Jackson, Proclamation Regarding Nullification (1832)", 'ws', 'Proclamation 43', None),
+        ('Declaration of Sentiments, Seneca Falls Convention (1848)', 'ws', 'Declaration of Sentiments', None),
+        ('Frederick Douglass, What to the Slave Is the Fourth of July? (1852)', 'ws', 'What to the Slave Is the Fourth of July?', None),
+        ('Abraham Lincoln, "A House Divided" (1858)', 'ws', 'Life and Works of Abraham Lincoln/Volume 4/A House Divided Against Itself Cannot Stand', None),
+        ('South Carolina, Declaration of the Causes of Secession (1860)', 'ws', 'Declaration of the Immediate Causes Which Induce and Justify the Secession of South Carolina from the Federal Union', None),
+        ("Abraham Lincoln, First Inaugural Address (1861)", 'ws', "Abraham Lincoln's First Inaugural Address", None),
+        ('Alexander H. Stephens, "Cornerstone" Speech (1861)', 'ws', 'Cornerstone Speech', None),
+        ('Abraham Lincoln, Emancipation Proclamation (1863)', 'ws', 'Proclamation 95 (1863)', None),
+        ('Abraham Lincoln, Gettysburg Address (1863)', 'ws', 'Gettysburg Address (Bliss copy)', None),
+        ("Abraham Lincoln, Second Inaugural Address (1865)", 'ws', "Abraham Lincoln's Second Inaugural Address", None),
+    ]),
+    ('twentieth-century', 'Twentieth-Century Documents', 'Du Bois, Wilson, Roosevelt, Truman, Eisenhower, Johnson', '1903–1965', '', [
+        ('W. E. B. Du Bois, "The Talented Tenth" (1903)', 'ws', 'The Talented Tenth', None),
+        ('Woodrow Wilson, The Fourteen Points (1918)', 'ws', 'Fourteen Points Speech', None),
+        ('Franklin D. Roosevelt, Executive Order 9066 (1942)', 'ws', 'Executive Order 9066', None),
+        ('Harry S. Truman, Executive Order 9981 (1948)', 'ws', 'Executive Order 9981', None),
+        ("Dwight D. Eisenhower, Farewell Address (1961)", 'ws', "Eisenhower's farewell address (press copy)", None),
+        ('Lyndon B. Johnson, "We Shall Overcome" (1965)', 'ws', 'We Shall Overcome (Johnson)', None),
+    ]),
+    ('state-papers', 'State Papers of the Early Republic', 'Congress, Thomas Jefferson, James Madison', '1789–1800', '', [
+        ('Amendments Proposed by Congress to the States (1789)', 'tcp', 'N17725', {'type': 'amendments'}),
+        ('Kentucky Resolutions of 1799', 'ws', 'Kentucky Resolutions of 1799', None),
+        ("Madison's Report on the Virginia Resolutions (1800)", 'ws', "Madison's Report on the Virginia Resolutions", None),
+    ]),
 ]
 
 
@@ -108,7 +176,10 @@ def clean(s):
 def text_blocks(h):
     h = re.sub(r'<(style|script)[^>]*>.*?</\1>', '', h, flags=re.S)
     h = re.sub(r'<table[^>]*>.*?</table>', '', h, flags=re.S)
-    h = re.sub(r'<div[^>]*class="[^"]*(?:wst-header|ws-header|ws-noexport|licenseContainer|wst-license|reflist|references)[^"]*"[^>]*>.*?</div>\s*</div>', '', h, flags=re.S)
+    h = drop_elements(h, 'div', 'wst-header|ws-header|ws-noexport|licenseContainer|wst-license|reflist|references')
+    h = re.sub(r'<br\s*/?>\s*<br\s*/?>', '</p><p>', h)      # paragraphs separated only by blank lines
+    # a block quotation holding paragraphs is read as those paragraphs (not as one block running to its end)
+    h = re.sub(r'<blockquote[^>]*>(.*?)</blockquote>', lambda m: m.group(1) if '<p' in m.group(1) else m.group(0), h, flags=re.S)
     h = re.sub(r'<sup[^>]*class="[^"]*reference[^"]*"[^>]*>.*?</sup>', '', h, flags=re.S)
     h = re.sub(r'<span[^>]*class="[^"]*(?:pagenum|ws-pagenum|mw-editsection)[^"]*"[^>]*>.*?</span>', '', h, flags=re.S)
     h = re.sub(r'<ol class="references">.*?</ol>', '', h, flags=re.S)
@@ -207,6 +278,10 @@ def build(bid, title, author, year, root, corner, prefix=None):
             k = next((i for i, h in enumerate(hs) if re.match(r'^CHAPTER\b', h, re.I)), None)
             if k is not None and k + 1 < len(hs) and not re.match(r'^(CHAPTER|BOOK)\b', hs[k + 1], re.I):
                 name += ': ' + smart_title(hs[k + 1])
+        if re.search(r'· [IVXLC]+$', name):          # "Appendix A · CLVII" -> "Appendix A · CLVII: Gerry to ..."
+            first = next((x[1] for x in b if x[0] == 'h' and not re.fullmatch(r'[IVXLC]+\.?', x[1].strip())), '')
+            if first:
+                name += ': ' + (first if len(first) <= 90 else first[:88].rsplit(' ', 1)[0] + '…')
         parts.append((name, b))
     src = 'https://en.wikisource.org/wiki/' + urllib.parse.quote(root.replace(' ', '_'))
     return write_book({'id': bid, 'title': title, 'author': author, 'year': year, 'src': src, 'srcName': 'Wikisource',
@@ -340,6 +415,140 @@ def build_gutenberg(bid, title, author, year, nums, corner, opt):
                        'license': lic, 'corner': corner}, parts)
 
 
+# ---------------------------------------------------------------------------------------------- Evans-TCP (CC0)
+TEI = '{http://www.tei-c.org/ns/1.0}'
+
+
+def tcp_xml(n):
+    import xml.etree.ElementTree as ET
+    os.makedirs(f'{RAW}/tcp', exist_ok=True)
+    path = f'{RAW}/tcp/{n}.xml'
+    if not os.path.exists(path):
+        data = urllib.request.urlopen(urllib.request.Request(f'https://raw.githubusercontent.com/textcreationpartnership/{n}/master/{n}.xml', headers=UA), timeout=120).read()
+        if b'publicdomain/zero' not in data:
+            raise RuntimeError(f'{n}: not marked CC0')
+        open(path, 'wb').write(data)
+        time.sleep(1)
+    return ET.parse(path).getroot()
+
+
+def tcp_text(el):
+    """An element's text: notes and page breaks dropped, end-of-line hyphens joined, illegible letters shown as ◊."""
+    out = [el.text or '']
+    for c in el:
+        tag = c.tag.replace(TEI, '')
+        if tag in ('note', 'pb', 'figure'):
+            pass
+        elif tag == 'g' and (c.get('ref') or '').startswith('char:EOL'):
+            pass
+        elif tag == 'gap':
+            m = re.match(r'(\d+) letters?', c.get('extent') or '')
+            out.append('◊' * int(m.group(1)) if m else '◊◊◊')
+        else:
+            out.append(tcp_text(c))
+        out.append(c.tail or '')
+    return ''.join(out)
+
+
+def tcp_blocks(div):
+    blocks = []
+    for c in div:
+        tag = c.tag.replace(TEI, '')
+        if tag in ('note', 'pb', 'figure', 'table'):
+            continue
+        if tag == 'div':
+            blocks.extend(tcp_blocks(c))
+        elif tag in ('opener', 'closer', 'list', 'lg', 'sp'):
+            for k in c:
+                t = re.sub(r'\s+', ' ', tcp_text(k)).strip()
+                if t:
+                    blocks.append(['p', t])
+        else:
+            t = re.sub(r'\s+', ' ', tcp_text(c)).strip()
+            if t:
+                blocks.append(['h' if tag == 'head' else 'p', t])
+    return blocks
+
+
+def tcp_divs(n, sel):
+    body = tcp_xml(n).find(f'.//{TEI}text/{TEI}body')
+    roots = [body]
+    if sel.get('within'):
+        w = sel['within']
+        roots = [d for d in body.iter(f'{TEI}div') if d.get('type') == w.get('type') and (not w.get('n') or d.get('n') == w['n'])]
+    out = []
+    for d in (x for r in roots for x in r.iter(f'{TEI}div')):
+        if sel.get('type') and d.get('type') != sel['type']:
+            continue
+        h = d.find(f'{TEI}head')
+        head = re.sub(r'\s+', ' ', tcp_text(h)).strip() if h is not None else ''
+        if sel.get('head') and not re.search(sel['head'], head):
+            continue
+        out.append((head, d))
+    return out
+
+
+def tidy_head(h):
+    """'CHAP. III. Of  Adams  Title to Sovereignty' -> 'Chapter III: Of Adams Title to Sovereignty'"""
+    h = re.sub(r'\s+', ' ', h).strip().rstrip('.')
+    h = re.sub(r'^(?:CHAP|Chap)\.?\s*([IVXLC]+)\.?\s*', r'Chapter \1: ', h)
+    h = re.sub(r'^(?:SECTION|SECT|Sect)\.?\s*([IVXLC]+)\.?\s*', r'Section \1: ', h)
+    h = re.sub(r'^(Chapter|Section) ([IVXLC]+): (?:INTRODUCTION)?$', r'\1 \2', h)
+    if re.sub(r'[^A-Za-z]', '', h).isupper() or len(re.findall(r'\b[A-Z]{2,}\b', h)) >= 2:
+        h = smart_title(h)
+    return h.rstrip(': ')
+
+
+def build_collection(bid, title, author, year, corner, items):
+    parts, srcs = [], []
+    for fmt, src, ref, sel in items:
+        if src == 'tcp':
+            for head, d in tcp_divs(ref, sel):
+                m = re.search(r'\b(?:NUMBER|LETTER|No\.)\s*([IVXL]+)\b', head, re.I)
+                parts.append((fmt.format(num=m.group(1).upper() if m else '', head=tidy_head(head)), tcp_blocks(d)))
+            srcs.append(f"{ {'A': 'EEBO-TCP', 'B': 'EEBO-TCP', 'K': 'ECCO-TCP'}.get(ref[0], 'Evans-TCP')} {ref}")
+        else:
+            h = page_html(bid, ref)
+            b = text_blocks(h)
+            if sum(len(x[1].split()) for x in b) < 150:      # some documents are laid out in a table
+                b = text_blocks(re.sub(r'<(/?)li\b', r'<\1p', re.sub(r'</?(?:table|tbody|thead|tr|td|th)\b[^>]*>', '', h)))
+            # Wikisource's own notes and references at the end of a document
+            k = next((i for i, x in enumerate(b) if x[0] == 'h' and re.fullmatch(r'(?:Notes|References|See also|External links|Sources)', x[1].strip()) and i > len(b) * 0.5), None)
+            if k is not None:
+                b = b[:k]
+            if sum(len(x[1].split()) for x in b) >= 150:
+                parts.append((fmt, b))
+                srcs.append(f'Wikisource ({ref})')
+    parts = [(n, b) for n, b in parts if sum(len(x[1].split()) for x in b) >= 60]
+    # a very long division (Oceana's "Model", 72,000 words) is read in pieces of about 12,000 words, cut at a heading
+    # where there is one nearby, otherwise between paragraphs
+    split = []
+    for n, b in parts:
+        w = sum(len(x[1].split()) for x in b)
+        if w <= 20000:
+            split.append((n, b))
+            continue
+        k = -(-w // 12000)
+        target, pieces, cur, cw = w / k, [], [], 0
+        for x in b:
+            xw = len(x[1].split())
+            if cur and cw >= target * (0.8 if x[0] == 'h' else 1.0) and len(pieces) < k - 1:
+                pieces.append(cur)
+                cur, cw = [], 0
+            cur.append(x)
+            cw += xw
+        pieces.append(cur)
+        split.extend((f'{n} ({i} of {len(pieces)})', pc) for i, pc in enumerate(pieces, 1))
+    parts = split
+    names = ' and '.join(dict.fromkeys([s.split(' ')[0] + ' (CC0)' if '-TCP' in s else 'Wikisource (CC BY-SA 4.0)' for s in srcs]))
+    meta = {'id': bid, 'title': title, 'author': author, 'year': year, 'corner': corner,
+            'src': 'https://textcreationpartnership.org/tcp-texts/evans-tcp-evans-early-american-imprints/' if 'TCP' in names else 'https://en.wikisource.org/',
+            'srcName': 'Text Creation Partnership' if 'TCP' in names else 'Wikisource',
+            'license': f'Public-domain texts; transcriptions from {names}: ' + '; '.join(dict.fromkeys(srcs)) + '. Letters the transcribers could not read are shown as ◊'}
+    entry = write_book(meta, parts)
+    return entry
+
+
 def main():
     only = sys.argv[1:]
     idx_path = 'docs/data/lib-index.js'
@@ -361,6 +570,19 @@ def main():
             index[b[0]] = build_gutenberg(*b)
         except Exception as e:
             print(f'{b[0]}: FAILED {e}', flush=True)
+    for b in COLLECTIONS:
+        if only and b[0] not in only:
+            continue
+        try:
+            index[b[0]] = build_collection(*b)
+        except Exception as e:
+            print(f'{b[0]}: FAILED {e}', flush=True)
+    # re-read the index before writing: another run may have added works meanwhile; keep theirs, update ours
+    built = {k: v for k, v in index.items() if not only or k in only}
+    if os.path.exists(idx_path):
+        s = open(idx_path, encoding='utf-8').read()
+        index = {x['id']: x for x in json.loads(s[s.index('=') + 1:].rstrip().rstrip(';'))}
+    index.update(built)
     open(idx_path, 'w', encoding='utf-8').write('window.LIB_INDEX=' + json.dumps(list(index.values()), ensure_ascii=False, separators=(',', ':')) + ';')
 
 

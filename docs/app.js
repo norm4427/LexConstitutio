@@ -2585,16 +2585,75 @@
           <b>${esc(t.name)}</b><span>${esc(t.desc)}</span><em>${t.n} passages · ${Object.keys(C.index[t.id] || {}).length} sources</em></a>`).join('')}</div>
       </section>
       <section class="section">
-        <div class="section-head"><div><h2>The sources</h2><p>Public-domain texts, quoted from the original editions.</p></div><a class="link-arrow" href="#/library">Full-text library →</a></div>
-        <div class="jgrid">${srcs.map(s => `<div class="jcard src-card">
-          <div class="abbr">${esc(s.author)} · ${esc(s.year)}</div>
-          <h3>${esc(s.name)}</h3>
-          <p class="src-desc">${esc(s.desc)}</p>
-          <div class="foot"><span>${fmt(s.n)} paragraphs indexed</span>${libraryLink(s.id)}</div>
-        </div>`).join('')}</div>
+        <div class="section-head"><div><h2>The sources</h2><p>Public-domain texts, quoted from the original editions, grouped by the part they played. Sources marked “indexed” feed the topic pages; the others can be read in full in the library.</p></div><a class="link-arrow" href="#/library">Full-text library →</a></div>
+        ${SOURCE_SECTIONS.map(([key, name, desc, ids]) => {
+          const cards = ids.map(id => {
+            if (id.startsWith('lib:')) {
+              const b = (window.LIB_INDEX || []).find(x => x.id === id.slice(4));
+              return b ? `<div class="jcard src-card">
+                <div class="abbr">${esc(b.author)} · ${esc(b.year)}</div>
+                <h3>${esc(b.title)}</h3>
+                <p class="src-desc">${esc(LIB_DESC[b.id] || '')}</p>
+                <div class="foot"><span>Full text · ${fmt(b.chapters)} parts</span><a class="link-arrow" href="#/library/book/${esc(b.id)}">Read →</a></div></div>` : '';
+            }
+            const s = srcs.find(x => x.id === id);
+            return s ? `<div class="jcard src-card">
+              <div class="abbr">${esc(s.author)} · ${esc(s.year)}</div>
+              <h3>${esc(s.name)}</h3>
+              <p class="src-desc">${esc(s.desc)}</p>
+              <div class="foot"><span>Indexed · ${fmt(s.n)} paragraphs</span>${libraryLink(s.id)}</div></div>` : '';
+          }).filter(Boolean);
+          return cards.length ? `<div class="src-group" data-sec="${key}">
+            <div class="section-head"><div><h3 class="src-group-h">${esc(name)}</h3><p>${esc(desc)}</p></div>${cards.length > 3 ? `<button class="link-arrow src-more" type="button" data-more="${cards.length}">View all ${cards.length} →</button>` : ''}</div>
+            <div class="jgrid${cards.length > 3 ? ' one-row' : ''}">${cards.join('')}</div></div>` : '';
+        }).join('')}
       </section>
     </div>`;
+    app.querySelectorAll('.src-more').forEach(b => b.addEventListener('click', () => {
+      const g = b.closest('.src-group').querySelector('.jgrid'), open = g.classList.toggle('one-row');
+      b.textContent = open ? `View all ${b.dataset.more} →` : 'Show fewer ↑';
+    }));
+    trimMoreButtons();
   }
+  // a section whose cards all fit in one row needs no "View all" button
+  function trimMoreButtons() {
+    app.querySelectorAll('.src-group').forEach(g => {
+      const grid = g.querySelector('.jgrid'), b = g.querySelector('.src-more');
+      if (b && grid.classList.contains('one-row') && grid.scrollHeight <= grid.clientHeight + 4) { b.remove(); grid.classList.remove('one-row'); }
+    });
+  }
+  // The Corner's sources, grouped. Plain ids are sources indexed for the topic pages (corner.js); "lib:" ids are full texts
+  // in the library (lib-index.js), shown with a Read link, so more works can be added without crowding the legal sources.
+  const SOURCE_SECTIONS = [
+    ['philosophy', 'Philosophical foundations', 'The political philosophy the founders read: natural rights and the social contract, mixed government, the separation of powers and the law of nations.',
+      ['locke', 'lib:spirit-of-laws', 'lib:sidney', 'lib:oceana', 'lib:grotius', 'vattel', 'lib:cato']],
+    ['precedents', 'English law and colonial precedents', 'The common law, charters and declarations of rights the founders inherited, and the first state constitutions built on them.',
+      ['blackstone', 'documents']],
+    ['revolution', 'The Revolutionary argument', 'The pamphlets of the imperial crisis and independence, where the colonists worked out their constitutional claims.',
+      ['lib:otis', 'lib:farmer-letters', 'lib:summary-view', 'lib:novanglus', 'lib:common-sense', 'lib:thoughts-government', 'lib:notes-virginia']],
+    ['framing', 'Framing and ratification', 'The Convention’s debates and the public argument over ratification, for and against.',
+      ['madison', 'federalist', 'antifederalist', 'lib:farrand-3', 'lib:federalist-pamphlets']],
+    ['practice', 'Early practice and commentary', 'How the first Congresses, the Virginia and Kentucky Resolutions and the early commentators applied and explained the Constitution.',
+      ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley']],
+  ];
+  const LIB_DESC = {
+    'spirit-of-laws': 'Montesquieu’s comparative study of laws and governments, the source of the founders’ separation of powers.',
+    sidney: 'The republican classic, written against Filmer and published after Sidney’s execution; widely read in the colonies.',
+    oceana: 'Harrington’s model commonwealth: balance of property, rotation in office and an empire of laws, not of men.',
+    grotius: 'The founding treatise of the law of nature and nations, on just war, property, contracts and treaties.',
+    cato: 'Trenchard and Gordon’s essays on liberty, free speech and the dangers of power, among the most quoted works in America.',
+    otis: 'Otis’s argument that Parliament’s power is limited by natural law and the British constitution.',
+    'farmer-letters': 'Dickinson’s letters against the Townshend duties: Parliament may regulate trade but not tax the colonies.',
+    'summary-view': 'Jefferson’s instructions to Virginia’s delegates, denying Parliament any authority over the colonies.',
+    novanglus: 'John Adams and Daniel Leonard’s newspaper debate over Parliament’s authority in America.',
+    'common-sense': 'Paine’s case for independence and for republican government.',
+    'thoughts-government': 'Adams’s plan for republican state constitutions: bicameralism, an independent judiciary and a separate executive.',
+    'notes-virginia': 'Jefferson’s account of Virginia, including his critique of its constitution and his views on religious freedom.',
+    'farrand-3': 'The delegates’ later letters, speeches and recollections of the Convention, collected by Max Farrand.',
+    'federalist-pamphlets': 'James Wilson’s State House Yard speech, Tench Coxe’s Examination and Alexander Contee Hanson’s Remarks.',
+    'state-papers': 'The amendments Congress sent to the states in 1789, the Kentucky Resolutions of 1799 and Madison’s Report of 1800.',
+    antifederalists: 'Centinel, the Federal Farmer, the Pennsylvania Minority, Randolph, Mercy Otis Warren and James Monroe.',
+  };
   function libraryLink(sid) {
     const fixed = { federalist: '#/library/federalist', documents: '#/library/documents', statutes: '#/library/statutes' }[sid];
     const book = (window.LIB_INDEX || []).find(b => b.corner === sid);
@@ -2632,7 +2691,7 @@
       location.replace(`#/library/book/${id}/${n}`);
     }).catch(() => viewNotFound());
   }
-  const libCrumbs = B => B.shelf === 'gov' ? '<a href="#/">Home</a><span>/</span><a href="#/library">Library</a>' : `<a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a>`;
+  const libCrumbs = B => B.shelf === 'gov' || LATER_IDS.includes(B.id) ? '<a href="#/">Home</a><span>/</span><a href="#/library">Library</a>' : `<a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><a href="#/library">Library</a>`;
   const fmtWords = w => w >= 1000 ? Math.round(w / 1000) + 'k words' : w + ' words';
   const readMins = w => Math.max(1, Math.round(w / 230));
   function renderLibCover(B) {
@@ -2761,21 +2820,41 @@
     if (kind === 'book' && seg[2]) return viewLibBook(seg[2], +seg[3] || 0);
     viewNotFound();
   }
+  // later-period texts: listed apart from the founding era
+  const LATER_IDS = ['tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century'];
   function renderLibraryHome() {
     const idx = window.LIB_INDEX || [], yr = b => +((String(b.year).match(/\d{4}/) || [9999])[0]);
     const card = b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${fmt(b.chapters)} parts · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`;
-    const founding = idx.filter(b => b.shelf !== 'gov').sort((a, b) => yr(a) - yr(b)), gov = idx.filter(b => b.shelf === 'gov');
+    const fixed = {
+      framing: '<a class="jcard" href="#/library/federalist"><div class="abbr">Hamilton, Madison & Jay · 1787–88</div><h3>The Federalist</h3><div class="foot"><span>85 essays</span><b>Read →</b></div></a>',
+      precedents: '<a class="jcard" href="#/library/documents"><div class="abbr">1215–1802</div><h3>Founding documents & state constitutions</h3><div class="foot"><span>Magna Carta to the Danbury letter</span><b>Read →</b></div></a>',
+      practice: '<a class="jcard" href="#/library/statutes"><div class="abbr">1789–1799</div><h3>Acts of the First Congresses</h3><div class="foot"><span><i>Statutes at Large</i>, vol. 1</span><b>Read →</b></div></a>',
+    };
+    const gov = idx.filter(b => b.shelf === 'gov'), later = idx.filter(b => LATER_IDS.includes(b.id)).sort((a, b) => yr(a) - yr(b));
+    const placed = new Set([...gov, ...later].map(b => b.id));
+    const groups = SOURCE_SECTIONS.map(([key, name, desc, ids]) => {
+      const books = idx.filter(b => !placed.has(b.id) && (ids.includes('lib:' + b.id) || (b.corner && ids.includes(b.corner))));
+      books.forEach(b => placed.add(b.id));
+      return [key, name, desc, [fixed[key] || '', ...books.sort((a, b) => yr(a) - yr(b)).map(card)].filter(Boolean)];
+    });
+    const rest = idx.filter(b => !placed.has(b.id));
+    if (rest.length) groups.push(['other', 'More founding-era texts', '', rest.map(card)]);
+    const group = ([key, name, desc, cards]) => cards.length ? `<div class="src-group" data-sec="${key}">
+      <div class="section-head"><div><h3 class="src-group-h">${esc(name)}</h3>${desc ? `<p>${esc(desc)}</p>` : ''}</div>${cards.length > 3 ? `<button class="link-arrow src-more" type="button" data-more="${cards.length}">View all ${cards.length} →</button>` : ''}</div>
+      <div class="jgrid${cards.length > 3 ? ' one-row' : ''}">${cards.join('')}</div></div>` : '';
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><span>Library</span></div>
-        <h1>The library</h1><p>Full texts you can read here, highlight and take notes on: <i>The Federalist</i>, the founding documents and early state constitutions, every act of the first five Congresses, the treatises and pamphlets the founders and early commentators relied on, and the Library of Congress&rsquo;s <i>Constitution Annotated</i> and CRS Legal Sidebars. Everything here is in the public domain or freely licensed.</p></div>
-      <section class="section" style="padding-top:28px"><div class="section-head"><div><h2>Founding-era texts</h2><p>The sources behind the <a href="#/corner">Originalist's Corner</a>, and the works that shaped the founders' thinking, in date order.</p></div></div><div class="jgrid">
-        <a class="jcard" href="#/library/federalist"><div class="abbr">Hamilton, Madison & Jay · 1787–88</div><h3>The Federalist</h3><div class="foot"><span>85 essays</span><b>Read →</b></div></a>
-        <a class="jcard" href="#/library/documents"><div class="abbr">1215–1802</div><h3>Founding documents & state constitutions</h3><div class="foot"><span>Magna Carta to the Danbury letter</span><b>Read →</b></div></a>
-        <a class="jcard" href="#/library/statutes"><div class="abbr">1789–1799</div><h3>Acts of the First Congresses</h3><div class="foot"><span><i>Statutes at Large</i>, vol. 1</span><b>Read →</b></div></a>
-        ${founding.map(card).join('')}
-      </div></section>
+        <h1>The library</h1><p>Full texts you can read here, highlight and take notes on: the founding era’s philosophy, law, pamphlets, debates and early practice; later documents of American constitutional history; and the Library of Congress&rsquo;s <i>Constitution Annotated</i> and CRS Legal Sidebars. Everything here is in the public domain or freely licensed.</p></div>
+      <section class="section" style="padding-top:28px"><div class="section-head"><div><h2>The founding era</h2><p>The sources behind the <a href="#/corner">Originalist's Corner</a> and the works that shaped the founders’ thinking, grouped as on the Corner.</p></div></div>
+        ${groups.map(group).join('')}</section>
+      ${later.length ? `<section class="section" style="padding-top:8px"><div class="section-head"><div><h2>Later historical documents</h2><p>Speeches, proclamations, declarations and executive orders from the nineteenth and twentieth centuries, and Tocqueville’s account of American democracy.</p></div></div><div class="jgrid">${later.map(card).join('')}</div></section>` : ''}
       ${gov.length ? `<section class="section" style="padding-top:8px"><div class="section-head"><div><h2>Congress&rsquo;s legal research</h2><p>U.S. government works from the Congressional Research Service at the Library of Congress: the annotated Constitution and the short legal analyses CRS writes for Congress.</p></div></div><div class="jgrid">${gov.map(card).join('')}</div></section>` : ''}
     </div>`;
+    app.querySelectorAll('.src-more').forEach(b => b.addEventListener('click', () => {
+      const g = b.closest('.src-group').querySelector('.jgrid'), open = g.classList.toggle('one-row');
+      b.textContent = open ? `View all ${b.dataset.more} →` : 'Show fewer ↑';
+    }));
+    trimMoreButtons();
     if (!window.LIB_INDEX) loadScriptOnce('data/lib-index.js').then(() => { if (lastRoute.path === 'library') renderLibraryHome(); }).catch(() => { window.LIB_INDEX = []; });
   }
   function renderLibraryList(kind, items, params) {
