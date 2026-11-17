@@ -22,7 +22,7 @@ sub utf8dec { my $s = shift; utf8::decode($s) unless utf8::is_utf8($s); $s }
 sub paras_from_html {
   my $h = utf8dec(shift);
   my @p = map { dehtml($_) } ($h =~ /<p\b[^>]*>(.*?)<\/p>/gis);
-  grep { length($_) >= 60 && !/LONANG Library|Organic Documents Reference Works|Copyright|All rights reserved|Avalon Project|Yale Law School|Lillian Goldman/i } @p;
+  grep { length($_) >= 60 && !/LONANG Library|Organic Documents Reference Works|Copyright|All rights reserved|Avalon Project|Yale Law School|Lillian Goldman|This work (?:was|is) (?:published|in the public domain)|public domain (?:worldwide|in the United States) because/i } @p;
 }
 sub write_js { my ($file, $var, $data) = @_; open my $o, '>:raw', $file or die "$file: $!"; print $o "window.$var=", $J->encode($data), ";"; close $o; printf "wrote %s (%.1f MB)\n", $file, (-s $file) / 1048576 }
 
@@ -169,26 +169,60 @@ push @sources, { id => 'documents', name => 'Founding Documents & State Constitu
 printf "%-10s %5d documents\n", 'documents', scalar @docs;
 
 # Statutes at Large, vol. 1 (Wikisource)
+# Only the transcluded statute text is kept: Wikisource's page header (navigation, "sister projects" links and editors'
+# notes, which can quote an encyclopedia), the printed margin notes and page numbers are dropped.
+sub drop_tag {
+  my ($h, $tag, $cls) = @_;
+  while ($h =~ /<$tag\b[^>]*class="[^"]*\b(?:$cls)\b[^"]*"[^>]*>/gi) {
+    my $start = $-[0]; my $pos = $+[0]; my $depth = 1;
+    while ($depth && $h =~ /<(\/?)$tag\b[^>]*>/gi) { $depth += $1 ? -1 : 1; $pos = $+[0] }
+    substr($h, $start, $pos - $start) = '';
+    pos($h) = $start;
+  }
+  $h
+}
 my @statutes;
 for my $f (glob "$R/statutes/*.json") {
   next if $f =~ /allpages\.json$/;
   my $d = eval { decode_json(slurp($f)) } or next;
   my $html = $d->{parse}{text} // next;
   my ($cong, $sess, $chap) = $f =~ /(\d+)\w\w_Congress_(\d+)\w\w_Session_(Chapter_\d+|Resolution\w*)/ or next;
+  $html = utf8dec($html);
+  $html = substr($html, $-[0]) if $html =~ /<div[^>]*class="[^"]*prp-pages-output/;
+  $html = drop_tag($html, 'div', 'ws-noexport|wst-header|ws-header');
+  my ($margin) = $html =~ /class="wst-sidenote-inner"[^>]*>(.*?)<\/span><\/span>/is;   # the printed margin summary
+  $margin = dehtml($margin) if defined $margin;
+  $html = drop_tag($html, 'span', 'wst-sidenote|pagenum|ws-pagenum');
   my $plain = dehtml($html);
   my @ps = paras_from_html($html);
   @ps = grep { !/^(Statute |STATUTE )/ } @ps;
-  my ($title) = $plain =~ /(An Act[^.]{10,300}?\.)/;
-  ($title) = $plain =~ /((?:Resolved|Joint Resolution|Resolution)[^.]{5,200}\.)/ unless $title;
+  # a short resolution can be a single block with no paragraph tags
+  if (!@ps) { (my $t = $plain) =~ s/\s*\bLayout \d+\s*$//; $t =~ s/^[\x{200B}\s]+//; @ps = ($t) if length($t) >= 60 }
+  my ($title) = $html =~ /class="us-stat-chap-title"[^>]*>.*?<i>(.*?)<\/i>/is;
+  $title = dehtml($title) if $title;
+  undef $title if $title && $title !~ /^An Act/;
+  ($title) = $plain =~ /(An Act[^.]{10,300}?\.)/ unless $title;
+  $title = $margin if !$title && $margin && length($margin) > 15;
+  unless ($title) {
+    # a resolution without a printed summary: its own words, after the enacting formula
+    (my $t = $ps[0] // '') =~ s/^[\x{2160}-\x{217F}IVXL\d.\s]*Resolved,?\s+(?:by the Senate and House of Representatives of the United States of America,?\s+in Congress assembled,?\s*)?(?:two.thirds of both Houses (?:concurring|deeming it necessary),?\s*)?(?:That,?\s+)?//i;
+    $t = ucfirst $t;
+    $t = (substr($t, 0, 150) =~ s/\s+\S*$//r) . '…' if length($t) > 150;
+    $title = $t if length($t) > 15;
+  }
   next unless $title && @ps;
   my ($date) = $plain =~ /((?:Approved|Passed|Became a law)[^.,]{0,10},? (?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2},? 17\d\d)/;
   ($date) = $plain =~ /((?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2},? 17\d\d)/ unless $date;
   my ($year) = ($date // '') =~ /(17\d\d)/;
-  $chap =~ s/_/ /;
-  push @statutes, { id => "c$cong-s$sess-" . lc($chap =~ s/ /-/r), title => $title, cong => $cong + 0, sess => $sess + 0, chap => $chap, date => $date, year => $year, paras => \@ps,
+  $chap =~ s/_/ /g;
+  # a resolution with a name rather than a number ("Resolution regarding John White") is titled by its name
+  $title = $chap if $chap =~ /^Resolution \D/;
+  push @statutes, { id => "c$cong-s$sess-" . lc($chap =~ s/ /-/gr), title => $title, cong => $cong + 0, sess => $sess + 0, chap => $chap, date => $date, year => $year, paras => \@ps,
     url => "https://en.wikisource.org/wiki/United_States_Statutes_at_Large/Volume_1/" . ($f =~ m{/([^/]+)\.json$} ? $1 : '') };
 }
-@statutes = sort { $a->{cong} <=> $b->{cong} || $a->{sess} <=> $b->{sess} || (($a->{chap} =~ /(\d+)/)[0] // 0) <=> (($b->{chap} =~ /(\d+)/)[0] // 0) } @statutes;
+# in each session: the numbered chapters, then the numbered resolutions, then the named (private) resolutions
+my $kind = sub { $_[0]{chap} =~ /^Chapter/ ? 0 : $_[0]{chap} =~ /^Resolution \d/ ? 1 : 2 };
+@statutes = sort { $a->{cong} <=> $b->{cong} || $a->{sess} <=> $b->{sess} || $kind->($a) <=> $kind->($b) || (($a->{chap} =~ /(\d+)/)[0] // 0) <=> (($b->{chap} =~ /(\d+)/)[0] // 0) || $a->{chap} cmp $b->{chap} } @statutes;
 for (@statutes) { $_->{url} =~ s/(Volume_1\/)(\d+\w\w_Congress)_(\d+\w\w_Session)_(.+)$/$1$2\/$3\/$4/ }
 push @sources, { id => 'statutes', name => 'Acts of the First Congresses (Statutes at Large, vol. 1)', author => 'U.S. Congress', year => '1789–1799', desc => 'Every act and resolution of the first five Congresses, from the Judiciary Act to the Alien and Sedition Acts.', url => 'https://en.wikisource.org/wiki/United_States_Statutes_at_Large/Volume_1',
   paras => [ map { my $s = $_; map { { loc => "$s->{cong}th Cong., $s->{chap}: " . substr($s->{title}, 0, 140), t => $_, st => $s->{id} } } @{ $s->{paras} } } @statutes ] };

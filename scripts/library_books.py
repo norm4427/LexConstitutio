@@ -138,6 +138,32 @@ def smart_title(s):
     return ' '.join(x.upper() if roman.match(x) else x if i and x in small else x[:1].upper() + x[1:] for i, x in enumerate(w))
 
 
+TOC_LINE = re.compile(r"^(Book|Chapter|Chap|Letter|Part|Section|Query|Article|Number|No\.|[IVXLC]+\.)\b", re.I)
+
+
+def drop_apparatus(blocks):
+    """Remove what a modern editor or transcriber added: transcriber's notes, a printed table of contents, and the
+    printer's "End of this Book" / "End of the First Volume" lines."""
+    out, i = [], 0
+    while i < len(blocks):
+        kind, t = blocks[i]
+        if re.match(r"^Transcriber.?s? notes?\b", t, re.I):
+            i += 1
+            while i < len(blocks) and blocks[i][0] != 'h':
+                i += 1
+            continue
+        if re.fullmatch(r"(?:TABLE OF )?CONTENTS\.?", t.strip(), re.I) and i + 1 < len(blocks) and TOC_LINE.match(blocks[i + 1][1]):
+            i += 1
+            while i < len(blocks) and TOC_LINE.match(blocks[i][1]) and len(blocks[i][1]) < 220:
+                i += 1
+            continue
+        t = re.sub(r"\s*End of (?:this|the \w+) (?:Book|Volume)\.?\s*$", "", t)
+        if t:
+            out.append([kind, t])
+        i += 1
+    return out
+
+
 def write_book(meta, parts):
     """parts: [(name, blocks)]; writes the per-part files and the book file, returns the index entry."""
     bid = meta['id']
@@ -147,6 +173,7 @@ def write_book(meta, parts):
             os.remove(os.path.join(OUT, f))
     tocout, words = [], 0
     for n, (name, b0) in enumerate(parts, 1):
+        b0 = drop_apparatus(b0)
         b = []
         for kind, t in b0:
             t = t.replace('ſ', 's')            # the long s of 18th-century printing
