@@ -52,6 +52,53 @@ GUTENBERG = [
     ('novanglus', 'Novanglus and Massachusettensis', 'John Adams and Daniel Leonard', '1774–1775', [45205], '', {}),
     ('grotius', 'The Rights of War and Peace', 'Hugo Grotius', '1625 (Campbell trans.)', [46564], '', {}),
     ('lincoln-speeches', 'Noted Speeches of Abraham Lincoln, Including the Lincoln–Douglas Debate', 'Abraham Lincoln', '1838–1865', [48364], '', {}),
+    ('ford-essays', 'Essays on the Constitution of the United States, Published During Its Discussion by the People',
+     'Paul Leicester Ford (ed.): Agrippa, Cato, Sydney, Luther Martin, the Landholder and others', '1787–1788 (pub. 1892)', [31891], '',
+     {'smart': True, 'drop_front': True, 'rename': {
+         'A Letter to the Landholder. by William Williams': 'A Letter to the Landholder, by William Williams',
+         'The Letters of a Countryman. Written by Roger Sherman': 'The Letters of a Countryman, Written by Roger Sherman',
+         'The Letters of Sydney. Written by Robert Yates': 'The Letters of Sydney, Written by Robert Yates'}}),
+    ('ford-pamphlets', 'Pamphlets on the Constitution of the United States, Published During Its Discussion by the People',
+     'Paul Leicester Ford (ed.): Gerry, Jay, Dickinson, Mason, Iredell, Richard Henry Lee and others', '1787–1788 (pub. 1888)', [47110], '',
+     # part titles in the library's style; Ford's attributions are kept (the Columbian Patriot is now known to be Mercy Otis
+     # Warren, and the Federal Farmer is no longer credited to Richard Henry Lee)
+     {'invert_name': True, 'drop_front': True, 'rename': {
+         'Elbridge Gerry, Observations on the New Constitution, and on the Federal and State Conventions. By a Columbian Patriot':
+             '"A Columbian Patriot" (Mercy Otis Warren), Observations on the New Constitution',
+         'Noah Webster, An Examination into the leading principles of the Federal Constitution. By a Citizen of America':
+             'Noah Webster, An Examination into the Federal Constitution',
+         'John Jay, An Address to the People of the State of New York, on the subject of the Constitution. By a Citizen of New York':
+             'John Jay, An Address to the People of the State of New York',
+         'Melancthon Smith, Address to the People of the State of New York. By a Plebeian':
+             'Melancton Smith ("A Plebeian"), Address to the People of the State of New York',
+         'Pelatiah Webster, The Weakness of Brutus exposed: or some remarks in vindication of the Constitution. By a Citizen of Philadelphia':
+             'Pelatiah Webster, The Weakness of Brutus Exposed',
+         'Tench Coxe, An Examination of the Constitution of the United States of America. By an American Citizen':
+             'Tench Coxe ("An American Citizen"), An Examination of the Constitution',
+         'Alexander Contee Hanson, Remarks on the Proposed Plan of a Federal Government. By Aristides':
+             'Alexander Contee Hanson ("Aristides"), Remarks on the Proposed Plan',
+         'Richard Henry Lee, Observations of the System of Government proposed by the late Convention. By a Federal Farmer':
+             'The Federal Farmer, Observations on the System of Government',
+         'James Iredell, Observations on George Mason’s Objections to the Federal Constitution. By Marcus':
+             'James Iredell ("Marcus"), Observations on George Mason’s Objections',
+         'David Ramsay, An Address to the Freemen of South Carolina on the Federal Constitution. By Civis':
+             'David Ramsay ("Civis"), An Address to the Freemen of South Carolina'}}),
+    ('hume-political', 'Political Discourses', 'David Hume', '1752 (Scott Library ed.)', [59792], '',
+     {'drop_front': True, 'drop_re': r'^NOTES?, ', 'skip_re': r'^alphabetical arrangement'}),
+    ('lincoln-douglas', 'The Lincoln–Douglas Debates of 1858', 'Abraham Lincoln and Stephen A. Douglas', '1858 (Lapsley ed.)', [2655, 2656], '',
+     {'drop_front': True, 'vol_labels': ['', ''],
+      'nosplit_re': r"^(?:VOLUME |THE (?:PAPERS|WRITINGS|LINCOLN-DOUGLAS)|Mr\.? (?:LINCOLN|DOUGLAS)|INTERROGATORIES|CAMPBELL)", 'rename': {
+          'First Joint Debate, at Ottawa': 'First Joint Debate, at Ottawa, August 21, 1858',
+          'Second Joint Debate, at Freeport': 'Second Joint Debate, at Freeport, August 27, 1858',
+          'Third Joint Debate, at Jonesboro': 'Third Joint Debate, at Jonesboro, September 15, 1858',
+          'Lincoln and Douglas Fourth Debate, at Charleston, September 18, 1858': 'Fourth Joint Debate, at Charleston, September 18, 1858',
+          'Last Debate, at Alton, October 15, 1858': 'Seventh Joint Debate, at Alton, October 15, 1858'}}),
+    ('webster-speeches', 'Select Speeches, 1817–1845', 'Daniel Webster', '1817–1845 (George ed.)', [7600], '',
+     {'drop_front': True, 'nosplit_re': r'^Select Speeches', 'skip_re': r'^biographical'}),
+    ('douglass-writings', 'Writings and Addresses on Reconstruction and Civil Rights', 'Frederick Douglass', '1866–1886', [99, 67919], '',
+     {'drop_front': True, 'nosplit_re': r'^by Frederick', 'vol_labels': ['Collected Articles', 'Three Addresses'], 'rename': {
+         'In Louisville, KY': 'Address at Louisville, Kentucky, 1883', 'In Louisville, KY., 1883': 'Address at Louisville, Kentucky, 1883',
+         'In Washington, D. C., 1885': 'Address at Washington, D.C., 1885', 'In Washington, D. C., 1886': 'Address at Washington, D.C., 1886'}}),
 ]
 
 
@@ -362,20 +409,22 @@ def gutenberg_blocks(h):
     h = re.sub(r'<(style|script)[^>]*>.*?</\1>', '', h, flags=re.S | re.I)
     h = re.sub(r'<table[^>]*>.*?</table>', '', h, flags=re.S | re.I)
     for tag in ('div', 'p', 'span'):
-        h = drop_elements(h, tag, 'footnotes?|pagenum|toc|transnote|tnote|figcenter|caption|blockquot-toc')
-    h = re.sub(r'<a\b[^>]*(?:fnanchor|#Footnote|#FN|#fn)[^>]*>.*?</a>', '', h, flags=re.S | re.I)
+        h = drop_elements(h, tag, 'footnotes?|pagenum|tei-pb|toc|transnote|tnote|figcenter|caption|blockquot-toc')
+    h = re.sub(r'<a\b[^>]*(?:fnanchor|#Footnote|#FN|#fn|#note_)[^>]*>.*?</a>', '', h, flags=re.S | re.I)
     h = re.sub(r'<br\s*/?>', ' ', h, flags=re.I)
     out = []
     for m in re.finditer(r'<(h[1-4]|p)\b[^>]*>(.*?)</\1>', h, re.S | re.I):
-        t = clean(m.group(2))
-        t = re.sub(r'\[(?:\d+|[a-z])\]', '', t).strip()
+        t = clean(m.group(2)).replace('\xad', '').replace('​', '')
+        t = re.sub(r'\s*\[(?:Footnote:? ?)?(?:\d+|[a-z])\]', '', t).strip()
         if not t or re.fullmatch(r'[\W\d]{0,4}', t):
+            continue
+        if re.match(r'^(?:E-text prepared by|Produced by)\b', t):      # the transcribers' credit line
             continue
         out.append([m.group(1).lower(), t])
     return out
 
 
-SKIP_PART = re.compile(r'^(contents|table of contents|list of|index|footnotes?|notes?|illustrations|transcriber|errata|advertisements?)\b', re.I)
+SKIP_PART = re.compile(r'^(contents|table of contents|list of|index|footnotes?|notes?|illustrations|transcriber|errata|advertisements?|bibliography|reference list)\b', re.I)
 
 
 def part_title(t, opt):
@@ -384,34 +433,78 @@ def part_title(t, opt):
         m = re.match(opt['title_re'], t)
         if m:
             return m.group(1)
+    if opt.get('invert_name'):          # "Gerry, Elbridge. Observations ..." -> "Elbridge Gerry, Observations ..."
+        t = re.sub(r'^([A-Z][\w’\']+), ([A-Z][\w. ]+?)\. ', r'\2 \1, ', t)
     letters = [c for c in t if c.isalpha()]
-    if letters and sum(c.isupper() for c in letters) > 0.85 * len(letters):
+    if opt.get('smart') or (letters and sum(c.isupper() for c in letters) > 0.85 * len(letters)):
         t = smart_title(t)
+    t = t.rstrip('.,;: ')
+    t = opt.get('rename', {}).get(t, t)
     if len(t) > 80:
         t = t[:78].rsplit(' ', 1)[0] + '…'
-    return t.rstrip('.')
+    return t
+
+
+def split_long(parts):
+    """A very long division (Oceana's "Model", 72,000 words) is read in pieces of about 12,000 words, cut at a heading
+    where there is one nearby, otherwise between paragraphs."""
+    split = []
+    for n, b in parts:
+        w = sum(len(x[1].split()) for x in b)
+        if w <= 20000:
+            split.append((n, b))
+            continue
+        k = -(-w // 12000)
+        target, pieces, cur, cw = w / k, [], [], 0
+        for x in b:
+            xw = len(x[1].split())
+            if cur and cw >= target * (0.8 if x[0] == 'h' else 1.0) and len(pieces) < k - 1:
+                pieces.append(cur)
+                cur, cw = [], 0
+            cur.append(x)
+            cw += xw
+        pieces.append(cur)
+        split.extend((f'{n} ({i} of {len(pieces)})', pc) for i, pc in enumerate(pieces, 1))
+    return split
 
 
 def build_gutenberg(bid, title, author, year, nums, corner, opt):
+    """opt: title_re (part title = its first group), smart (title-case every part title), invert_name, rename
+    ({part title: new title}), nosplit_re (split-level headings that stay inside the part: "Mr. Lincoln's Rejoinder"),
+    drop_re (sub-headings dropped with what follows them up to the next heading of the same or a higher level: an
+    editor's notes), skip_re (more part titles to leave out), drop_front (leave out what precedes the first part),
+    vol_labels (part-title prefix for each eBook instead of "Vol. I · "; '' for none)."""
     parts = []
+    nosplit = re.compile(opt['nosplit_re'], re.I) if opt.get('nosplit_re') else None
+    drop = re.compile(opt['drop_re'], re.I) if opt.get('drop_re') else None
+    skip = re.compile(opt['skip_re'], re.I) if opt.get('skip_re') else None
     for v, num in enumerate(nums, 1):
         blocks = gutenberg_blocks(gutenberg_html(num))
-        levels = [x[0] for x in blocks if x[0] != 'p']
+        levels = [x[0] for x in blocks if x[0] != 'p' and not (nosplit and nosplit.match(x[1]))]
         # split at the highest heading level used at least three times (h1 is usually only the title page)
         split = next((l for l in ('h1', 'h2', 'h3', 'h4') if levels.count(l) >= 3), None)
-        cur, name, vparts = [], 'Front matter', []
+        cur, name, vparts, dropping = [], 'Front matter', [], None
         for kind, t in blocks:
-            if kind == split:
+            if dropping and kind != 'p' and kind <= dropping:
+                dropping = None
+            if dropping:
+                continue
+            if drop and kind != 'p' and kind != split and drop.match(t):
+                dropping = kind
+                continue
+            if kind == split and not (nosplit and nosplit.match(t)):
                 vparts.append((name, cur))
                 cur, name = [], part_title(t, opt)
                 cur.append(['h', t])
             else:
                 cur.append(['p' if kind == 'p' else 'h', t])
         vparts.append((name, cur))
+        if opt.get('drop_front') and vparts and vparts[0][0] == 'Front matter':
+            vparts = vparts[1:]
         merged = []
         for name, b in vparts:
             w = sum(len(x[1].split()) for x in b)
-            if SKIP_PART.match(name) or not b:
+            if SKIP_PART.match(name) or (skip and skip.match(name)) or not b:
                 continue
             # a part that is only headings or a few lines (a "Book I" divider, a half-title) joins the next one
             if merged and merged[-1][2] < 120:
@@ -421,10 +514,15 @@ def build_gutenberg(bid, title, author, year, nums, corner, opt):
         if merged and merged[-1][2] < 120 and len(merged) > 1:
             pn, pb, pw = merged.pop()
             merged[-1] = (merged[-1][0], merged[-1][1] + pb, merged[-1][2] + pw)
+        if opt.get('vol_labels'):
+            prefix = opt['vol_labels'][v - 1] + ' · ' if opt['vol_labels'][v - 1] else ''
+        else:
+            prefix = f'Vol. {"I" * v if v < 4 else v} · ' if len(nums) > 1 else ''
         for name, b, w in merged:
             if w < 60:
                 continue
-            parts.append(((f'Vol. {"I" * v if v < 4 else v} · ' if len(nums) > 1 else '') + name, b))
+            parts.append((prefix + name, b))
+    parts = split_long(parts)
     src = f'https://www.gutenberg.org/ebooks/{nums[0]}'
     lic = 'Public-domain text from Project Gutenberg (eBook' + ('s ' if len(nums) > 1 else ' ') + ', '.join(f'#{n}' for n in nums) + ')'
     return write_book({'id': bid, 'title': title, 'author': author, 'year': year, 'src': src, 'srcName': 'Project Gutenberg',
@@ -536,26 +634,7 @@ def build_collection(bid, title, author, year, corner, items):
                 parts.append((fmt, b))
                 srcs.append(f'Wikisource ({ref})')
     parts = [(n, b) for n, b in parts if sum(len(x[1].split()) for x in b) >= 60]
-    # a very long division (Oceana's "Model", 72,000 words) is read in pieces of about 12,000 words, cut at a heading
-    # where there is one nearby, otherwise between paragraphs
-    split = []
-    for n, b in parts:
-        w = sum(len(x[1].split()) for x in b)
-        if w <= 20000:
-            split.append((n, b))
-            continue
-        k = -(-w // 12000)
-        target, pieces, cur, cw = w / k, [], [], 0
-        for x in b:
-            xw = len(x[1].split())
-            if cur and cw >= target * (0.8 if x[0] == 'h' else 1.0) and len(pieces) < k - 1:
-                pieces.append(cur)
-                cur, cw = [], 0
-            cur.append(x)
-            cw += xw
-        pieces.append(cur)
-        split.extend((f'{n} ({i} of {len(pieces)})', pc) for i, pc in enumerate(pieces, 1))
-    parts = split
+    parts = split_long(parts)
     names = ' and '.join(dict.fromkeys([s.split(' ')[0] + ' (CC0)' if '-TCP' in s else 'Wikisource (CC BY-SA 4.0)' for s in srcs]))
     meta = {'id': bid, 'title': title, 'author': author, 'year': year, 'corner': corner,
             'src': 'https://textcreationpartnership.org/tcp-texts/evans-tcp-evans-early-american-imprints/' if 'TCP' in names else 'https://en.wikisource.org/',

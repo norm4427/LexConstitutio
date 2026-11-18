@@ -2640,13 +2640,13 @@
   // in the library (lib-index.js), shown with a Read link, so more works can be added without crowding the legal sources.
   const SOURCE_SECTIONS = [
     ['philosophy', 'Philosophical foundations', 'The political philosophy the founders read: natural rights and the social contract, mixed government, the separation of powers and the law of nations.',
-      ['locke', 'lib:spirit-of-laws', 'lib:sidney', 'lib:oceana', 'lib:grotius', 'vattel', 'lib:cato']],
+      ['locke', 'lib:spirit-of-laws', 'lib:sidney', 'lib:oceana', 'lib:grotius', 'vattel', 'lib:cato', 'lib:hume-political']],
     ['precedents', 'English law and colonial precedents', 'The common law, charters and declarations of rights the founders inherited, and the first state constitutions built on them.',
       ['blackstone', 'documents']],
     ['revolution', 'The Revolutionary argument', 'The pamphlets of the imperial crisis and independence, where the colonists worked out their constitutional claims.',
       ['lib:otis', 'lib:farmer-letters', 'lib:summary-view', 'lib:novanglus', 'lib:common-sense', 'lib:thoughts-government', 'lib:notes-virginia']],
     ['framing', 'Framing and ratification', 'The Convention’s debates and the public argument over ratification, for and against.',
-      ['madison', 'federalist', 'antifederalist', 'lib:farrand-3', 'lib:federalist-pamphlets']],
+      ['madison', 'federalist', 'antifederalist', 'lib:farrand-3', 'lib:federalist-pamphlets', 'lib:ford-pamphlets', 'lib:ford-essays']],
     ['practice', 'Early practice and commentary', 'How the first Congresses, the Virginia and Kentucky Resolutions and the early commentators applied and explained the Constitution.',
       ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley']],
   ];
@@ -2667,6 +2667,9 @@
     'federalist-pamphlets': 'James Wilson’s State House Yard speech, Tench Coxe’s Examination and Alexander Contee Hanson’s Remarks.',
     'state-papers': 'The amendments Congress sent to the states in 1789, the Kentucky Resolutions of 1799 and Madison’s Report of 1800.',
     antifederalists: 'Centinel, the Federal Farmer, the Pennsylvania Minority, Randolph, Mercy Otis Warren and James Monroe.',
+    'hume-political': 'Hume’s essays on commerce, public credit, the original contract, parties and the idea of a perfect commonwealth, read closely by Madison.',
+    'ford-pamphlets': 'Paul Leicester Ford’s collection of ratification pamphlets for and against: Jay, Noah Webster, Dickinson’s Fabius, Mason’s Objections and Iredell’s reply, the Federal Farmer and more.',
+    'ford-essays': 'Ford’s collection of newspaper essays from the ratification debate: Agrippa, Cato, Sydney, Luther Martin, the Landholder, Sherman’s Countryman and others.',
   };
   function libraryLink(sid) {
     const fixed = { federalist: '#/library/federalist', documents: '#/library/documents', statutes: '#/library/statutes' }[sid];
@@ -2835,7 +2838,7 @@
     viewNotFound();
   }
   // later-period texts: listed apart from the founding era
-  const LATER_IDS = ['tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century'];
+  const LATER_IDS = ['tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century', 'webster-speeches', 'lincoln-douglas', 'douglass-writings'];
   function renderLibraryHome() {
     const idx = window.LIB_INDEX || [], yr = b => +((String(b.year).match(/\d{4}/) || [9999])[0]);
     const card = b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${fmt(b.chapters)} parts · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`;
