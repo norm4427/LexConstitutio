@@ -1,4 +1,6 @@
-/* Side-by-side view. A link that leads to another part of the site opens beside the page instead of replacing it:
+/* Side-by-side view. A link in a page's text that leads to another part of the site opens beside the page instead of
+   replacing it (navigation never does: the header, breadcrumbs, tab rows and the reader's toolbars behave as usual;
+   right-click a header link and choose "Open side by side" to open a section beside the page on purpose):
    Originalist's Corner and library links from any other section, and justices, law review articles and other cases from
    a case page. Each side holds tabs, like a browser: links opened while side by side become tabs on the other side; tabs
    can be dragged between the sides or reordered, and closed; either side can be closed (when one page is left, the
@@ -25,12 +27,15 @@
     if (fs === 'case' && (ts === 'justice' || ts === 'article' || (ts === 'case' && t.slice(1).join('/') !== f.slice(1).join('/')))) return true;
     return false;
   }
+  // navigation, not text: these links always behave as ordinary links
+  const NAV = '.topbar, .crumbs, .subtabs, .case-tabs, [role="tablist"], .seg, .chip-row, .filters, .pager, .pagination, .bk-bar, .bk-drawer, .bk-nav, .guide-nav, .lec-filters, .footer, .ws-bar, .oc-panel, .oc-menu, .np, .hl-pop';
   function linkTarget(e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return null;
     const a = e.target.closest && e.target.closest('a[href^="#/"]');
-    if (!a || a.target || a.hasAttribute('download') || a.closest('.ws-bar')) return null;
+    if (!a || a.target || a.hasAttribute('download')) return null;
     return a.getAttribute('href');
   }
+  const inText = e => !e.target.closest(NAV);
   // clicks on this page (before the site's own handlers)
   window.addEventListener('click', e => {
     const href = linkTarget(e);
@@ -40,10 +45,42 @@
       if (e.target.closest('.topbar')) { e.preventDefault(); e.stopImmediatePropagation(); loadInFocus(routeOf(href)); }
       return;
     }
-    if (innerWidth < MIN_W || !sideRule(routeOf(location.hash), routeOf(href))) return;
+    if (innerWidth < MIN_W || !inText(e) || !sideRule(routeOf(location.hash), routeOf(href))) return;
     e.preventDefault(); e.stopImmediatePropagation();
     enter(routeOf(location.hash), routeOf(href));
   }, true);
+
+  /* Right-click a header link: open that section beside the page (or in a new browser tab). */
+  let ctx = null;
+  function closeCtx() { if (ctx) { ctx.remove(); ctx = null; } }
+  document.addEventListener('contextmenu', e => {
+    const a = e.target.closest && e.target.closest('.topbar a[href^="#/"]');
+    closeCtx();
+    if (!a || innerWidth < MIN_W) return;          // the browser's own menu elsewhere, and on small screens
+    e.preventDefault();
+    const href = a.getAttribute('href');
+    ctx = document.createElement('div');
+    ctx.className = 'ws-ctx';
+    ctx.setAttribute('role', 'menu');
+    ctx.innerHTML = `<button role="menuitem" data-act="side">Open side by side</button><button role="menuitem" data-act="here">Open here</button><button role="menuitem" data-act="tab">Open in a new browser tab</button><button role="menuitem" data-act="copy">Copy link</button>`;
+    document.body.appendChild(ctx);
+    ctx.style.left = Math.min(e.clientX, innerWidth - ctx.offsetWidth - 8) + 'px';
+    ctx.style.top = Math.min(e.clientY, innerHeight - ctx.offsetHeight - 8) + 'px';
+    ctx.addEventListener('click', ev => {
+      const b = ev.target.closest('button'); if (!b) return;
+      const url = location.origin + location.pathname + href;
+      if (b.dataset.act === 'side') { if (S.on) openTab(routeOf(href), S.focus === 0 ? 1 : 0); else enter(routeOf(location.hash), routeOf(href)); }
+      if (b.dataset.act === 'here') { if (S.on) loadInFocus(routeOf(href)); else location.hash = href; }
+      if (b.dataset.act === 'tab') window.open(url, '_blank', 'noopener');
+      if (b.dataset.act === 'copy' && navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
+      closeCtx();
+    });
+    ctx.querySelector('button').focus();
+  });
+  document.addEventListener('mousedown', e => { if (ctx && !ctx.contains(e.target)) closeCtx(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCtx(); });
+  addEventListener('scroll', closeCtx, { passive: true });
+  addEventListener('blur', closeCtx);
   // the search box (and anything else that sets the address) while side by side: load it in the focused side
   window.addEventListener('hashchange', () => { if (S.on && !S.quiet) loadInFocus(routeOf(location.hash)); });
 
@@ -65,7 +102,7 @@
     try { w = t.frame.contentWindow; void w.document; } catch (e) { return; }
     w.addEventListener('click', e => {
       const href = linkTarget(e);
-      if (!href || !sideRule(routeOf(w.location.hash), routeOf(href))) return;
+      if (!href || !inText(e) || !sideRule(routeOf(w.location.hash), routeOf(href))) return;
       e.preventDefault(); e.stopImmediatePropagation();
       const pi = paneIndexOf(t);
       openTab(routeOf(href), pi === 0 ? 1 : 0);
