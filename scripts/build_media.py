@@ -244,6 +244,7 @@ def main():
 
     DESC_STOP = set('sarah david isgur french advisory opinions dispatch strict scrutiny divided argument leah melissa kate podcast episode agenda notes supreme court their about which there today discuss justice judge would could after before other these those where while'.split())
     SHOW_MARK = {'Advisory Opinions': 'advisory opinions', 'Strict Scrutiny': 'strict scrutiny', 'Divided Argument': 'divided argument'}
+    SHOW_PARENT = {'Advisory Opinions': 'The Dispatch'}
 
     def pair_by_length(ed, sec, show, notes=''):
         """The show retitles its YouTube uploads ("Why You Should Hate Oliver Wendell Holmes Jr." for the podcast's
@@ -257,7 +258,10 @@ def main():
                 continue
             own = v.get('show') == show or SHOW_MARK[show] in (v.get('t', '') + ' ' + v.get('desc', '')[:600]).lower() \
                 or SHOW_MARK[show] in (v.get('ch') or '').lower()
-            if not own:
+            # the show's parent channel (The Dispatch posts Advisory Opinions episodes on its main channel, retitled and
+            # without the show's name): accepted only when the description closely repeats the episode's notes
+            parent = SHOW_PARENT.get(show) and (v.get('ch') or '') == SHOW_PARENT[show]
+            if not (own or parent):
                 continue
             # the YouTube cut drops the ads, so it runs up to ~10% shorter than the audio (never much longer)
             gap = abs(v['sec'] - sec)
@@ -266,6 +270,12 @@ def main():
             vw = set(re.findall(r'[a-z]{5,}', (v.get('desc') or '')[:900].lower())) - DESC_STOP
             if len(nw & vw) < 4:
                 continue
+            if v.get('show') != show:
+                # any upload outside the show's own playlist must open with the episode's own summary, nearly word for word
+                o1 = re.sub(r'\s+', ' ', notes).strip().lower()[:280]
+                o2 = re.sub(r'\s+', ' ', v.get('desc') or '').strip().lower()[:280]
+                if difflib.SequenceMatcher(None, o1, o2).ratio() < 0.75:
+                    continue
             if sec - 0.10 * sec <= v['sec'] <= sec + 90 and (best is None or gap < best[0]):
                 best = (gap, v)
         return best
@@ -456,7 +466,8 @@ def main():
             if (show_key := (x['ch'], x['t'])) not in seen_ep and (not x.get('link') or (yt_possible and x['ch'] in YT_SINCE)) and ('yt' not in f or 'apple' not in f):
                 seen_ep.add(show_key)
                 unlinked.append({'show': x['ch'], 't': x['t'], 'date': x['date'], 'yt': yt_possible})
-    unlinked.sort(key=lambda e: (not e['yt'], e['date']), reverse=False)
+    unlinked.sort(key=lambda e: e['date'], reverse=True)          # newest first
+    unlinked.sort(key=lambda e: not e['yt'])                      # episodes in the shows' YouTube eras before the rest
     json.dump(unlinked, open(f'{RAW}/unlinked.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
     print('episodes without a video or page, queued for epfind:', len(unlinked))
     # a YouTube copy of a podcast episode replaces the separate video entry (on every case page)
