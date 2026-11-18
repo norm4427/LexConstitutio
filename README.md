@@ -133,6 +133,7 @@ python scripts/refresh_cites.py          # citation counts: every DOI article, t
 python scripts/open_copies.py            # free repository copies for JSTOR-only articles (OpenAlex; ~1,000 lookups a day without an account, cached)
 python scripts/lcp_copies.py             # free copies at Duke for Law and Contemporary Problems articles (run after open_copies.py)
 python scripts/free_copies.py lookup 2000   # free copies for the most-cited JSTOR-only articles: Unpaywall + journal/author repositories, SSRN checked via Crossref (run after open_copies.py; then `python scripts/free_copies.py apply`)
+python scripts/s2_copies.py                # more free copies from Semantic Scholar (batch API; rate limited, rerun later to continue; cached)
 python scripts/fix_text.py              # LAST: repairs mojibake, adds ellipses to cut-off abstracts, drops non-abstracts, tidies text
 sh scripts/stamp.sh                     # version stamps so browsers load the new files
 ```
