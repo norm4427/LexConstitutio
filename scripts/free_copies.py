@@ -209,11 +209,15 @@ def apply():
         best = choose(a, rec)
         if best:
             found[a['id']] = best
+    # open_copies.py clears `oa`, so every article found here is kept in free_copies.json and reapplied on later runs
+    old = json.load(open('data/raw/free_copies.json', encoding='utf-8')) if os.path.exists('data/raw/free_copies.json') else {}
+    old.update(found)
+    found = old
     json.dump(found, open('data/raw/free_copies.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     n = 0
     for a in arts:
         f = found.get(a['id'])
-        if f and not (a.get('oa') or a.get('pdf') or a.get('pub')):
+        if f and not (a.get('pdf') or a.get('pub')) and (not a.get('oa') or a['oa'] == f['url']):
             a['oa'] = f['url']
             if f['version']:
                 a['oav'] = f['version']
