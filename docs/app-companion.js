@@ -1,7 +1,8 @@
 /* The Originalist's Companion: a button in the bottom-right corner of every page that opens a compact Originalist's
    Corner: the text of the Constitution (searchable; select a word to look it up; each annotated clause links to its
-   annotation) and one searchable dictionary combining the site's dictionaries: Johnson (1755), Webster (1828) and
-   Bouvier's law dictionary (1856) from data/founding-dict.js, and the legal glossary (Wex and the U.S. Courts) from
+   annotation) and one searchable dictionary combining the site's dictionaries: Johnson (1755), Bailey (1755), Webster
+   (1828) and the law dictionaries of Bouvier (1856), Burrill (1860) and Black (1891) from data/founding-dict.js and
+   data/founding-dict-more.js (scripts/build_dictionaries.py), and the legal glossary (Wex and the U.S. Courts) from
    data/glossary.js. Data loads the first time the panel needs it. Links open beside the page when the side-by-side
    view is available (app-split.js), otherwise in place. */
 (function () {
@@ -33,7 +34,7 @@
   btn.type = 'button';
   btn.setAttribute('aria-haspopup', 'menu');
   btn.setAttribute('aria-expanded', 'false');
-  btn.title = "Originalist's Companion: the Constitution and the founding-era dictionaries";
+  btn.title = "Originalist's Companion: the Constitution and the period dictionaries";
   btn.innerHTML = '<span aria-hidden="true">§</span><b>Companion</b>';
   const menu = document.createElement('div');
   menu.className = 'oc-menu';
@@ -41,7 +42,7 @@
   menu.setAttribute('role', 'menu');
   menu.innerHTML = `<div class="oc-menu-h">Originalist's Companion</div>
     <button role="menuitem" data-open="con"><b>The Constitution</b><span>The full text, searchable; select a word to look it up</span></button>
-    <button role="menuitem" data-open="dict"><b>Dictionary</b><span>Johnson (1755), Webster (1828), Bouvier (1856) and a legal glossary, searched together</span></button>
+    <button role="menuitem" data-open="dict"><b>Dictionary</b><span>Johnson, Bailey, Webster, Bouvier, Burrill and Black (1755–1891) and a legal glossary, searched together</span></button>
     <a role="menuitem" href="#/corner" class="oc-menu-more">The full Originalist's Corner →</a>`;
   const panel = document.createElement('aside');
   panel.className = 'oc-panel';
@@ -123,7 +124,7 @@
         const cl = byUnit[u.id];
         return `${h}<div class="oc-unit"><div class="oc-label"><span>${esc(u.label)}</span>${cl ? `<a href="#/corner/constitution?c=${esc(cl.id)}" title="${esc(cl.name)}: what it meant, the leading cases and founding-era commentary">Annotated →</a>` : ''}</div><p>${mark(u.text, q)}</p></div>`;
       }).join('');
-      body.innerHTML = (q ? `<p class="oc-count">${units.length} ${units.length === 1 ? 'clause' : 'clauses'} contain “${esc(input.value.trim())}”</p>` : '<p class="oc-hint">Select any word to see how founding-era dictionaries defined it.</p>')
+      body.innerHTML = (q ? `<p class="oc-count">${units.length} ${units.length === 1 ? 'clause' : 'clauses'} contain “${esc(input.value.trim())}”</p>` : '<p class="oc-hint">Select any word to see how period dictionaries defined it.</p>')
         + (out || '<p class="oc-empty">No clause contains that.</p>')
         + '<p class="oc-src">Text: National Archives transcription. <a href="#/corner/constitution">The Annotated Constitution →</a></p>';
     });
@@ -138,14 +139,25 @@
       if (!m.has(k)) m.set(k, { k, hw, src: {} });
       m.get(k).src[src] = data;
     };
-    Object.entries(D.words || {}).forEach(([w, v]) => { ['j', 'w', 'b'].forEach(s => { if (v[s]) add(v[s].hw || w, s, v[s]); }); });
-    Object.entries(D.phrases || {}).forEach(([p, v]) => add(v.hw || p, 'b', v));
+    // a word is listed under the form in the Constitution ("emoluments"); each source keeps its own headword
+    Object.entries(D.words || {}).forEach(([w, v]) => { D.order.forEach(s => { if (v[s]) add(w, s, v[s]); }); });
+    Object.entries(D.phrases || {}).forEach(([p, v]) => { D.order.forEach(s => { if (v[s]) add(p, s, v[s]); }); });
     Object.entries((G && G.terms) || {}).forEach(([t, v]) => add(t, 'g', v));
     return [...m.values()].sort((a, b) => a.k.localeCompare(b.k));
   }
-  const SRC = [['j', 'Johnson, 1755'], ['w', 'Webster, 1828'], ['b', 'Bouvier’s Law Dictionary, 1856'], ['g', 'Legal glossary (modern)']];
+  let SRC = [];   // [key, "Label, year", short label, OCR?], in date order, then the modern glossary
+  function loadDicts() {
+    return Promise.all([load('founding-dict', 'FOUNDING_DICT'), load('founding-dict-more', 'FOUNDING_DICT_MORE').catch(() => null), load('glossary', 'GLOSSARY').catch(() => null)]).then(([D, M, G]) => {
+      if (M && !D._more) {
+        Object.entries(M.words || {}).forEach(([w, v]) => { D.words[w] = Object.assign(D.words[w] || {}, v); });
+        D._more = true;
+      }
+      if (!SRC.length) SRC = D.order.map(s => [s, `${D.meta[s].label}, ${D.meta[s].year}`, D.meta[s].label.replace(/’s .*/, ''), D.meta[s].ocr]).concat([['g', 'Legal glossary (modern)', 'Glossary', false]]);
+      return [D, G];
+    });
+  }
   function renderDict() {
-    return Promise.all([load('founding-dict', 'FOUNDING_DICT'), load('glossary', 'GLOSSARY').catch(() => null)]).then(([D, G]) => {
+    return loadDicts().then(([D, G]) => {
       if (tab !== 'dict') return;
       if (!index) index = buildIndex(D, G);
       const q = norm(input.value);
@@ -155,19 +167,19 @@
       }
       if (!q) {
         const picks = ['commerce', 'militia', 'emolument', 'ex post facto', 'bill of attainder', 'due process', 'natural born', 'regulate', 'necessary', 'arms', 'habeas corpus', 'treason'].map(norm).filter(k => index.some(x => x.k === k));
-        body.innerHTML = `<p class="oc-hint">${index.length.toLocaleString('en-US')} words and phrases: every word of the Constitution as Johnson (1755), Webster (1828) and Bouvier (1856) defined it, and a modern legal glossary. Try:</p>
+        body.innerHTML = `<p class="oc-hint">${index.length.toLocaleString('en-US')} words and phrases: every word of the Constitution as Johnson and Bailey (1755), Webster (1828) and the law dictionaries of Bouvier (1856), Burrill (1860) and Black (1891) defined it, and a modern legal glossary. Try:</p>
           <div class="oc-chips">${picks.map(k => `<button class="chip" data-entry="${esc(k)}">${esc(index.find(x => x.k === k).hw)}</button>`).join('')}</div>`;
         return;
       }
       const exact = index.filter(x => x.k === q), starts = index.filter(x => x.k !== q && x.k.startsWith(q)), has = index.filter(x => !x.k.startsWith(q) && x.k.includes(q));
       const list = [...exact, ...starts, ...has].slice(0, 60);
       if (exact.length === 1 && !starts.length) return showEntry(exact[0], D, G);
-      body.innerHTML = list.length ? `<ul class="oc-results">${list.map(x => `<li><button data-entry="${esc(x.k)}"><b>${esc(x.hw)}</b><span>${SRC.filter(([s]) => x.src[s]).map(([, n]) => esc(n.split(',')[0].replace('’s Law Dictionary', ''))).join(' · ')}</span></button></li>`).join('')}</ul>`
-        : `<p class="oc-empty">No entry for “${esc(input.value.trim())}”. The founding-era dictionaries here cover the words that appear in the Constitution.</p>`;
+      body.innerHTML = list.length ? `<ul class="oc-results">${list.map(x => `<li><button data-entry="${esc(x.k)}"><b>${esc(x.hw)}</b><span>${SRC.filter(([s]) => x.src[s]).map(([, , n]) => esc(n)).join(' · ')}</span></button></li>`).join('')}</ul>`
+        : `<p class="oc-empty">No entry for “${esc(input.value.trim())}”. The period dictionaries here cover the words of the Constitution and the legal terms of the glossary and the Originalist's Corner.</p>`;
     });
   }
   function showEntry(e, D, G) {
-    const part = (s, name) => {
+    const part = (s, name, ocr) => {
       const v = e.src[s];
       if (!v) return '';
       if (s === 'g') {
@@ -175,9 +187,10 @@
         const credit = (G && G.src && G.src[v.src]) || '';
         return `<section class="oc-def"><h5>${esc(name)}</h5>${paras.map(p => `<p>${esc(p)}</p>`).join('')}<p class="oc-src">${esc(credit)}${v.url ? ` · <a href="${esc(v.url)}" target="_blank" rel="noopener">Source ↗</a>` : ''}</p></section>`;
       }
-      return `<section class="oc-def"><h5>${esc(name)}</h5>${(v.e || []).map(x => `<p>${x.pos ? `<i>${esc(x.pos)}</i> ` : ''}${esc(x.t)}</p>`).join('')}</section>`;
+      return `<section class="oc-def"><h5>${esc(name)}${ocr ? ' <small title="Text from OCR of the scanned book, cut at the first unreadable passage">· OCR</small>' : ''}</h5>${(v.e || []).map(x => `<p>${v.hw && norm(v.hw) !== e.k ? `<b>${esc(v.hw)}</b> ` : ''}${x.pos ? `<i>${esc(x.pos)}</i> ` : ''}${esc(x.t)}</p>`).join('')}</section>`;
     };
-    body.innerHTML = `<button class="oc-back" data-back>← Results</button><h3 class="oc-hw">${esc(e.hw)}</h3>${SRC.map(([s, n]) => part(s, n)).join('')}
-      <p class="oc-src">${esc([D.src.j, D.src.w, D.src.b].join(' · '))}. <a href="#/corner/constitution?mode=dict">The dictionary beside the Constitution →</a></p>`;
+    const used = D.order.filter(s => e.src[s]);
+    body.innerHTML = `<button class="oc-back" data-back>← Results</button><h3 class="oc-hw">${esc(e.hw)}</h3>${SRC.map(([s, n, , ocr]) => part(s, n, ocr)).join('')}
+      <p class="oc-src">${esc(used.map(s => D.meta[s].cite).join(' · '))}${used.length ? '. ' : ''}<a href="#/corner/constitution?mode=dict">The dictionary beside the Constitution →</a></p>`;
   }
 })();

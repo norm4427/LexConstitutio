@@ -95,7 +95,7 @@ def tidy_excerpt(s, mark=True):
     return t
 
 
-SENTENCE_END = {'founding-dict.js': {'t'}, 'flashcards.js': {'f', 'b'}}   # plus every fc-court-*.js deck: {'f', 'b'}
+SENTENCE_END = {'founding-dict.js': {'t'}, 'founding-dict-more.js': {'t'}, 'flashcards.js': {'f', 'b'}}   # plus every fc-court-*.js deck: {'f', 'b'}
 
 
 def end_at_sentence(s):

@@ -21,7 +21,7 @@ Run from the repo root:  python scripts/library_books.py [book id ...]
 """
 import html, json, os, re, sys, time, urllib.parse, urllib.request
 
-UA = {'User-Agent': 'LexConstitutio/1.0 (educational static site)'}
+UA = {'User-Agent': 'LexConstitutio/1.0 (static site build)'}
 RAW = 'data/raw/library'
 OUT = 'docs/data/lib'
 WIKISOURCE = [
@@ -99,6 +99,81 @@ GUTENBERG = [
      {'drop_front': True, 'nosplit_re': r'^by Frederick', 'vol_labels': ['Collected Articles', 'Three Addresses'], 'rename': {
          'In Louisville, KY': 'Address at Louisville, Kentucky, 1883', 'In Louisville, KY., 1883': 'Address at Louisville, Kentucky, 1883',
          'In Washington, D. C., 1885': 'Address at Washington, D.C., 1885', 'In Washington, D. C., 1886': 'Address at Washington, D.C., 1886'}}),
+    # added November 2026: English precedents, the Revolutionary argument, framing histories, early practice, Reconstruction
+    ('mckechnie-magna-carta', 'Magna Carta: A Commentary on the Great Charter of King John', 'William Sharp McKechnie',
+     '1215 (commentary, 1905)', [65363], '',
+     {'drop_front': True, 'stop_re': r'^Select Bibliography', 'resplit': {r'^Magna Carta$': 'h3'},
+      'title_sub': [(r'^PART V\.?$', 'Part V. Manuscripts, Editions and Commentaries')],
+      'rename': {'Historical Introduction': 'Historical Introduction: Part I. Events Leading to Magna Carta',
+                 'Text, Translation, and Commentary': 'Text, Translation and Commentary: Preamble'}}),
+    ('hallam-constitutional', 'The Constitutional History of England from Henry VII to George II', 'Henry Hallam',
+     '1827 (Everyman ed.)', [39711, 42179, 44410], '',
+     {'drop_front': True, 'sub_title': True, 'skip_re': r'^(?:preface|introduction|bibliography)', 'vol_labels': ['', '', ''],
+      'vol_opt': {1: {'split': 'h3'}},
+      'title_sub': [(r'^CHAPTER ([XVI]+) (?=[A-Z])', r'CHAPTER \1: ')]}),
+    ('milton-areopagitica', 'Areopagitica: A Speech for the Liberty of Unlicensed Printing', 'John Milton', '1644', [608], '', {}),
+    ('price-civil-liberty', 'Two Tracts on Civil Liberty, the War with America, and the Debts and Finances of the Kingdom', 'Richard Price',
+     '1776–1777', [57970], '',
+     {'drop_front': True, 'skip_re': r'^(?:corrections|a summary view and comparison)',
+      'title_sub': [(r'^PART I\. SUPPLEMENTAL.*', 'Additional Observations, Part I: The Nature and Value of Civil Liberty'),
+                    (r'^PART II\. CONTAINING.*', 'Additional Observations, Part II: Remarks on the Budget Speech of 1776')],
+      'rename': {'General Introduction': 'General Introduction (1778)',
+                 'Observations, &C': 'Observations on the Nature of Civil Liberty (1776), Part I',
+                 'Part II': 'Observations on the Nature of Civil Liberty, Part II: The War with America',
+                 'Introduction': 'Additional Observations (1777): Introduction',
+                 'Part III': 'Additional Observations, Part III: The War and the National Debt',
+                 'Supplement to Section III Part II': 'Additional Observations: Supplement on Public Loans'}}),
+    ('burke-america', 'Speeches on American Taxation and Conciliation with the Colonies, and to the Electors of Bristol', 'Edmund Burke',
+     '1774–1777', [15198], '',
+     {'drop_front': True, 'stop_re': r'^Two Letters to Gentlemen', 'skip_re': r'^The Works of', 'nosplit_re': r'^(?:PREFACE|SPEECH)\.$', 'rename': {
+         'Speech on American Taxation. April 19, 1774': 'Speech on American Taxation (April 19, 1774)',
+         'Speeches at His Arrival at Bristol, and at the Conclusion of the Poll. 1774': 'Speeches at Bristol (1774): Editor’s Advertisement',
+         'Speech at His Arrival at Bristol': 'Speech at His Arrival at Bristol (1774)',
+         'Speech on Moving His Resolutions for Conciliation with the Colonies. March 22, 1775': 'Speech on Conciliation with the Colonies (March 22, 1775)'},
+      'title_sub': [(r'^SPEECH TO THE ELECTORS OF BRISTOL.*', 'Speech to the Electors of Bristol at the Conclusion of the Poll (1774)'),
+                    (r'^A LETTER TO JOHN FARR AND JOHN HARRIS.*', 'Letter to the Sheriffs of Bristol on the Affairs of America (1777)')]}),
+    ('paine-crisis', 'The American Crisis', 'Thomas Paine', '1776–1783 (Conway ed.)', [3741], '',
+     {'drop_front': True, 'split': 'h2', 'smart': True, 'skip_re': r'^1774',
+      'title_sub': [(r'^THE CRISIS\.? ([IVX]+)\.?\s*\(?([^)]*?)\)?$', r'The Crisis \1: \2'), (r'^THE CRISIS\.? ([IVX]+)\.?$', r'The Crisis \1')]}),
+    ('paine-rights', 'Rights of Man', 'Thomas Paine', '1791–1792 (Conway ed.)', [3742], '',
+     {'drop_front': True, 'smart': True, 'skip_re': r'^(?:by thomas paine|1779)', 'nosplit_re': r'^RIGHTS OF MAN(?: PART II)?\.?$',
+      'title_sub': [(r"^PAINE'S PREFACE TO THE (ENGLISH|FRENCH) EDITION$", r'PART THE FIRST: PREFACE TO THE \1 EDITION'),
+                    (r'^RIGHTS OF MAN\. PART THE FIRST.*', 'PART THE FIRST: BEING AN ANSWER TO MR. BURKE’S ATTACK ON THE FRENCH REVOLUTION'),
+                    (r'^OBSERVATIONS ON THE DECLARATION OF RIGHTS$', 'PART THE FIRST: OBSERVATIONS ON THE DECLARATION OF RIGHTS'),
+                    (r'^RIGHTS OF MAN\. PART SECOND.*', 'PART SECOND: FRENCH TRANSLATOR’S PREFACE'),
+                    (r'^(PREFACE|INTRODUCTION|APPENDIX)\.?$', r'PART SECOND: \1'),
+                    (r'^CHAPTER ([IV]+)\. ', r'PART SECOND, CHAPTER \1: '),
+                    (r"^EDITOR'S INTRODUCTION\.?$", 'EDITOR’S INTRODUCTION (MONCURE D. CONWAY)'),
+                    (r"^THE AUTHOR'S NOTES.*", 'THE AUTHOR’S NOTES')]}),
+    ('curtis-history', 'History of the Origin, Formation, and Adoption of the Constitution of the United States', 'George Ticknor Curtis',
+     '1854–1858', [40400, 40679], '',
+     {'drop_front': True, 'sub_title': True, 'book_re': r'^Book [IVX]+\b', 'smart': True, 'skip_re': r'^By George Ticknor'}),
+    ('annual-messages', 'Annual Messages to Congress, 1790–1816', 'George Washington, John Adams, Thomas Jefferson and James Madison',
+     '1790–1816', [5010, 5011, 5012, 5013], '',
+     {'drop_front': True, 'split': 'h2', 'vol_labels': ['', '', '', ''], 'head_text': True,
+      'head_re': r'^State of the Union Address (?:George Washington|John Adams|Thomas Jefferson|James Madison) \w+ \d',
+      'title_sub': [(r'^State of the Union Address (?:George |John |Thomas |James )?(\w+) (.*)$', r'\1, Annual Message, \2')]}),
+    ('marshall-washington', 'The Life of George Washington', 'John Marshall', '1804–1807 (1926 reprint)',
+     [18591, 18592, 18593, 18594, 18595], '',
+     {'drop_front': True, 'sub_title': True, 'smart': True,
+      'skip_re': r"^(?:publisher's preface|illustrations|list of illustrations|the life|george washington|american forces|first president|united states|an introduction|introduction|independence|by john marshall)$"}),
+    ('tucker-slavery', 'A Dissertation on Slavery, with a Proposal for the Gradual Abolition of It, in the State of Virginia',
+     'St. George Tucker', '1796', [32239], '', {'drop_front': True, 'smart': True}),
+    ('dred-scott', 'Dred Scott v. Sandford: The Decision and the Opinions of the Judges', 'Supreme Court of the United States (Howard’s report)',
+     '1857', [31425], '',
+     {'drop_front': True, 'split': 'h2',
+      'head_re': r'^Mr\. (?:Chief )?Justice (?:[A-Z]{2,}|McLEAN)(?: dissenting| delivered the opinion of the court)?\.$',
+      'rename': {'December Term, 1856': 'The Case and the Arguments',
+                 'Mr. Chief Justice TANEY delivered the opinion of the court': 'Opinion of the Court, Chief Justice Taney',
+                 'Mr. Justice WAYNE': 'Justice Wayne, concurring', 'Mr. Justice NELSON': 'Justice Nelson, concurring',
+                 'Mr. Justice GRIER': 'Justice Grier, concurring', 'Mr. Justice DANIEL': 'Justice Daniel, concurring',
+                 'Mr. Justice CAMPBELL': 'Justice Campbell, concurring', 'Mr. Justice CATRON': 'Justice Catron, concurring',
+                 'Mr. Justice McLEAN dissenting': 'Justice McLean, dissenting', 'Mr. Justice CURTIS dissenting': 'Justice Curtis, dissenting'}}),
+    ('ross-impeachment', 'History of the Impeachment of Andrew Johnson', 'Edmund G. Ross', '1896', [2442], '',
+     {'drop_front': True, 'smart': True, 'title_sub': [(r'^CHAPTER (\w+)\. — ', r'CHAPTER \1: '), (r'^CHAPTER 1:', 'CHAPTER I:')],
+      'rename': {'By Edmund G. Ross': 'Preface'}}),
+    ('lynch-reconstruction', 'The Facts of Reconstruction', 'John R. Lynch', '1913', [16158], '',
+     {'drop_front': True, 'smart': True, 'sub_title': True, 'skip_re': r'^the facts of reconstruction$', 'rename': {'John R. Lynch': 'Preface'}}),
 ]
 
 
@@ -253,7 +328,14 @@ def smart_title(s):
     small = {'a', 'an', 'the', 'of', 'and', 'or', 'in', 'on', 'to', 'for', 'by', 'at', 'as', 'with', 'from'}
     w = s.lower().rstrip('.').split()
     roman = re.compile(r'^(?=[ivxlc]+\W*$)(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})\W*$')
-    return ' '.join(x.upper() if roman.match(x) else x if i and x in small else x[:1].upper() + x[1:] for i, x in enumerate(w))
+
+    def cap(x):      # first letter, letters after a hyphen and initials: "Hayes-Tilden", "B.K. Bruce", '"Negro'
+        return re.sub(r'^([^a-z]*)([a-z])|(?<=[-.])([a-z])', lambda m: (m.group(1) or '') + (m.group(2) or m.group(3)).upper(), x)
+    out = []
+    for i, x in enumerate(w):
+        after_break = i and re.search(r'[:.!?—]$', w[i - 1]) and ((roman.match(w[i - 1]) and x not in ('and', 'or', 'to')) or not re.fullmatch(r'(?:[a-z]\.)+|mr\.|st\.|no\.|vol\.', w[i - 1]))
+        out.append(x.upper() if roman.match(x) else x if i and x in small and not after_break and not x.startswith('(') else cap(x))
+    return ' '.join(out)
 
 
 TOC_LINE = re.compile(r"^(Book|Chapter|Chap|Letter|Part|Section|Query|Article|Number|No\.|[IVXLC]+\.)\b", re.I)
@@ -385,7 +467,7 @@ def gutenberg_html(n):
 
 def drop_elements(h, tag, cls):
     """Remove every <tag class="...cls..."> element with its contents (nesting-aware)."""
-    opener = re.compile(r'<%s\b[^>]*class="[^"]*\b(?:%s)\b[^"]*"[^>]*>' % (tag, cls), re.I)
+    opener = re.compile(r'<%s\b[^>]*class=["\'][^"\']*\b(?:%s)\b[^"\']*["\'][^>]*>' % (tag, cls), re.I)
     tok = re.compile(r'<(/?)%s\b[^>]*>' % tag, re.I)
     while True:
         m = opener.search(h)
@@ -409,16 +491,19 @@ def gutenberg_blocks(h):
     h = re.sub(r'<(style|script)[^>]*>.*?</\1>', '', h, flags=re.S | re.I)
     h = re.sub(r'<table[^>]*>.*?</table>', '', h, flags=re.S | re.I)
     for tag in ('div', 'p', 'span'):
-        h = drop_elements(h, tag, 'footnotes?|pagenum|tei-pb|toc|transnote|tnote|figcenter|caption|blockquot-toc')
+        h = drop_elements(h, tag, 'footnotes?|pagenum|pageno|tei-pb|toc|transnote|tnotes?|figcenter|caption|blockquot-toc')
     h = re.sub(r'<a\b[^>]*(?:fnanchor|#Footnote|#FN|#fn|#note_)[^>]*>.*?</a>', '', h, flags=re.S | re.I)
     h = re.sub(r'<br\s*/?>', ' ', h, flags=re.I)
     out = []
     for m in re.finditer(r'<(h[1-4]|p)\b[^>]*>(.*?)</\1>', h, re.S | re.I):
         t = clean(m.group(2)).replace('\xad', '').replace('​', '')
         t = re.sub(r'\s*\[(?:Footnote:? ?)?(?:\d+|[a-z])\]', '', t).strip()
+        t = re.sub(r'\s*\[Footnote \w{1,3}: [^\]]*\]', '', t).strip()      # a footnote printed inline: [Footnote s: ...]
         if not t or re.fullmatch(r'[\W\d]{0,4}', t):
             continue
         if re.match(r'^(?:E-text prepared by|Produced by)\b', t):      # the transcribers' credit line
+            continue
+        if re.match(r'^The Project Gutenberg e-?Book,? ', t, re.I):      # the eBook's own title line
             continue
         out.append([m.group(1).lower(), t])
     return out
@@ -429,6 +514,8 @@ SKIP_PART = re.compile(r'^(contents|table of contents|list of|index|footnotes?|n
 
 def part_title(t, opt):
     t = re.sub(r'\s*[—–-]+\s*$', '', t).strip()
+    for pat, rep in opt.get('title_sub', []):
+        t = re.sub(pat, rep, t)
     if opt.get('title_re'):
         m = re.match(opt['title_re'], t)
         if m:
@@ -468,21 +555,56 @@ def split_long(parts):
     return split
 
 
+def sub_title(name, b):
+    """'Chapter IV' -> 'Chapter IV: Origin and Necessity of the Power to Regulate Commerce', from the short lines under
+    the heading (a date line becomes a parenthesis: 'Chapter I: Organization of the First Continental Congress (1774-1775)')."""
+    if not re.fullmatch(r"(?:.* · )?(?:Chapter|Book|Part|Section|Letter|Number|No\.)\s+[IVXLC\d]+", name, re.I):
+        return name
+    nxt = [x[1] for x in b[1:3] if len(x[1]) <= 400 or '....' in x[1][:400]]
+    date = ''
+    if nxt and len(nxt[0]) <= 40 and re.match(r'(?:\d{4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,? ?\d)', nxt[0]):
+        date, nxt = nxt[0].rstrip('.'), nxt[1:]
+    sub = re.split(r'\.\s*[—–-]|\.{3,}|\.$', nxt[0])[0].strip() if nxt else ''
+    if nxt and '....' in nxt[0] and sub:      # a chapter's printed summary ("Greene invests Camden.... Battle of ..."): its first item
+        sub += '…'
+    elif not sub or len(sub) > 120 or (b[1][0] == 'p' and len(nxt[0]) > 200 and not date):
+        return name + (f' ({date})' if date else '')
+    else:      # the opening sentence of the text is not a subtitle: a subtitle capitalizes most of its longer words
+        long_words = [x for x in sub.split() if len(x) > 3]
+        if long_words and sum(x[0].isupper() for x in long_words) < 0.35 * len(long_words):
+            return name + (f' ({date})' if date else '')
+    letters = [c for c in sub if c.isalpha()]
+    if letters and sum(c.isupper() for c in letters) > 0.85 * len(letters):
+        sub = smart_title(sub)
+    return f'{name}: {sub}' + (f' ({date})' if date else '')
+
+
 def build_gutenberg(bid, title, author, year, nums, corner, opt):
     """opt: title_re (part title = its first group), smart (title-case every part title), invert_name, rename
     ({part title: new title}), nosplit_re (split-level headings that stay inside the part: "Mr. Lincoln's Rejoinder"),
     drop_re (sub-headings dropped with what follows them up to the next heading of the same or a higher level: an
     editor's notes), skip_re (more part titles to leave out), drop_front (leave out what precedes the first part),
-    vol_labels (part-title prefix for each eBook instead of "Vol. I · "; '' for none)."""
+    vol_labels (part-title prefix for each eBook instead of "Vol. I · "; '' for none), split (the heading level to split
+    at, instead of the highest one used three times), head_re (paragraphs that open a part, as if they were headings:
+    an eBook without headings), title_sub ([(regex, replacement)] applied to part titles first), stop_re (the part whose
+    title matches and everything after it in that eBook are left out), keep_re (only parts whose title matches are
+    kept), book_re (part titles that name a book: they prefix the parts that follow, "Book II · Chapter III"), sub_title
+    (a bare "Chapter IV" takes the subtitle printed under it), resplit ({part-title regex: heading level}: such a part
+    is split again at that level, "Magna Carta · Chapter Thirty-Nine"), head_text (a head_re paragraph is shown as its part
+    title: an editor's label such as "State of the Union Address George Washington ..."), vol_opt ({volume number: options for that eBook only})."""
     parts = []
-    nosplit = re.compile(opt['nosplit_re'], re.I) if opt.get('nosplit_re') else None
-    drop = re.compile(opt['drop_re'], re.I) if opt.get('drop_re') else None
-    skip = re.compile(opt['skip_re'], re.I) if opt.get('skip_re') else None
     for v, num in enumerate(nums, 1):
+        vo = dict(opt, **opt.get('vol_opt', {}).get(v, {}))
+        nosplit = re.compile(vo['nosplit_re'], re.I) if vo.get('nosplit_re') else None
+        drop = re.compile(vo['drop_re'], re.I) if vo.get('drop_re') else None
+        skip = re.compile(vo['skip_re'], re.I) if vo.get('skip_re') else None
+        heads = re.compile(vo['head_re']) if vo.get('head_re') else None
         blocks = gutenberg_blocks(gutenberg_html(num))
         levels = [x[0] for x in blocks if x[0] != 'p' and not (nosplit and nosplit.match(x[1]))]
         # split at the highest heading level used at least three times (h1 is usually only the title page)
-        split = next((l for l in ('h1', 'h2', 'h3', 'h4') if levels.count(l) >= 3), None)
+        split = vo.get('split') or next((l for l in ('h1', 'h2', 'h3', 'h4') if levels.count(l) >= 3), None)
+        if heads:
+            blocks = [[split, part_title(t, vo) if vo.get('head_text') else t] if k == 'p' and heads.match(t) else [k, t] for k, t in blocks]
         cur, name, vparts, dropping = [], 'Front matter', [], None
         for kind, t in blocks:
             if dropping and kind != 'p' and kind <= dropping:
@@ -494,13 +616,44 @@ def build_gutenberg(bid, title, author, year, nums, corner, opt):
                 continue
             if kind == split and not (nosplit and nosplit.match(t)):
                 vparts.append((name, cur))
-                cur, name = [], part_title(t, opt)
+                cur, name = [], part_title(t, vo)
                 cur.append(['h', t])
             else:
-                cur.append(['p' if kind == 'p' else 'h', t])
+                cur.append([kind, t])      # heading levels kept until the part is written (resplit reads them)
         vparts.append((name, cur))
-        if opt.get('drop_front') and vparts and vparts[0][0] == 'Front matter':
+        if vo.get('drop_front') and vparts and vparts[0][0] == 'Front matter':
             vparts = vparts[1:]
+        if vo.get('stop_re'):
+            k = next((i for i, (n, _) in enumerate(vparts) if re.match(vo['stop_re'], n, re.I)), None)
+            vparts = vparts[:k] if k is not None else vparts
+        if vo.get('keep_re'):
+            vparts = [(n, b) for n, b in vparts if re.match(vo['keep_re'], n, re.I)]
+        for pat, lvl in vo.get('resplit', {}).items():      # a very long part read in its own sections
+            out = []
+            for n, b in vparts:
+                if not re.match(pat, n, re.I):
+                    out.append((n, b))
+                    continue
+                cur, cn = [], n
+                for x in b:
+                    if x[0] == lvl and cur:
+                        out.append((cn, cur))
+                        cur, cn = [], f'{n} · {part_title(x[1], vo)}'
+                    cur.append(x)
+                out.append((cn, cur))
+            vparts = out
+        if vo.get('sub_title'):
+            vparts = [(sub_title(n, b), b) for n, b in vparts]
+        bookre = re.compile(vo['book_re'], re.I) if vo.get('book_re') else None
+        if bookre:
+            book, named = '', []
+            for n, b in vparts:
+                if bookre.match(n):
+                    book = bookre.match(n).group(0)
+                elif book and not SKIP_PART.match(n) and not (skip and skip.match(n)):
+                    n = f'{book} · {n}'
+                named.append((n, b))
+            vparts = named
         merged = []
         for name, b in vparts:
             w = sum(len(x[1].split()) for x in b)
@@ -509,7 +662,8 @@ def build_gutenberg(bid, title, author, year, nums, corner, opt):
             # a part that is only headings or a few lines (a "Book I" divider, a half-title) joins the next one
             if merged and merged[-1][2] < 120:
                 pn, pb, pw = merged.pop()
-                name, b, w = (pn if pn != 'Front matter' else name), pb + b, pw + w
+                keep_prev = pn != 'Front matter' and not (bookre and bookre.match(pn))
+                name, b, w = (pn if keep_prev else name), pb + b, pw + w
             merged.append((name, b, w))
         if merged and merged[-1][2] < 120 and len(merged) > 1:
             pn, pb, pw = merged.pop()
@@ -517,11 +671,13 @@ def build_gutenberg(bid, title, author, year, nums, corner, opt):
         if opt.get('vol_labels'):
             prefix = opt['vol_labels'][v - 1] + ' · ' if opt['vol_labels'][v - 1] else ''
         else:
-            prefix = f'Vol. {"I" * v if v < 4 else v} · ' if len(nums) > 1 else ''
+            prefix = f'Vol. {["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][v - 1]} · ' if len(nums) > 1 else ''
         for name, b, w in merged:
             if w < 60:
                 continue
-            parts.append((prefix + name, b))
+            parts.append((prefix + name, [['p' if k == 'p' else 'h', t] for k, t in b]))
+    if len(parts) == 1 and parts[0][0] == 'Front matter':      # a single essay or speech: the part is the work
+        parts = [(title, parts[0][1])]
     parts = split_long(parts)
     src = f'https://www.gutenberg.org/ebooks/{nums[0]}'
     lic = 'Public-domain text from Project Gutenberg (eBook' + ('s ' if len(nums) > 1 else ' ') + ', '.join(f'#{n}' for n in nums) + ')'

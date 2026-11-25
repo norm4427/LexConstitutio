@@ -47,23 +47,31 @@ decision below and its issue) and "pending-case" (only what a pending case shows
 Baselines on the same votes: always the petitioner, the justice's more common vote in earlier terms, the better
 constant guess picked with hindsight, and the previous version of these models (logistic regression on the docket
 predictors alone).
-Combining the nine predictions (vote splits): the per-justice models are fitted vote by vote, so they do not know that
-their errors are shared within a case, and pinning the split distribution to them predicts far too few unanimous
-decisions. The nine predictions are therefore combined by a model fitted on the validation terms to the likelihood of
-every justice's actual vote in each case:
-  contested part   logit m_j = a + b * c + g * (logit p_j - c), with c the mean of the nine logits (g < 1 shrinks the
-                   justices' differences); votes share a Court-wide factor and a factor weighted by each justice's lean,
-                   with m_j as marginals;
-  consensus part   with probability pi the case is decided unanimously, for the petitioner with probability
-                   logistic(a_r + b_r * c) (unanimity is the commonest outcome: about 45% of recent cases);
-  shown            P(justice j for the petitioner) = pi * r + (1 - pi) * m_j, the margin of the split distribution.
-This form (chosen by 2-fold cross-validation over the validation terms against independent votes, the raw predictions
-with the two factors, and joint recalibration without the consensus part) is compared on the test terms with those
-alternatives and the historical split frequencies; check_splits() stops the build if any split contradicts the
-probabilities shown (P(9-0 reverse) <= min P(reverse), P(9-0 affirm) <= min P(affirm), expected votes = their sum).
+Combining the nine predictions (vote splits). Forecasters who predict each justice (Martin, Quinn, Ruger & Kim; Katz et
+al.; FantasySCOTUS) call the case by the majority of the predicted votes; counting the justices above 50% as a split
+would make most cases 6-3 on an ideologically sorted Court, and treating the votes as independent almost never yields
+a unanimous decision (Guimera & Sales-Pardo 2011; Lee, Broedersz & Bialek 2015: the votes are strongly correlated and
+unanimity is the commonest outcome). So:
+  margins          the probability shown for each justice is that justice's own model; a recalibration (Platt, or the
+                   Court-wide lean and the justice's difference from it scaled separately) is used only if it improves
+                   the individual votes' log loss in 2-fold cross-validation over the validation terms without costing
+                   accuracy;
+  joint model      a mixture whose every component keeps those margins exactly: unanimous for the petitioner (weight
+                   w+), unanimous for the respondent (w-), or contested, where votes follow a latent Court-wide factor
+                   and a factor weighted by each justice's lean with margins m_j = (p_j - w+) / (1 - w+ - w-). The
+                   unanimity weights are a share of their largest possible values (w+ <= min p_j, w- <= min (1 - p_j));
+                   the share and the factor scales are fitted on the validation terms to the likelihood of the actual
+                   split, the form (share constant or depending on the case) chosen by cross-validation;
+  headline         the single most probable split, shown with its probability and each side's chance of winning;
+  tested           on the test terms against the previous version (consensus/contested mixture with shrunk margins), the
+                   margins with two factors but no unanimity part, independent votes and the historical split
+                   frequencies: individual votes, winning side, probability of the actual split, P(unanimous)
+                   calibration and the distribution of the likeliest split; check_splits() stops the build if any split
+                   contradicts the probabilities shown (P(9-0 reverse) <= min P(reverse), P(9-0 affirm) <= min
+                   P(affirm), expected votes = their sum).
 Run from the repo root:  python scripts/build_models.py   (after build_arguments.py and build_case_facts.py)
 """
-import json, os, re, sys, time, warnings
+import json, os, pickle, re, sys, time, warnings
 os.environ.setdefault("OMP_NUM_THREADS", "6")   # leave CPU for other jobs; oversubscribed OpenMP threads slow boosting badly
 import numpy as np
 import pandas as pd
@@ -86,6 +94,8 @@ CURRENT = ['JGRoberts', 'CThomas', 'SAAlito', 'SSotomayor', 'EKagan', 'NMGorsuch
 VAL = list(range(2016, 2022))
 TEST = list(range(2022, 2026))
 START = 1946
+STAGE = path('data/raw/models_stage.pkl')   # cache of the per-justice predictions (written by every full build)
+REUSE = '--reuse' in sys.argv
 
 CASE_CAT = ['issueArea', 'srcGroup', 'petParty', 'resParty', 'jurisdiction']
 SCDB_CAT = ['issue', 'lawType', 'caseSource', 'lcDisposition', 'certReason', 'petitioner', 'respondent', 'adminAny', 'threeJudgeFdc', 'lcDisagreement']
@@ -441,16 +451,16 @@ def _nodes(ncase, s, theta, kind):
     return U.ravel(), V.ravel(), WW.ravel(), su, sv
 
 
-def _conditional(p, lean, s, theta, kind):
+def _conditional(p, lean, s, theta, kind, eps=1e-4):
     """Each justice's vote probability conditional on the two shared factors, (cases, nodes, n), with the intercepts
     solved (Newton) so that averaging over the factors gives back exactly the justice's own predicted probability p.
     Latent-factor model: votes are independent given a shift shared by the whole Court (u) and a shift multiplied by
     the justice's lean (v); the marginals are pinned to the per-justice predictions."""
-    p = np.clip(np.asarray(p, float), 1e-4, 1 - 1e-4)
+    p = np.clip(np.asarray(p, float), eps, 1 - eps)
     U, V, W, su, sv = _nodes(p.shape[0], s, theta, kind)
     shift = su[:, None, None] * U[None, :, None] + sv[:, None, None] * V[None, :, None] * lean[:, None, :]
     a = np.log(p / (1 - p))
-    for _ in range(60):
+    for _ in range(80):
         q = 1 / (1 + np.exp(-(a[:, None, :] + shift)))
         f = np.einsum('cnj,n->cj', q, W) - p
         fp = np.einsum('cnj,n->cj', q * (1 - q), W)
@@ -581,6 +591,138 @@ def combo_fit(kind, p, lean, y):
     return combo_th(kind, r.x), r.fun
 
 
+# ------------------------------------------------------------- individual calibration (margins shown)
+# Optional recalibration of each justice's probability, fitted to the INDIVIDUAL votes (log loss of each vote on its
+# own), never to the joint outcome: logit q_j = a + b * c + g * (logit p_j - c), c the mean of the nine logits.
+# 'raw' keeps the model's probability; 'scale' is Platt scaling (b = g); 'court' lets the Court-wide lean and the
+# justice's difference from it be scaled separately. Chosen by 2-fold cross-validation over the validation terms.
+CAL_KINDS = {'raw': [], 'scale': [0, 1], 'court': [0, 1, 2]}
+
+
+def cal_apply(kind, th, p):
+    p = np.clip(np.asarray(p, float), 1e-4, 1 - 1e-4)
+    if kind == 'raw':
+        return p
+    L = np.log(p / (1 - p))
+    c = L.mean(1, keepdims=True)
+    a, b = th[0], th[1]
+    g = th[2] if kind == 'court' else th[1]
+    return 1 / (1 + np.exp(-(a + b * c + g * (L - c))))
+
+
+def cal_fit(kind, p, y):
+    if kind == 'raw':
+        return np.zeros(0)
+    nll = lambda th: acc_ll(cal_apply(kind, th, p).ravel(), y.ravel())[1]
+    return minimize(nll, np.array([0.0, 1.0, 1.0])[:len(CAL_KINDS[kind])], method='L-BFGS-B').x
+
+
+# ------------------------------------------------------------- joint vote model with the shown margins
+# A mixture whose every component keeps the margins: with weight w+ all nine vote for the petitioner, with weight w-
+# all nine vote for the respondent, otherwise the case is contested and votes follow the latent two-factor model (a
+# Court-wide factor and a factor weighted by each justice's lean) with margins m_j = (p_j - w+) / (1 - w+ - w-), so
+# that P(justice j for the petitioner) = w+ + (1 - w+ - w-) m_j = p_j exactly. The unanimity weights are a share kappa
+# of their largest possible values (Frechet bounds: w+ <= min_j p_j, w- <= min_j (1 - p_j)); kappa depends on the case
+# (logistic in the spread of the nine predictions, the Court's lean, amicus participation and the spread of questioning
+# at argument). Parameters th = [k0, k_spread, k_lean, k_amicus, k_argument, log s_u, log s_v], fitted on the validation
+# terms to the likelihood of the actual split (joint_fit).
+KMAX = 0.995
+JOINT_START = np.array([1.0, 0.0, 0.0, 0.0, 0.0, np.log(1.5), np.log(0.5)])
+
+
+def joint_feats(p, S):
+    p = np.clip(np.asarray(p, float), 1e-4, 1 - 1e-4)
+    L = np.log(p / (1 - p))
+    return np.c_[L.std(1) - 1.0, np.abs(L.mean(1)) - 0.8, S]
+
+
+def joint_parts(th, p, lean, S):
+    p = np.clip(np.asarray(p, float), 1e-4, 1 - 1e-4)
+    F = joint_feats(p, S)
+    kap = KMAX / (1 + np.exp(-(th[0] + F @ th[1:1 + F.shape[1]])))
+    w1, w0 = kap * p.min(1), kap * (1 - p).min(1)
+    m = (p - w1[:, None]) / (1 - w0 - w1)[:, None]
+    Q, W = _conditional(m, lean, np.zeros((len(p), 0)), th[-2:], 'two', eps=1e-7)
+    return w1, w0, Q, W
+
+
+def joint_lik(th, p, lean, S, y):
+    w1, w0, Q, W = joint_parts(th, p, lean, S)
+    f = np.prod(np.where(y[:, None, :] == 1, Q, 1 - Q), axis=2) @ W
+    n = y.shape[1]
+    return w1 * (y.sum(1) == n) + w0 * (y.sum(1) == 0) + (1 - w1 - w0) * f
+
+
+def joint_dist(th, p, lean, S):
+    """Split distribution (cases, n + 1); its margins are p."""
+    w1, w0, Q, W = joint_parts(th, p, lean, S)
+    n = Q.shape[2]
+    pb = np.zeros(Q.shape[:2] + (n + 1,))
+    pb[..., 0] = 1
+    for j in range(n):
+        qj = Q[..., j:j + 1]
+        pb = np.concatenate([pb[..., :1] * (1 - qj), pb[..., 1:] * (1 - qj) + pb[..., :-1] * qj], axis=-1)
+    d = (1 - w1 - w0)[:, None] * np.einsum('cnk,n->ck', pb, W)
+    d[:, n] += w1
+    d[:, 0] += w0
+    return d
+
+
+def joint_pairs(th, p, lean, S):
+    w1, w0, Q, W = joint_parts(th, p, lean, S)
+    same = Q[:, :, :, None] * Q[:, :, None, :] + (1 - Q[:, :, :, None]) * (1 - Q[:, :, None, :])
+    return (w1 + w0)[:, None, None] + (1 - w1 - w0)[:, None, None] * np.einsum('cnij,n->cij', same, W)
+
+
+def joint_fit(p, lean, S, y, free=None, objective='split'):
+    """free: indices of th to fit (the others stay at JOINT_START, slopes 0). objective 'split': likelihood of the actual
+    split (the outcome the page shows, so the dependence is fitted to the unanimity share and the split frequencies);
+    'votes': likelihood of every justice's actual vote."""
+    free = list(range(len(JOINT_START))) if free is None else free
+    k = y.sum(1)
+    def full(x):
+        th = JOINT_START.copy(); th[1:5] = 0
+        th[free] = x
+        return th
+    if objective == 'split':
+        nll = lambda x: -np.mean(np.log(np.maximum(joint_dist(full(x), p, lean, S)[np.arange(len(k)), k], 1e-12)))
+    else:
+        nll = lambda x: -np.mean(np.log(np.maximum(joint_lik(full(x), p, lean, S, y), 1e-300)))
+    r = minimize(nll, JOINT_START[free], method='L-BFGS-B', bounds=[(-6, 8)] + [(-4, 4)] * (len(free) - 3) + [(-3, 2.5), (-4, 2.5)])
+    return full(r.x), r.fun
+
+
+def split_label(k, n=9):
+    return f'Reverse {k}–{n - k}' if 2 * k > n else f'Affirm {n - k}–{k}'
+
+
+def split_eval(dist, marg, Y, vote_lik=None):
+    """Test metrics for a split distribution (cases, 10) with margins marg (cases, 9) against the actual votes Y."""
+    kk = Y.sum(1)
+    n = Y.shape[1]
+    N = len(kk)
+    acc, ll = acc_ll(marg.ravel(), Y.ravel())
+    pk = dist[np.arange(N), kk]
+    unan = dist[:, 0] + dist[:, n]
+    ua = ((kk == 0) | (kk == n)).astype(float)
+    fold = lambda k: max(k, n - k)
+    top = dist.argmax(1)
+    r = {'voteAcc': round(acc, 4), 'voteLL': round(ll, 4), 'splitLL': round(float(np.mean(np.log(np.maximum(pk, 1e-12)))), 4),
+         'win': round(float(((dist[:, (n + 1) // 2:].sum(1) >= 0.5) == (kk * 2 > n)).mean()), 4),
+         'unanPred': round(float(unan.mean()), 4), 'unanAct': round(float(ua.mean()), 4),
+         'unanBrier': round(float(np.mean((unan - ua) ** 2)), 4),
+         'topHit': round(float((top == kk).mean()), 4),
+         'topFold': {f'{m}-{n - m}': int(sum(fold(k) == m for k in top)) for m in range(n, (n - 1) // 2, -1)},
+         'actFold': {f'{m}-{n - m}': int(sum(fold(k) == m for k in kk)) for m in range(n, (n - 1) // 2, -1)}}
+    if vote_lik is not None:
+        r['vectorLL'] = round(float(np.mean(np.log(np.maximum(vote_lik, 1e-300)))), 4)
+    # calibration of P(unanimous) in four bins
+    bins = [0, 0.3, 0.45, 0.6, 1.01]
+    r['unanCal'] = [[round(float(unan[(unan >= a) & (unan < b)].mean()), 3), round(float(ua[(unan >= a) & (unan < b)].mean()), 3), int(((unan >= a) & (unan < b)).sum())]
+                    for a, b in zip(bins, bins[1:]) if ((unan >= a) & (unan < b)).any()]
+    return r
+
+
 
 def build_frames():
     d = load_votes()
@@ -685,88 +827,94 @@ def main():
     XS = {ver: design(V, d, ver) for ver in ('full', 'dock')}
     print(f'{len(V)} votes in {V.caseId.nunique()} cases; features built {time.time() - t0:.0f}s', flush=True)
     y = V.y.values
-    pred = {ver: {k: pd.Series(np.nan, index=V.index) for k in ('pooled', 'own', 'blend', 'old')} for ver in ('full', 'dock')}
-    keep = {}
-    for T in VAL + TEST:
-        tr = V.term < T
-        te = (V.term == T).values
-        for ver in ('full', 'dock'):
-            cats, num = cols_for(ver)
-            X = XS[ver]
-            cols = ['justice'] + cats + num
-            pm = pooled_model(['justice'] + cats, num).fit(X.loc[tr, cols], y[tr.values])
-            pred[ver]['pooled'][te] = pm.predict_proba(X.loc[te, cols])[:, 1]
-            if T == TEST[0]:
-                keep[(ver, 'pooled')] = pm
-            for code in CURRENT:
-                mj = (V.justiceName == code).values
-                trj, tej = tr.values & mj, te & mj
-                if tej.sum() == 0:
-                    continue
-                if trj.sum() >= 60:
-                    om = own_model(cats, num).fit(X.loc[trj, cats + num], y[trj])
-                    pred[ver]['own'][tej] = om.predict_proba(X.loc[tej, cats + num])[:, 1]
-                    if T == TEST[0]:
-                        keep[(ver, 'own', code)] = om
-                    if ver == 'dock':
-                        oc = ['issueD', 'srcGroup', 'petParty', 'resParty', 'jurisdiction']
-                        Xo = V.loc[:, oc + ['term', 'argHas', 'argW', 'argT', 'argCourt', 'srcRev']].copy()
-                        old = own_model(oc, ['term', 'argHas', 'argW', 'argT', 'argCourt', 'srcRev']).fit(Xo.loc[trj], y[trj])
-                        pred[ver]['old'][tej] = old.predict_proba(Xo.loc[tej])[:, 1]
-                else:
-                    pred[ver]['own'][tej] = pred[ver]['pooled'][tej]
-                pred[ver]['blend'][tej] = (pred[ver]['own'][tej].values + pred[ver]['pooled'][tej].values) / 2
-        print(f'  term {T} done {time.time() - t0:.0f}s', flush=True)
+    if REUSE and os.path.exists(STAGE):      # --reuse: skip the term-by-term fits (cached by the last full build)
+        with open(STAGE, 'rb') as fh:
+            pred, choice, out, final_cached = pickle.load(fh)
+        print('reused the cached per-justice predictions', STAGE, flush=True)
+    else:
+        final_cached = None
+        pred = {ver: {k: pd.Series(np.nan, index=V.index) for k in ('pooled', 'own', 'blend', 'old')} for ver in ('full', 'dock')}
+        keep = {}
+        for T in VAL + TEST:
+            tr = V.term < T
+            te = (V.term == T).values
+            for ver in ('full', 'dock'):
+                cats, num = cols_for(ver)
+                X = XS[ver]
+                cols = ['justice'] + cats + num
+                pm = pooled_model(['justice'] + cats, num).fit(X.loc[tr, cols], y[tr.values])
+                pred[ver]['pooled'][te] = pm.predict_proba(X.loc[te, cols])[:, 1]
+                if T == TEST[0]:
+                    keep[(ver, 'pooled')] = pm
+                for code in CURRENT:
+                    mj = (V.justiceName == code).values
+                    trj, tej = tr.values & mj, te & mj
+                    if tej.sum() == 0:
+                        continue
+                    if trj.sum() >= 60:
+                        om = own_model(cats, num).fit(X.loc[trj, cats + num], y[trj])
+                        pred[ver]['own'][tej] = om.predict_proba(X.loc[tej, cats + num])[:, 1]
+                        if T == TEST[0]:
+                            keep[(ver, 'own', code)] = om
+                        if ver == 'dock':
+                            oc = ['issueD', 'srcGroup', 'petParty', 'resParty', 'jurisdiction']
+                            Xo = V.loc[:, oc + ['term', 'argHas', 'argW', 'argT', 'argCourt', 'srcRev']].copy()
+                            old = own_model(oc, ['term', 'argHas', 'argW', 'argT', 'argCourt', 'srcRev']).fit(Xo.loc[trj], y[trj])
+                            pred[ver]['old'][tej] = old.predict_proba(Xo.loc[tej])[:, 1]
+                    else:
+                        pred[ver]['own'][tej] = pred[ver]['pooled'][tej]
+                    pred[ver]['blend'][tej] = (pred[ver]['own'][tej].values + pred[ver]['pooled'][tej].values) / 2
+            print(f'  term {T} done {time.time() - t0:.0f}s', flush=True)
 
-    # ---- choose per justice on validation terms, report on test terms
-    out, choice = {}, {}
-    val = V.term.isin(VAL).values
-    tst = V.term.isin(TEST).values
-    for code in CURRENT:
-        mj = (V.justiceName == code).values
-        jid = code2id[code]
-        r = {'code': code}
-        for ver in ('dock', 'full'):
-            vs = {}
-            for k in ('pooled', 'own', 'blend'):
-                m = val & mj & pred[ver][k].notna().values
-                if m.sum() >= 40:
-                    vs[k] = acc_ll(pred[ver][k][m], y[m])
-            best = max(vs, key=lambda k: (round(vs[k][0], 3), -vs[k][1])) if vs else 'pooled'
-            choice[(ver, code)] = best
+        # ---- choose per justice on validation terms, report on test terms
+        out, choice = {}, {}
+        val = V.term.isin(VAL).values
+        tst = V.term.isin(TEST).values
+        for code in CURRENT:
+            mj = (V.justiceName == code).values
+            jid = code2id[code]
+            r = {'code': code}
+            for ver in ('dock', 'full'):
+                vs = {}
+                for k in ('pooled', 'own', 'blend'):
+                    m = val & mj & pred[ver][k].notna().values
+                    if m.sum() >= 40:
+                        vs[k] = acc_ll(pred[ver][k][m], y[m])
+                best = max(vs, key=lambda k: (round(vs[k][0], 3), -vs[k][1])) if vs else 'pooled'
+                choice[(ver, code)] = best
+                mt = tst & mj
+                yt = y[mt]
+                res = {k: acc_ll(pred[ver][k][mt], yt) for k in ('pooled', 'own', 'blend')}
+                acc, ll = res[best]
+                r[ver] = {'choice': best, 'acc': round(acc, 4), 'll': round(ll, 4), 'ci': binom_ci(acc, mt.sum()),
+                          'val': {k: [round(a, 4), round(l, 4)] for k, (a, l) in vs.items()}, 'nVal': int((val & mj).sum()),
+                          'all': {k: round(a, 4) for k, (a, l) in res.items()}}
+                if ver == 'dock':
+                    r['old'] = round(acc_ll(pred['dock']['old'][mt], yt)[0], 4) if pred['dock']['old'][mt].notna().all() else None
             mt = tst & mj
             yt = y[mt]
-            res = {k: acc_ll(pred[ver][k][mt], yt) for k in ('pooled', 'own', 'blend')}
-            acc, ll = res[best]
-            r[ver] = {'choice': best, 'acc': round(acc, 4), 'll': round(ll, 4), 'ci': binom_ci(acc, mt.sum()),
-                      'val': {k: [round(a, 4), round(l, 4)] for k, (a, l) in vs.items()}, 'nVal': int((val & mj).sum()),
-                      'all': {k: round(a, 4) for k, (a, l) in res.items()}}
-            if ver == 'dock':
-                r['old'] = round(acc_ll(pred['dock']['old'][mt], yt)[0], 4) if pred['dock']['old'][mt].notna().all() else None
-        mt = tst & mj
-        yt = y[mt]
-        prior = (V.justiceName == code) & (V.term < TEST[0])
-        maj_cls = int(round(V.y[prior].mean())) if prior.sum() else 1
-        base = {'majority': round(float((yt == maj_cls).mean()), 4), 'majorityLabel': 'petitioner' if maj_cls else 'respondent',
-                'reverse': round(float(yt.mean()), 4), 'hindsight': round(float(max(yt.mean(), 1 - yt.mean())), 4)}
-        best_base = max(base['majority'], base['reverse'], base['hindsight'])
-        r.update({'n': int(mj.sum()), 'nTest': int(mt.sum()), 'base': base,
-                  'testSpan': [str(V.date[mt].min().date()), str(V.date[mt].max().date())],
-                  'verdict': verdict_of(r['dock']['acc'], r['dock']['ci'], best_base),
-                  'fverdict': verdict_of(r['full']['acc'], r['full']['ci'], best_base)})
-        # what matters for this justice: grouped permutation importance of the term-2022 model on the test votes
-        ver = 'dock'
-        cats, num = cols_for(ver)
-        mdl = keep.get((ver, 'own', code)) if choice[(ver, code)] == 'own' and (ver, 'own', code) in keep else keep[(ver, 'pooled')]
-        cols = (cats + num) if mdl is not keep[(ver, 'pooled')] else ['justice'] + cats + num
-        r['imp'] = grouped_importance(mdl, XS[ver].loc[mt], yt, GROUPS, cols)
-        import model_directions as MD      # hover notes: what each group measures, which way it moves this justice
-        r['dir'] = MD.directions(V, code, surname.get(code, code).title())
-        out[jid] = r
-        print(f"{code:12} test={mt.sum():4} base={best_base:.3f} | pending-case model [{r['dock']['choice']:6}] {r['dock']['acc']:.3f} "
-              f"(pooled {r['dock']['all']['pooled']:.3f} own {r['dock']['all']['own']:.3f} blend {r['dock']['all']['blend']:.3f}; previous {r['old']}) "
-              f"| SCDB-coded [{r['full']['choice']:6}] {r['full']['acc']:.3f} -> {r['verdict']}", flush=True)
-        print('    matters most:', r['imp'][:4], flush=True)
+            prior = (V.justiceName == code) & (V.term < TEST[0])
+            maj_cls = int(round(V.y[prior].mean())) if prior.sum() else 1
+            base = {'majority': round(float((yt == maj_cls).mean()), 4), 'majorityLabel': 'petitioner' if maj_cls else 'respondent',
+                    'reverse': round(float(yt.mean()), 4), 'hindsight': round(float(max(yt.mean(), 1 - yt.mean())), 4)}
+            best_base = max(base['majority'], base['reverse'], base['hindsight'])
+            r.update({'n': int(mj.sum()), 'nTest': int(mt.sum()), 'base': base,
+                      'testSpan': [str(V.date[mt].min().date()), str(V.date[mt].max().date())],
+                      'verdict': verdict_of(r['dock']['acc'], r['dock']['ci'], best_base),
+                      'fverdict': verdict_of(r['full']['acc'], r['full']['ci'], best_base)})
+            # what matters for this justice: grouped permutation importance of the term-2022 model on the test votes
+            ver = 'dock'
+            cats, num = cols_for(ver)
+            mdl = keep.get((ver, 'own', code)) if choice[(ver, code)] == 'own' and (ver, 'own', code) in keep else keep[(ver, 'pooled')]
+            cols = (cats + num) if mdl is not keep[(ver, 'pooled')] else ['justice'] + cats + num
+            r['imp'] = grouped_importance(mdl, XS[ver].loc[mt], yt, GROUPS, cols)
+            import model_directions as MD      # hover notes: what each group measures, which way it moves this justice
+            r['dir'] = MD.directions(V, code, surname.get(code, code).title())
+            out[jid] = r
+            print(f"{code:12} test={mt.sum():4} base={best_base:.3f} | pending-case model [{r['dock']['choice']:6}] {r['dock']['acc']:.3f} "
+                  f"(pooled {r['dock']['all']['pooled']:.3f} own {r['dock']['all']['own']:.3f} blend {r['dock']['all']['blend']:.3f}; previous {r['old']}) "
+                  f"| SCDB-coded [{r['full']['choice']:6}] {r['full']['acc']:.3f} -> {r['verdict']}", flush=True)
+            print('    matters most:', r['imp'][:4], flush=True)
 
     # ---- case-level winner accuracy and vote-split model (pending-case version)
     pj = pd.Series(np.nan, index=V.index)
@@ -797,61 +945,97 @@ def main():
     iv = np.isin(terms, VAL); it = np.isin(terms, TEST)
     Yv = W9.y.values.reshape(-1, 9)
     emp = (np.bincount(kk[iv], minlength=10) + 0.5) / (iv.sum() + 5)
-    kinds = list(COMBOS)
-    # choose how to combine the nine predictions by 2-fold cross-validation over the validation terms
-    # (likelihood of every justice's actual vote), then fit on all validation terms and test on the test terms
-    h1, h2 = np.isin(terms, VAL[:3]), np.isin(terms, VAL[3:])
-    cvll = {}
-    for kd in kinds:
-        tot = 0
-        for a, b in ((h1, h2), (h2, h1)):
-            th, _ = combo_fit(kd, lo[a], ln[a], Yv[a])
-            tot += np.mean(np.log(np.maximum(combo_lik(th, lo[b], ln[b], Yv[b]), 1e-300))) / 2
-        cvll[kd] = round(float(tot), 4)
-    best_kind = max(cvll, key=cvll.get)
-    fits = {kd: combo_fit(kd, lo[iv], ln[iv], Yv[iv])[0] for kd in kinds}
-    test_ll, test_vote, test_acc = {}, {}, {}
-    for kd in kinds:
-        pr, mg = combo_dist(fits[kd], lo[it], ln[it])
-        test_ll[kd] = round(float(np.mean(np.log(np.maximum(pr[np.arange(it.sum()), kk[it]], 1e-12)))), 4)
-        test_vote[kd] = round(float(np.mean(np.log(np.maximum(combo_lik(fits[kd], lo[it], ln[it], Yv[it]), 1e-300)))), 4)
-        test_acc[kd] = round(float(((mg > 0.5) == Yv[it]).mean()), 4)
-    test_ll['historical frequencies'] = round(float(np.mean(np.log(emp[kk[it]]))), 4)
-    prt, mgt = combo_dist(fits[best_kind], lo[it], ln[it])
-    for i in range(len(prt)):
-        check_splits(prt[i], mgt[i], f'test case {cid[it][i]}')
-    # each sitting justice's test accuracy after combining (the marginal shown on case pages)
     names = W9.justiceName.values.reshape(-1, 9)[it][0]
+    h1, h2 = np.isin(terms, VAL[:3]), np.isin(terms, VAL[3:])
+    folds = ((h1, h2), (h2, h1))
+    if os.environ.get('LC_SPLIT_DUMP'):          # development: the arrays the combination step needs
+        np.savez(os.environ['LC_SPLIT_DUMP'], lo=lo, ln=ln, S=S, Yv=Yv, terms=terms, cid=cid, names=names)
+
+    # 1. margins shown: each justice's own model, recalibrated only if that improves the individual votes' log loss in
+    #    2-fold cross-validation over the validation terms without costing accuracy
+    cal_cv = {}
+    for ck in CAL_KINDS:
+        ll_, ac_ = 0, 0
+        for a, b in folds:
+            pc = cal_apply(ck, cal_fit(ck, lo[a], Yv[a]), lo[b])
+            r_ = acc_ll(pc.ravel(), Yv[b].ravel())
+            ac_ += r_[0] / 2; ll_ += r_[1] / 2
+        cal_cv[ck] = [round(ac_, 4), round(ll_, 4)]
+    ok_cal = [ck for ck in CAL_KINDS if cal_cv[ck][0] >= cal_cv['raw'][0] - 0.005]
+    cal_kind = min(ok_cal, key=lambda ck: cal_cv[ck][1])
+    cal_th = {ck: cal_fit(ck, lo[iv], Yv[iv]) for ck in CAL_KINDS}
+    pv = cal_apply(cal_kind, cal_th[cal_kind], lo)
+    cal_test = {ck: [round(x, 4) for x in acc_ll(cal_apply(ck, cal_th[ck], lo[it]).ravel(), Yv[it].ravel())] for ck in CAL_KINDS}
+    print('individual calibration: cv [acc, logloss]', cal_cv, '| test', cal_test, '| chosen', cal_kind, np.round(cal_th[cal_kind], 3), flush=True)
+
+    # 2. dependence: the joint model keeps those margins; its parameters are fitted on the validation terms to the
+    #    likelihood of the actual split, and its form (unanimity share constant or case-dependent) is chosen by 2-fold
+    #    cross-validation over the validation terms
+    STRUCT = {'joint (constant unanimity share)': [0, 5, 6], 'joint (case-dependent unanimity share)': list(range(7))}
+    split_ll = lambda d_, k_: float(np.mean(np.log(np.maximum(d_[np.arange(len(k_)), k_], 1e-12))))
+    jcv = {}
+    for nm_, fr in STRUCT.items():
+        tot = 0
+        for a, b in folds:
+            th_, _ = joint_fit(pv[a], ln[a], S[a], Yv[a], fr)
+            tot += split_ll(joint_dist(th_, pv[b], ln[b], S[b]), kk[b]) / 2
+        jcv[nm_] = round(tot, 4)
+    for kd in ('pinned', 'independent'):     # the earlier forms, with the same margins, for comparison
+        tot = 0
+        for a, b in folds:
+            th_, _ = combo_fit(kd, pv[a], ln[a], Yv[a])
+            tot += split_ll(combo_dist(th_, pv[b], ln[b])[0], kk[b]) / 2
+        jcv[kd] = round(tot, 4)
+    best_struct = max(STRUCT, key=lambda k: jcv[k])
+    th_j, _ = joint_fit(pv[iv], ln[iv], S[iv], Yv[iv], STRUCT[best_struct])
+    th_jv, _ = joint_fit(pv[iv], ln[iv], S[iv], Yv[iv], STRUCT[best_struct], objective='votes')
+    print('joint structure: cv split log lik', jcv, '| chosen', best_struct, np.round(th_j, 3), flush=True)
+
+    # 3. test on the test terms against the earlier methods and baselines
+    Yt, kt = Yv[it], kk[it]
+    nt = int(it.sum())
+    prt = joint_dist(th_j, pv[it], ln[it], S[it])
+    for i in range(nt):
+        check_splits(prt[i], pv[it][i], f'test case {cid[it][i]}')
+    ev = {'joint': split_eval(prt, pv[it], Yt, joint_lik(th_j, pv[it], ln[it], S[it], Yt)),
+          'joint fitted to votes': split_eval(joint_dist(th_jv, pv[it], ln[it], S[it]), pv[it], Yt, joint_lik(th_jv, pv[it], ln[it], S[it], Yt))}
+    for kd, lab in (('independent', 'independent'), ('pinned', 'pinned'), ('mixture', 'previous')):
+        thk, _ = combo_fit(kd, lo[iv], ln[iv], Yv[iv])
+        dk_, mk_ = combo_dist(thk, lo[it], ln[it])
+        ev[lab] = split_eval(dk_, mk_, Yt, combo_lik(thk, lo[it], ln[it], Yt))
+    ev['historical frequencies'] = split_eval(np.tile(emp, (nt, 1)), np.full((nt, 9), 0.5), Yt)
+    for k_ in ('voteAcc', 'voteLL', 'win', 'topFold'):
+        ev['historical frequencies'].pop(k_, None)
+    ev['historical frequencies']['win'] = round(float((kt >= 5).mean() if emp[5:].sum() >= 0.5 else (kt < 5).mean()), 4)
+    ev['historical frequencies']['topFold'] = {f'{m}-{9 - m}': (nt if m == max(int(np.argmax(emp)), 9 - int(np.argmax(emp))) else 0) for m in range(9, 4, -1)}
+    cnt = (pv[it] > 0.5).sum(1)                # the naive headline: how many justices are above 50%
+    ev['count above 50%'] = {'topHit': round(float((cnt == kt).mean()), 4), 'topFold': {f'{m}-{9 - m}': int(sum(max(k_, 9 - k_) == m for k_ in cnt)) for m in range(9, 4, -1)}}
+    for nm_, r_ in ev.items():
+        print(f'  test {nm_:24}', r_, flush=True)
     for j, nm in enumerate(names):
         if code2id.get(nm) in out:
-            out[code2id[nm]]['joint'] = round(float(((mgt[:, j] > 0.5) == Yv[it][:, j]).mean()), 4)
+            out[code2id[nm]]['joint'] = round(float(((pv[it][:, j] > 0.5) == Yt[:, j]).mean()), 4)
     # pairwise agreement: model-implied vs actual, on the test cases (the same nine justices throughout)
-    ag = combo_pairs(fits[best_kind], lo[it], ln[it]).mean(0)
-    ag0 = combo_pairs(fits['independent'], lo[it], ln[it]).mean(0)
-    yv = Yv[it]
-    act = np.array([[float((yv[:, i] == yv[:, j]).mean()) for j in range(9)] for i in range(9)])
+    ag = joint_pairs(th_j, pv[it], ln[it], S[it]).mean(0)
+    ag0 = combo_pairs(combo_th('independent', []), pv[it], ln[it]).mean(0)
+    act = np.array([[float((Yt[:, i] == Yt[:, j]).mean()) for j in range(9)] for i in range(9)])
     iu = np.triu_indices(9, 1)
     pair_mae = float(np.abs(ag - act)[iu].mean()); pair_mae0 = float(np.abs(ag0 - act)[iu].mean())
     pairs = sorted([[code2id[names[i]], code2id[names[j]], round(float(ag[i, j]), 3), round(float(act[i, j]), 3)] for i, j in zip(*iu)], key=lambda r: -r[3])
     print(f'  pairwise agreement on test cases: mean abs error {pair_mae:.3f} (independent votes {pair_mae0:.3f})', flush=True)
-    win_hit = float(((prt[:, 5:].sum(1) >= 0.5) == (kk[it] >= 5)).mean())
-    rev_base = float(max((kk[it] >= 5).mean(), (kk[it] < 5).mean()))
-    unan_pred = float((prt[:, 0] + prt[:, 9]).mean())
-    unan_act = float(((kk[it] == 0) | (kk[it] == 9)).mean())
-    unan_val = float(((kk[iv] == 0) | (kk[iv] == 9)).mean())
-    conf = np.abs(prt[:, 5:].sum(1) - 0.5) >= 0.25
-    th = fits[best_kind]
-    calib = {'kind': best_kind, 'theta': [round(float(x), 4) for x in th], 'cv': cvll, 'test': test_ll, 'testVote': test_vote, 'testAcc': test_acc,
-             'shrink': round(float(th[2]), 3), 'pCons': round(float(1 / (1 + np.exp(-th[7]))), 4),
-             'nVal': int(iv.sum()), 'nTest': int(it.sum()), 'emp': [round(float(x), 4) for x in emp],
-             'hit': round(win_hit, 4), 'revBase': round(rev_base, 4), 'unanPred': round(unan_pred, 4), 'unanAct': round(unan_act, 4), 'unanVal': round(unan_val, 4),
-             'confN': int(conf.sum()), 'confHit': round(float(((prt[conf, 5:].sum(1) >= 0.5) == (kk[it][conf] >= 5)).mean()), 4) if conf.any() else None,
-             'testDist': [round(float(x), 4) for x in prt.mean(0)], 'testEmp': [round(float(x), 4) for x in np.bincount(kk[it], minlength=10) / it.sum()],
-             'likeliest': [int(x) for x in np.bincount(prt.argmax(1), minlength=10)],
-             'leanSd': lean_sd, 'pairMae': round(pair_mae, 4), 'pairMaeIndep': round(pair_mae0, 4), 'pairs': pairs}
-    print('combining: cv', cvll, '| test split', test_ll, '| test vote-vector', test_vote, '| test vote acc', test_acc, '| chosen', best_kind, np.round(th, 3), flush=True)
-    print(f'  winner hit {win_hit:.3f} vs always-majority-side {rev_base:.3f}; predicted unanimity {unan_pred:.3f} vs actual {unan_act:.3f}; '
-          f'likeliest split on test cases {calib["likeliest"]}', flush=True)
+    pwin = prt[:, 5:].sum(1)
+    conf = np.abs(pwin - 0.5) >= 0.25
+    kap_v = KMAX / (1 + np.exp(-(th_j[0] + joint_feats(pv[iv], S[iv]) @ th_j[1:5])))
+    w_v = kap_v * (pv[iv].min(1) + (1 - pv[iv]).min(1))
+    calib = {'kind': 'joint', 'struct': best_struct, 'theta': [round(float(x), 4) for x in th_j], 'cv': jcv,
+             'cal': cal_kind, 'calTheta': [round(float(x), 4) for x in cal_th[cal_kind]], 'calCv': cal_cv, 'calTest': cal_test,
+             'eval': ev, 'nVal': int(iv.sum()), 'nTest': nt, 'emp': [round(float(x), 4) for x in emp],
+             'unanVal': round(float(((kk[iv] == 0) | (kk[iv] == 9)).mean()), 4), 'kappa': round(float(kap_v.mean()), 4), 'wUnan': round(float(w_v.mean()), 4),
+             'boundUnan': round(float((pv[it].min(1) + (1 - pv[it]).min(1)).mean()), 4),
+             'revBase': round(float(max((kt >= 5).mean(), (kt < 5).mean())), 4),
+             'confN': int(conf.sum()), 'confHit': round(float(((pwin[conf] >= 0.5) == (kt[conf] >= 5)).mean()), 4) if conf.any() else None,
+             'testDist': [round(float(x), 4) for x in prt.mean(0)], 'testEmp': [round(float(x), 4) for x in np.bincount(kt, minlength=10) / nt],
+             'leanSd': lean_sd, 'salMu': sal_mu, 'salSd': sal_sd, 'pairMae': round(pair_mae, 4), 'pairMaeIndep': round(pair_mae0, 4), 'pairs': pairs}
 
     # ---- pending cases: refit on everything and predict
     K = load_js('docket')
@@ -912,37 +1096,46 @@ def main():
             XP[c] = PV[c].astype(float)
     cats, num = cols_for('dock')
     X = XS['dock']
-    pm = pooled_model(['justice'] + cats, num).fit(X[['justice'] + cats + num], y)
-    pp = pm.predict_proba(XP[['justice'] + cats + num])[:, 1]
-    final = np.array(pp)
-    for code in CURRENT:
-        mj = (V.justiceName == code).values
-        mp = (PV.justiceName == code).values
-        ch = choice[('dock', code)]
-        if ch in ('own', 'blend') and mj.sum() >= 60:
-            om = own_model(cats, num).fit(X.loc[mj, cats + num], y[mj])
-            po = om.predict_proba(XP.loc[mp, cats + num])[:, 1]
-            final[mp] = po if ch == 'own' else (po + pp[mp]) / 2
+    if final_cached is not None and len(final_cached) == len(PV):
+        final = final_cached
+    else:
+        pm = pooled_model(['justice'] + cats, num).fit(X[['justice'] + cats + num], y)
+        pp = pm.predict_proba(XP[['justice'] + cats + num])[:, 1]
+        final = np.array(pp)
+        for code in CURRENT:
+            mj = (V.justiceName == code).values
+            mp = (PV.justiceName == code).values
+            ch = choice[('dock', code)]
+            if ch in ('own', 'blend') and mj.sum() >= 60:
+                om = own_model(cats, num).fit(X.loc[mj, cats + num], y[mj])
+                po = om.predict_proba(XP.loc[mp, cats + num])[:, 1]
+                final[mp] = po if ch == 'own' else (po + pp[mp]) / 2
+        with open(STAGE, 'wb') as fh:
+            pickle.dump((pred, choice, out, final), fh)
     PV["p"] = np.clip(final, 0.001, 0.999)
-    shown = {}        # (justice, case id) -> probability shown: the justice's model combined with the other eight
-    leanP = PV['lean'] if 'lean' in PV else J['lean']
+    shown = {}        # (justice, case id) -> (probability shown, the model's raw probability)
     cases_out = []
     for i, r in P.iterrows():
         m = (PV.caseId == r.caseId).values
         sub = PV[m].set_index('justiceName').loc[CURRENT]
         ln_c = (J.loc[PV.index[m], 'lean'].values / lean_sd)[None, :]
-        dist, mg = combo_dist(fits[best_kind], sub.p.values[None, :], ln_c)
-        dist, mg = dist[0], mg[0]
+        amt_c = np.log1p(np.expm1(r.amPetL) + np.expm1(r.amResL))
+        S_c = np.array([[(amt_c - sal_mu[0]) / sal_sd[0] if r.amKnown else 0.0, (r.argSpread - sal_mu[1]) / sal_sd[1] if r.argSpread > 0 else 0.0]])
+        mg = cal_apply(cal_kind, cal_th[cal_kind], sub.p.values[None, :])
+        dist = joint_dist(th_j, mg, ln_c, S_c)[0]
+        mg = mg[0]
         check_splits(dist, mg, r.c['id'])
         for code, raw, q in zip(CURRENT, sub.p.values, mg):
             shown[(code, r.c['id'])] = (round(float(q), 3), round(float(raw), 3))
+        top = int(np.argmax(dist))
         c = r.c
         cases_out.append({'id': c['id'], 'n': c['n'], 'd': c['d'], 'lowerCourt': r.lowerCourt, 'src': r.srcGroup, 'pet': r.petParty, 'res': r.resParty,
                           'jur': r.jurisdiction, 'area': ISSUE_AREA.get(int(r.issueD), ''), 'areaP': r.issueP, 'page': bool(r.ok),
                           'lcLib': round(float(r.lcLibD), 3), 'us': int(r.usSide), 'usAmicus': int(r.usAmicus), 'cvsg': int(r.cvsg),
                           'am': [int(round(np.expm1(r.amPetL))), int(round(np.expm1(r.amResL))), int(round(np.expm1(r.amCertL)))] if r.amKnown else None,
                           'arg': bool(r.argKey and r.argKey in ARG), 'argCourt': round(float(sub.argCourt.iloc[0]), 3),
-                          'dist': [round(float(x), 4) for x in dist], 'pRev': round(float(dist[5:].sum()), 4)})
+                          'dist': [round(float(x), 4) for x in dist], 'pRev': round(float(dist[5:].sum()), 4),
+                          'top': [top, round(float(dist[top]), 4)], 'pUnan': round(float(dist[0] + dist[9]), 4)})
     for code in CURRENT:
         ids = [c['id'] for c in P.c]
         out[code2id[code]]['pred'] = [[cid, shown[(code, cid)][0]] for cid in ids]
@@ -953,8 +1146,13 @@ def main():
     kb = write_js('models', 'MODELS', data) / 1024
     print(f'models.js {kb:.0f} KB; {len(cases_out)} pending cases; {time.time() - t0:.0f}s')
     for c in cases_out:
-        top = int(np.argmax(c['dist']))
-        print(f"  {c['d']:10} {c['n'][:44]:44} arg={int(c['arg'])} lcLib={c['lcLib']:.2f} us={c['us']:+d} P(rev)={c['pRev']:.2f} likeliest {top}-{9 - top} ({max(c['dist']):.2f})")
+        top = c['top'][0]
+        print(f"  {c['d']:10} {c['n'][:40]:40} P(rev)={c['pRev']:.2f} likeliest {split_label(top)} ({c['top'][1]:.2f}) P(unan)={c['pUnan']:.2f} | "
+              f"split {[round(x, 2) for x in c['dist']]} | shown {[q for (cd, cid_), (q, _) in shown.items() if cid_ == c['id']]}")
+    hd = {}
+    for c in cases_out:
+        hd[split_label(c['top'][0])] = hd.get(split_label(c['top'][0]), 0) + 1
+    print('  headline (likeliest split) on pending cases:', hd)
 
 
 if __name__ == '__main__':

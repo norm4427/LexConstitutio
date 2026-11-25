@@ -2501,9 +2501,9 @@
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>The Annotated Constitution</span></div>
         <h1>The Annotated Constitution</h1>
-        <p>${mode === 'dict' ? 'Select any word to see how founding-era dictionaries defined it: Johnson (1755), Webster (1828) and Bouvier\'s law dictionary (1856).' : `Select a highlighted clause to read what it means, how its interpretation has changed, the leading cases and scholarship, and what the founding generation wrote about it. ${K.clauses.length} clauses are annotated.`}</p>
+        <p>${mode === 'dict' ? 'Select any word to see how period dictionaries defined it: Johnson (1755), Bailey (1755), Webster (1828), and the law dictionaries of Bouvier (1856), Burrill (1860) and Black (1891).' : `Select a highlighted clause to read what it means, how its interpretation has changed, the leading cases and scholarship, and what the founding generation wrote about it. ${K.clauses.length} clauses are annotated.`}</p>
         <div class="ac-tools">
-          <div class="seg" role="group" aria-label="Mode"><button data-mode="clauses" class="${mode === 'clauses' ? 'on' : ''}">Clauses</button><button data-mode="dict" class="${mode === 'dict' ? 'on' : ''}">Founding-era dictionary</button></div>
+          <div class="seg" role="group" aria-label="Mode"><button data-mode="clauses" class="${mode === 'clauses' ? 'on' : ''}">Clauses</button><button data-mode="dict" class="${mode === 'dict' ? 'on' : ''}">Period dictionaries</button></div>
           ${mode === 'clauses' ? `<select id="ac-jump" class="input" aria-label="Jump to a clause"><option value="">Jump to a clause…</option>${K.clauses.map(c => `<option value="${esc(c.id)}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}
         </div></div>
       <div class="ac-layout ${clause ? 'open' : ''}">
@@ -2544,24 +2544,40 @@
       <nav class="ac-nav">${secs.map(([id, h]) => `<a href="#" data-sec="${id}">${h.replace(/<small>.*<\/small>/, '').trim()}</a>`).join('')}</nav>
       ${secs.map(([id, h, body]) => `<section class="ac-sec" id="acs-${id}"><h4>${h}</h4>${body}</section>`).join('')}`;
   }
+  /* The period dictionaries (scripts/build_dictionaries.py): founding-dict.js holds the source list, Johnson, Webster,
+     Bouvier and the multi-word terms; founding-dict-more.js adds Bailey, Burrill and Black. Both load together. */
+  function loadFoundingDict() {
+    return Promise.all([loadData('founding-dict', 'FOUNDING_DICT'), loadData('founding-dict-more', 'FOUNDING_DICT_MORE').catch(() => null)]).then(([D, M]) => {
+      if (M && !D._more) {
+        for (const [w, v] of Object.entries(M.words || {})) D.words[w] = Object.assign(D.words[w] || {}, v);
+        D._more = true;
+      }
+      return D;
+    });
+  }
   function mountWordInspector(K) {
     const pop = document.getElementById('ac-pop');
     const text = app.querySelector('.ac-text');
     const hide = () => { pop.hidden = true; text.querySelectorAll('.ac-w.on').forEach(x => x.classList.remove('on')); };
-    loadData('founding-dict', 'FOUNDING_DICT').then(Dct => {
+    loadFoundingDict().then(Dct => {
       text.addEventListener('click', e => {
         const w = e.target.closest('.ac-w');
         if (!w) return hide();
         hide(); w.classList.add('on');
         const word = w.textContent.toLowerCase();
         const unit = w.closest('.ac-unit');
-        const near = unit ? unit.textContent.toLowerCase() : '';
-        const phrase = Object.keys(Dct.phrases).filter(ph => ph.split(' ').includes(word) && near.includes(ph)).sort((a, b) => b.length - a.length)[0];
+        const near = ' ' + (unit ? unit.textContent.toLowerCase() : '').replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ') + ' ';
+        const sing = s => s.split(' ').map(x => x.length > 4 && /[^s]s$/.test(x) ? x.slice(0, -1) : x).join(' ');
+        // the multi-word terms around the word ("letters of marque and reprisal", "letters of marque"), longest first
+        const phrases = Object.keys(Dct.phrases).filter(ph => ph.split(' ').some(x => x === word || sing(x) === sing(word)) && (near.includes(' ' + ph + ' ') || sing(near).includes(' ' + sing(ph) + ' '))).sort((a, b) => b.length - a.length);
         const rec = Dct.words[word] || {};
-        const block = (key, label, r) => r ? `<div class="ac-def"><h5>${label}</h5>${r.e.map(e => `<p>${r.hw !== word ? `<b>${esc(r.hw)}</b> ` : ''}${e.pos ? `<i>${esc(e.pos)}</i> ` : ''}${esc(e.t)}</p>`).join('')}</div>` : '';
-        const body = (phrase ? block('p', `Bouvier, “${phrase}”`, Dct.phrases[phrase]) : '') + block('j', 'Johnson, 1755', rec.j) + block('w', 'Webster, 1828', rec.w) + block('b', 'Bouvier, Law Dictionary, 1856', rec.b);
+        const M = Dct.meta;
+        const block = (label, r, ocr) => r ? `<div class="ac-def"><h5>${esc(label)}${ocr ? ' <small title="Text from OCR of the scanned book, cut at the first unreadable passage">· OCR</small>' : ''}</h5>${r.e.map(e => `<p>${r.hw !== word ? `<b>${esc(r.hw)}</b> ` : ''}${e.pos ? `<i>${esc(e.pos)}</i> ` : ''}${esc(e.t)}</p>`).join('')}</div>` : '';
+        const body = phrases.map(ph => Dct.order.map(s => block(`${M[s].label}, ${M[s].year}`, Dct.phrases[ph][s], M[s].ocr)).join('')).join('')
+          + Dct.order.map(s => block(`${M[s].label}, ${M[s].year}`, rec[s], M[s].ocr)).join('');
+        const used = Dct.order.filter(s => rec[s] || phrases.some(ph => Dct.phrases[ph][s]));
         pop.innerHTML = `<div class="ac-pop-head"><b>${esc(w.textContent)}</b><button class="icon-btn" aria-label="Close">✕</button></div>${body || '<p class="muted-line">No entry in these dictionaries (often a proper name).</p>'}
-          <p class="attrib">Johnson: LEME transcription, CC BY 4.0. Webster: OCR of the 1828 edition, may contain errors. Bouvier: 6th ed., public domain.</p>`;
+          <p class="attrib">${used.map(s => esc(M[s].cite)).join('. ')}${used.length ? '.' : ''}</p>`;
         pop.hidden = false;
         const r = w.getBoundingClientRect();
         const left = Math.min(Math.max(12, r.left + scrollX - 40), document.documentElement.clientWidth - pop.offsetWidth - 12);
@@ -2581,14 +2597,14 @@
         <span class="eyebrow">Originalist's Corner</span>
         <h1 style="max-width:16ch">What the founding generation <em>actually said.</em></h1>
         <p class="lede">Choose a topic and read what Blackstone, the Convention debates, <i>The Federalist</i> and the Anti-Federalists, the acts of the first Congresses, Tucker, Story, Rawle, Kent, Cooley, Vattel and Locke said about it, side by side. The ${fmt(Object.keys(C.passages).length)} passages are drawn from the full texts of ${srcs.length} bodies of founding-era material.</p>
-        <div class="suggest" style="margin-top:22px"><a class="chip on" href="#/corner/constitution">The Annotated Constitution →</a><a class="chip" href="#/corner/constitution?mode=dict">Founding-era dictionary →</a><a class="chip" href="#/library">Browse the library →</a></div>
+        <div class="suggest" style="margin-top:22px"><a class="chip on" href="#/corner/constitution">The Annotated Constitution →</a><a class="chip" href="#/corner/constitution?mode=dict">Period dictionaries →</a><a class="chip" href="#/library">Browse the library →</a></div>
       </div></section>
       <section class="section corner-what-sec"><div class="corner-what">
         <h2>What is the Originalist's Corner?</h2>
         <p><b>Originalism</b> reads the Constitution according to the meaning its words had when they were adopted. Originalists, and the judges and scholars who disagree with them, argue from the same evidence: the English law the framers inherited, the political philosophy they read, the debates at the Convention and over ratification, and how the first Congresses and early commentators applied the text. The Corner puts that evidence in one place.</p>
         <ul>
           <li><b>Topics.</b> For each of ${C.topics.filter(t => t.n).length} subjects, from judicial review to the right to bear arms, passages from every source side by side (${fmt(Object.keys(C.passages).length)} in all), each linked to its place in the full text.</li>
-          <li><b>The Annotated Constitution.</b> Every clause with the founding-era commentary on it, the Constitution Annotated's overview, the leading cases, and a founding-era dictionary for its words.</li>
+          <li><b>The Annotated Constitution.</b> Every clause with the founding-era commentary on it, the Constitution Annotated's overview, the leading cases, and period dictionaries for its words, from Johnson and Bailey (1755) and Webster (1828) to the law dictionaries of Bouvier, Burrill and Black.</li>
           <li><b>The library.</b> The full texts behind the passages, and more: Locke, Montesquieu and Sidney, Blackstone, the Revolutionary pamphlets, Madison's notes and Farrand's records, <i>The Federalist</i> and the Anti-Federalists, the first Congresses' acts and the early commentators, to read, highlight and annotate.</li>
         </ul>
         <p class="muted-line">Passages are matched to topics automatically, so read them in context. All texts are in the public domain or freely licensed.</p>
@@ -2640,15 +2656,15 @@
   // in the library (lib-index.js), shown with a Read link, so more works can be added without crowding the legal sources.
   const SOURCE_SECTIONS = [
     ['philosophy', 'Philosophical foundations', 'The political philosophy the founders read: natural rights and the social contract, mixed government, the separation of powers and the law of nations.',
-      ['locke', 'lib:spirit-of-laws', 'lib:sidney', 'lib:oceana', 'lib:grotius', 'vattel', 'lib:cato', 'lib:hume-political']],
+      ['locke', 'lib:spirit-of-laws', 'lib:sidney', 'lib:oceana', 'lib:grotius', 'vattel', 'lib:cato', 'lib:hume-political', 'lib:milton-areopagitica', 'lib:paine-rights']],
     ['precedents', 'English law and colonial precedents', 'The common law, charters and declarations of rights the founders inherited, and the first state constitutions built on them.',
-      ['blackstone', 'documents']],
+      ['blackstone', 'documents', 'lib:mckechnie-magna-carta', 'lib:hallam-constitutional']],
     ['revolution', 'The Revolutionary argument', 'The pamphlets of the imperial crisis and independence, where the colonists worked out their constitutional claims.',
-      ['lib:otis', 'lib:farmer-letters', 'lib:summary-view', 'lib:novanglus', 'lib:common-sense', 'lib:thoughts-government', 'lib:notes-virginia']],
+      ['lib:otis', 'lib:farmer-letters', 'lib:summary-view', 'lib:novanglus', 'lib:common-sense', 'lib:thoughts-government', 'lib:notes-virginia', 'lib:burke-america', 'lib:price-civil-liberty', 'lib:paine-crisis']],
     ['framing', 'Framing and ratification', 'The Convention’s debates and the public argument over ratification, for and against.',
-      ['madison', 'federalist', 'antifederalist', 'lib:farrand-3', 'lib:federalist-pamphlets', 'lib:ford-pamphlets', 'lib:ford-essays']],
+      ['madison', 'federalist', 'antifederalist', 'lib:farrand-3', 'lib:federalist-pamphlets', 'lib:ford-pamphlets', 'lib:ford-essays', 'lib:curtis-history']],
     ['practice', 'Early practice and commentary', 'How the first Congresses, the Virginia and Kentucky Resolutions and the early commentators applied and explained the Constitution.',
-      ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley']],
+      ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley', 'lib:annual-messages', 'lib:marshall-washington', 'lib:tucker-slavery']],
   ];
   const LIB_DESC = {
     'spirit-of-laws': 'Montesquieu’s comparative study of laws and governments, the source of the founders’ separation of powers.',
@@ -2670,6 +2686,17 @@
     'hume-political': 'Hume’s essays on commerce, public credit, the original contract, parties and the idea of a perfect commonwealth, read closely by Madison.',
     'ford-pamphlets': 'Paul Leicester Ford’s collection of ratification pamphlets for and against: Jay, Noah Webster, Dickinson’s Fabius, Mason’s Objections and Iredell’s reply, the Federal Farmer and more.',
     'ford-essays': 'Ford’s collection of newspaper essays from the ratification debate: Agrippa, Cato, Sydney, Luther Martin, the Landholder, Sherman’s Countryman and others.',
+    'milton-areopagitica': 'Milton’s plea to Parliament against licensing the press, the classic English argument for a free press.',
+    'paine-rights': 'Paine’s reply to Burke: natural rights, the sovereignty of each generation, and written constitutions as acts of the people.',
+    'mckechnie-magna-carta': 'A clause-by-clause commentary on the Great Charter, with the history of “the law of the land,” judgment of peers and the later charters.',
+    'hallam-constitutional': 'The constitutional struggles from the Tudors to 1760: the Petition of Right, the Long Parliament, habeas corpus, the Revolution of 1688 and the Bill of Rights.',
+    'burke-america': 'Burke’s speeches on American taxation and conciliation, his speech to the electors of Bristol on representation, and his letter on the war.',
+    'price-civil-liberty': 'Richard Price’s defence of self-government and of the colonies’ cause, widely reprinted in America in 1776.',
+    'paine-crisis': 'Paine’s wartime essays, from “These are the times that try men’s souls” to the peace.',
+    'curtis-history': 'The first full history of the Confederation, the Convention and ratification, built on Madison’s notes and Elliot’s Debates.',
+    'annual-messages': 'The annual messages of Washington, Adams, Jefferson and Madison to Congress: the early presidents’ own account of the Constitution in practice.',
+    'marshall-washington': 'Chief Justice Marshall’s life of Washington; the last volumes cover the Confederation, the Constitution and the first administrations.',
+    'tucker-slavery': 'St. George Tucker’s 1796 proposal for gradual abolition in Virginia, by the author of the first American commentary on the Constitution.',
   };
   function libraryLink(sid) {
     const fixed = { federalist: '#/library/federalist', documents: '#/library/documents', statutes: '#/library/statutes' }[sid];
@@ -2838,10 +2865,10 @@
     viewNotFound();
   }
   // later-period texts: listed apart from the founding era
-  const LATER_IDS = ['tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century', 'webster-speeches', 'lincoln-douglas', 'douglass-writings'];
+  const LATER_IDS = ['tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century', 'webster-speeches', 'lincoln-douglas', 'douglass-writings', 'dred-scott', 'ross-impeachment', 'lynch-reconstruction'];
   function renderLibraryHome() {
     const idx = window.LIB_INDEX || [], yr = b => +((String(b.year).match(/\d{4}/) || [9999])[0]);
-    const card = b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${fmt(b.chapters)} parts · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`;
+    const card = b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${fmt(b.chapters)} part${b.chapters === 1 ? "" : "s"} · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`;
     const fixed = {
       framing: '<a class="jcard" href="#/library/federalist"><div class="abbr">Hamilton, Madison & Jay · 1787–88</div><h3>The Federalist</h3><div class="foot"><span>85 essays</span><b>Read →</b></div></a>',
       precedents: '<a class="jcard" href="#/library/documents"><div class="abbr">1215–1802</div><h3>Founding documents & state constitutions</h3><div class="foot"><span>Magna Carta to the Danbury letter</span><b>Read →</b></div></a>',
