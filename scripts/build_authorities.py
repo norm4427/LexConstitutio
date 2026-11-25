@@ -37,7 +37,7 @@ import collections, glob, html, json, os, re, sys, time, urllib.parse, urllib.re
 
 RAW = 'data/raw/briefs'
 OUT = 'docs/data/auth'
-UA = {'User-Agent': 'Mozilla/5.0 LexConstitutio/1.0 (academic research index)'}
+UA = {'User-Agent': 'LexConstitutio/1.0 (static site build)'}
 FETCH = '--no-fetch' not in sys.argv
 
 ROMAN = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11, 'XII': 12,
@@ -331,6 +331,9 @@ def parse_statutes(txt, sec_head):
 def classify(sec, txt, prev_const):
     """Authorities in one table entry."""
     txt = re.sub(r'^(?:See,?\s+|Cf\.\s+)', '', txt)
+    # early U.S. Reports with the nominative reporter: "22 U.S. (9 Wheat.) 1"; a colon for the comma: "McConnell v. FEC: 540 U.S. 93"
+    txt = re.sub(r'(\d+\s+U\.\s?S\.)\s*\(\d+\s+[A-Z][A-Za-z.]*\)\s*(?=\d)', lambda m: m.group(1) + ' ', txt)
+    txt = re.sub(r'(?<=[A-Za-z.)]):\s+(?=\d+\s+(?:U\.\s?S\.|F\.|S\.\s?Ct\.))', ', ', txt)
     in_const = 'constitution' in sec or prev_const
     if re.search(r'\bConst\b|^(?:Art(?:icle|\.)\s*[IVX]+|Amend(?:ment|\.)\s*[IVXL]+|(?:%s)\s+Amendment\b)' % '|'.join(ORD), txt, re.I):
         c = parse_const(txt, in_const and re.match(r'^(?:art|amend|[a-z\-]+\s+amendment)', txt, re.I) is not None)
@@ -347,6 +350,39 @@ def classify(sec, txt, prev_const):
     if 'case' in sec and 'statut' not in sec:
         return []
     return parse_statutes(txt, sec)
+
+
+# a brief with no Table of Authorities (some of the Solicitor General's 1980s briefs are retyped text without one):
+# the full citations in its text, read as table entries without page references
+_NW = r"(?:[A-Z][\w.'’&\-]*,?|of|the|and|for|de|du|la|ex rel\.|on|in|to|&)"
+BODY_CASE = re.compile(r"((?:%s\s+){0,8}?v\.\s+(?:%s\s+){0,8}?%s),?\s+(\d{1,3})\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?2d)?|F\.\s?(?:2d|3d)|F\.\s?Supp\.|F\.)\s+(\d{1,4})((?:,\s*\d+(?:-\d+)?)*\s*(?:\([^()]{0,40}\d{4}\))?)"
+                       % (_NW, _NW, _NW))
+BODY_SIGNAL = re.compile(r"^(?:(?:See|see|also|Cf\.|cf\.|In|in|But|E\.g\.,?|e\.g\.,?|Accord|accord|Compare|compare|quoting|citing|and|with|Under|under|As|The|the|Thus|Moreover|After|Since|Because|Although|While|Unlike|Like)\s+)+")
+
+
+def body_entries(t):
+    t = norm_ws(re.sub(r'([a-z])-\n([a-z])', r'\1\2', t))
+    out, seen = [], set()
+    for m in BODY_CASE.finditer(t):
+        name = BODY_SIGNAL.sub('', m.group(1)).strip(' ,')
+        if not re.search(r'^[A-Z]', name) or ' v. ' not in ' ' + name + ' ' or len(name) > 140:
+            continue
+        key = (m.group(2), re.sub(r'\s', '', m.group(3)), m.group(4))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(('cases', f'{name}, {m.group(2)} {m.group(3)} {m.group(4)}{m.group(5)}', ''))
+    for m in USC.finditer(t):
+        k = (m.group(1), m.group(2))
+        if k not in seen:
+            seen.add(k)
+            out.append(('statutes', m.group(0), ''))
+    for m in re.finditer(r'U\.\s?S\.\s?Const(?:itution)?\.?,?\s*(?:Art(?:icle|\.)\s*[IVX]+(?:,\s*§\s*\d+)?(?:,\s*[Cc]l\.\s*\d+)?|Amend(?:ment|\.)\s*[IVXL]+(?:,\s*§\s*\d+)?)', t):
+        k = norm_ws(m.group(0))
+        if k not in seen:
+            seen.add(k)
+            out.append(('constitutional provisions', k, ''))
+    return out
 
 
 # ------------------------------------------------------------------ body text and quotations
@@ -712,6 +748,23 @@ def site_summary(cid):
     return '', ''
 
 
+# ------------------------------------------------------------------ OCR text of printed briefs (Solicitor General's archive)
+def ocr_fix(t):
+    """Undo the commonest OCR slips in the plain-text briefs of the Solicitor General's archive (scripts/osg_briefs_fetch.py)
+    so that their Tables of Authorities parse: page-break rules, "411 US. 564", "17 F.3d1497", "U. S.C."; nothing else."""
+    t = re.sub(r'(?m)^-{5,}\s*Page Break\s*-{5,}\s*$', '\f', t)
+    t = re.sub(r'\b(\d{1,3}) US\.\s?(?=\d)', r'\1 U.S. ', t)
+    t = re.sub(r'\bU\.S\.(?=\d)', 'U.S. ', t)
+    t = re.sub(r'\b(F\.\s?(?:2d|3d)|S\.\s?Ct\.|L\.\s?Ed\.\s?2d|F\.\s?Supp\.)(?=\d)', r'\1 ', t)
+    t = re.sub(r'(?<=\d)(F\.\s?(?:2d|3d)|U\.S\.|S\.\s?Ct\.)', r' \1', t)
+    t = re.sub(r'(\d)\((\d{4})\)', r'\1 (\2)', t)
+    t = re.sub(r'U\.\s?S\.\s?C\.', 'U.S.C.', t)
+    t = re.sub(r'(?m)^\s*\((?:[IVXLivxl]+|\d+)\)\s*$', '', t)           # "(III)": the cover's roman page numbers
+    t = re.sub(r'(?:\((?:[IVXL]+)\)\s*)?\b(?:Cases|Statutes?(?:,? (?:rules,? )?and regulations?)?|Constitution(?:,? statutes?,? and regulations?)?'
+               r'|Constitutional provisions?|Regulations?|Rules?|Miscellaneous)\s*[-—–]+\s*[Cc]ontinued\s*:?', ' ', t)
+    return t
+
+
 # ------------------------------------------------------------------ per case
 SIDE_LABEL = {'petitioner': 'Petitioner', 'respondent': 'Respondent', 'reply': 'Reply', 'united-states': 'United States'}
 
@@ -738,13 +791,22 @@ def build_case(dk, man, transcripts):
         if not os.path.exists(p):
             continue
         raw = open(p, encoding='utf-8', errors='replace').read()
+        if b.get('src') == 'osg':
+            raw = ocr_fix(raw)
         toa, end = toa_text(raw)
         bi = len(briefs)
         briefs.append({'k': b['k'], 'label': b['label'], 'date': b['date'], 'url': b['url'], 'side': brief_side(b)})
+        for x in ('src', 'fmt', 'detail'):
+            if b.get(x):
+                briefs[-1][x] = b[x]
         texts[bi] = clean_body(raw[end:] if end else raw)
         prev_const = False
         n_ok = 0
-        for sec, txt, pages in toa_entries(toa):
+        ents = toa_entries(toa)
+        if not ents and b.get('src') == 'osg':
+            ents = body_entries(raw)
+            briefs[-1]['toa'] = False      # read from the text: no page references
+        for sec, txt, pages in ents:
             got = classify(sec, txt, prev_const)
             prev_const = bool(got) and got[0]['t'] == 'const'
             for it in got:
@@ -763,7 +825,7 @@ def build_case(dk, man, transcripts):
                 if it['t'] == 'case' and not cur.get('y') and it.get('y'):
                     cur['y'] = it['y']
                 prev = cur['by'].get(bi)
-                cur['by'][bi] = (prev + ', ' + pages) if prev else pages
+                cur['by'][bi] = (prev + ', ' + pages) if prev and pages else (prev or pages)
                 n_ok += 1
         briefs[-1]['n'] = n_ok
     if not items:
@@ -880,19 +942,46 @@ def build_case(dk, man, transcripts):
         o['by'] = {str(b): p for b, p in it['by'].items()}
         o['label'] = re.sub(r'^\s*(?:CASES|Cases|STATUTES|Statutes|AUTHORITIES)\s+', '', o['label']).strip()
         out_items.append(o)
-    return {'d': dk, 'id': (case or {}).get('id'), 'n': (case or {}).get('n'), 'briefs': briefs, 'opinion': man.get('opinion') if has_op else None,
+    srcs = sorted({b.get('src', 'docket') for b in briefs})
+    return {'d': dk, 'id': (case or {}).get('id'), 'n': (case or {}).get('n'), 'src': srcs, 'briefs': briefs, 'opinion': man.get('opinion') if has_op else None,
             'tr': bool(turns), 'items': out_items}
 
 
+def manifests():
+    """manifest.json (e-filed briefs, briefs_fetch.py) and osg-manifest.json (the Solicitor General's briefs of earlier
+    cases, osg_briefs_fetch.py), merged by docket; either may be absent."""
+    man = {}
+    for name in ('manifest.json', 'osg-manifest.json'):
+        p = f'{RAW}/{name}'
+        if not os.path.exists(p):
+            continue
+        for dk, v in json.load(open(p)).items():
+            if dk.startswith('_') or not v.get('briefs'):
+                continue
+            cur = man.setdefault(dk, {'briefs': [], 'opinion': None})
+            cur['briefs'] += v['briefs']
+            cur['opinion'] = cur['opinion'] or v.get('opinion')
+    p = f'{RAW}/osg-opinions.json'      # U.S. Reports text of the cases with the Solicitor General's briefs
+    if os.path.exists(p):
+        for dk, url in json.load(open(p)).items():
+            if dk in man and url and not man[dk]['opinion']:
+                man[dk]['opinion'] = url
+    return man
+
+
 def main():
-    man = json.load(open(f'{RAW}/manifest.json'))
+    man = manifests()
     trs = collections.defaultdict(list)
     for p in glob.glob('data/raw/transcripts/*/*.txt'):
         dk = re.sub(r'_[a-z0-9]+$', '', os.path.basename(p)[:-4]).lower()
         dk = re.sub(r'-(monday|tuesday|wednesday|thursday|friday|day\d)$', '', dk)
         trs[dk].append(p)
     os.makedirs(OUT, exist_ok=True)
+    # keep the index entries of cases whose briefs are not cached on this machine (data/raw/ is not in git)
     index, stats = {}, collections.Counter()
+    if os.path.exists('docs/data/auth-index.js'):
+        index = {cid: dk for cid, dk in load_js('docs/data/auth-index.js').items()
+                 if dk not in man and os.path.exists(f'{OUT}/{dk}.js')}
     only = [a for a in sys.argv[1:] if not a.startswith('--')]
     for dk in sorted(man):
         if only and dk not in only:

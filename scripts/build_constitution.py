@@ -9,6 +9,7 @@ For each named clause in clauses.py:
               Supreme Court citations (case_impact.js), top 10
   articles    law review articles whose title or keywords match the clause, or whose abstract names it, ranked by citations;
               5-15 shown, the full list in docs/data/clause-articles.js (the Articles page's clause filter)
+  (ci in clauses.py adds named leading cases the database does not code under the provision)
   founding    passages from Story, Rawle, Tucker, Kent, The Federalist, Madison's notes, Blackstone (Originalist's Corner)
   statutes    early federal statutes from the Corner's Statutes at Large collection that touch the clause
 Run from the repo root:  python scripts/build_constitution.py
@@ -92,7 +93,19 @@ def closing():
     return {'notes': notes, 'signers': signers}
 
 
+def fetch_transcripts():
+    """the National Archives transcription pages, downloaded into data/raw/constitution/ when missing"""
+    os.makedirs(RAW, exist_ok=True)
+    for name in ('constitution-transcript', 'bill-of-rights-transcript', 'amendments-11-27'):
+        path = f'{RAW}/{name}.html'
+        if not os.path.exists(path):
+            req = urllib.request.Request('https://www.archives.gov/founding-docs/' + name, headers={'User-Agent': 'Mozilla/5.0 (LexConstitutio static site build)'})
+            open(path, 'w', encoding='utf-8').write(urllib.request.urlopen(req, timeout=60).read().decode('utf-8'))
+            time.sleep(1.5)
+
+
 def parse_text():
+    fetch_transcripts()
     units = []
     s = open(f'{RAW}/constitution-transcript.html', encoding='utf-8').read()
     s = s[s.index('<strong>We the People'):]
@@ -212,6 +225,8 @@ def scdb_cases():
     out = collections.defaultdict(set)
     for f in ('data/raw/scdb/csv/SCDB_Legacy_07_justiceCentered_Citation.csv', 'data/raw/scdb/csv/SCDB_2026_01_justiceCentered_Citation.csv',
               'data/raw/scdb/csv/SCDB_2026_01_justiceCentered_Docket.csv'):
+        if not os.path.exists(f):
+            continue
         for r in csv.DictReader(open(f, encoding='latin-1')):
             code = r['lawSupp']
             if not code.isdigit():
@@ -229,7 +244,7 @@ def main():
         if u.get('alias'):
             uid.setdefault(u['alias'], u)
     ess = conan_essays()
-    wiki = wiki_extracts([c['wiki'] for c in CLAUSES])
+    wiki = wiki_extracts([c['wiki'] for c in CLAUSES if c.get('wiki')])
     codes = scdb_cases()
     impact = load_js('case_impact')['c']
     sc = load_js('scotus')['cases']
@@ -248,7 +263,7 @@ def main():
         rec = {'id': c['id'], 'name': c['name'], 'unit': u['id'], 'loc': u['label']}
         m = re.search(c['hl'], u['text'])
         rec['hl'] = (m.group(0) if m and c['hl'] != '.*' else u['text']).strip()
-        w = wiki.get(c['wiki']) or {}
+        w = wiki.get(c.get('wiki')) or {}
         if w.get('text'):
             # (a paragraph that led into a list Wikipedia's summary dropped ends in a comma or colon: left out)
             paras = [p.strip() for p in w['text'].split('\n') if len(p.strip()) > 60 and not re.search(r'[,:;]$', p.strip())][:4]
@@ -275,6 +290,7 @@ def main():
         if len(cs) < 3:   # no or few coded cases: constitutional cases whose summary names the clause
             rx = re.compile(c.get('cr') or c['art'], re.I)
             cs |= {i for i, t in case_text.items() if con.get(i) and rx.search(t)}
+        cs |= {i for i in c.get('ci', []) if i in case_text}   # leading cases named in clauses.py
         rec['cases'] = sorted(cs, key=lambda i: -(impact.get(i) or [0, 0, -1])[2])[:10]
         rec['nCases'] = len(cs)
         # articles
@@ -309,6 +325,9 @@ def main():
         rec['founding'] = keep[:10]
         rec['statutes'] = stat[:5]
         out.append(rec)
+    # panels in the order of the text (the Jump menu lists them so)
+    pos = {u['id']: i for i, u in enumerate(units)}
+    out.sort(key=lambda r: pos.get(r['unit'], 999))
     data = {'src': 'Text: National Archives. Commentary: Constitution Annotated (CRS, public domain); overviews: Wikipedia (CC BY-SA 4.0).',
             'units': units, 'closing': closing(), 'clauses': out}
     open('docs/data/constitution.js', 'w', encoding='utf-8').write('window.CONSTITUTION=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')

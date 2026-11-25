@@ -1084,8 +1084,16 @@
   const BRIEF_SHORT = { petitioner: 'Pet.', respondent: 'Resp.', reply: 'Reply', 'united-states': 'U.S.' };
   const briefName = b => ({ petitioner: "Petitioner's brief", respondent: "Respondent's brief", reply: 'Reply brief', 'united-states': 'Brief of the United States' }[b.k] || 'Brief');
   function briefTiles(briefs) {
-    return `<div class="briefs">${briefs.map(b => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(BRIEF_LABEL[b.k] || briefName(b))}</b><span>${esc(b.label)}</span><em>${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}PDF ↗</em></a>`).join('')}</div>`;
+    return `<div class="briefs">${briefs.map(b => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(BRIEF_LABEL[b.k] || briefName(b))}</b><span>${esc(b.label)}</span><em>${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}${esc(b.fmt || 'PDF')} ↗</em></a>`).join('')}</div>`;
   }
+  // where a case's briefs come from: the Supreme Court docket (e-filed, from about 2017) and/or the Solicitor General's archive
+  const briefSource = A => {
+    const src = A.src || ['docket'];
+    const parts = [];
+    if (src.includes('docket')) parts.push(`the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court docket for No. ${esc(A.d)}</a>`);
+    if (src.includes('osg')) parts.push(`the <a href="https://www.justice.gov/osg/supreme-court-briefs" target="_blank" rel="noopener" style="color:var(--accent)">Office of the Solicitor General’s brief archive</a>, which holds only the federal government’s briefs, those before about 2004 as OCR text of the printed brief`);
+    return parts.join(' and ');
+  };
   /* AI-generated case briefs (scripts/build_ai_briefs.py) for cases with no Oyez summary: the one place the site shows
      generated text, always under an unmistakable notice; quotations in them were checked against the opinion. */
   /* The reporter's headnotes from the U.S. Reports (Caselaw Access Project scan), for cases with no Oyez summary. */
@@ -1093,11 +1101,16 @@
     const slot = document.createElement('div');
     el.appendChild(slot);
     const y = String(c.y || ''), tk = routeToken;
-    loadData('headnotes-index', 'HEADNOTES_INDEX').catch(() => []).then(ix => {
-      if (!(ix || []).includes(y)) return null;
-      return loadScriptOnce(`data/headnotes/${y}.js`).then(() => (window.HEADNOTES || {})[c.id]);
-    }).then(h => {
+    // data/headnotes (build_headnotes.py) and data/summaries (case_summaries.py, holes the first left) share the format
+    const year = (ixName, ixVar, dir) => loadData(ixName, ixVar).catch(() => []).then(ix => (ix || []).includes(y) ? loadScriptOnce(`data/${dir}/${y}.js`).catch(() => {}) : null);
+    Promise.all([year('headnotes-index', 'HEADNOTES_INDEX', 'headnotes'), year('summaries-index', 'SUMMARIES_INDEX', 'summaries')]).then(() => (window.HEADNOTES || {})[c.id]).then(h => {
       if (!h || tk !== routeToken || !slot.isConnected) return;
+      if (h.src === 'wiki') {
+        slot.innerHTML = `<section class="headnotes" aria-label="Summary from Wikipedia"><h2>Summary <small>from Wikipedia</small></h2>
+          <div class="prose-sm">${h.h.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>
+          <p class="attrib">The opening of the Wikipedia article “<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.t)}</a>”${h.rev ? ` (<a href="https://en.wikipedia.org/w/index.php?oldid=${esc(h.rev)}" target="_blank" rel="noopener">revision ${esc(h.rev)}</a>)` : ''}, by its contributors, under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. Not an official summary: check it against the opinion.</p></section>`;
+        return;
+      }
       const syl = h.src === 'loc';
       slot.innerHTML = `<section class="headnotes" aria-label="${syl ? 'Syllabus' : "Reporter's headnotes"}"><h2>${syl ? 'Syllabus' : 'Headnotes'} <small>from the United States Reports</small></h2>
         <div class="prose-sm">${h.h.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>
@@ -1222,7 +1235,7 @@
     const authLink = (it, inner) => it.id ? `<a href="#/case/${esc(it.id)}">${inner}</a>` : it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${inner} <span class="ext">↗</span></a>` : inner;
     const title = it => it.t === 'case' ? `<i>${esc(it.label)}</i>` : esc(it.label + (it.subs && it.subs.length === 1 ? it.subs[0] : ''));
     const meta = it => it.t === 'case' ? [it.cite, it.court ? `${it.court} ${it.y || ''}`.trim() : it.y].filter(Boolean).map(esc).join(' · ') : it.subs && it.subs.length > 1 ? 'Subsections cited: ' + it.subs.slice(0, 8).map(esc).join(', ') + (it.subs.length > 8 ? '…' : '') : '';
-    const chips = it => Object.entries(it.by).map(([i, p]) => `<span class="au-chip au-${esc(B[i].side)}" title="${esc(B[i].label || briefName(B[i]))}, page${/[,–-]|passim/.test(p) ? 's' : ''} ${esc(p)}">${esc(shortOf(i))}</span>`).join('');
+    const chips = it => Object.entries(it.by).map(([i, p]) => `<span class="au-chip au-${esc(B[i].side)}" title="${esc(B[i].label || briefName(B[i]))}${p ? `, page${/[,–-]|passim/.test(p) ? 's' : ''} ${esc(p)}` : ''}">${esc(shortOf(i))}</span>`).join('');
     const clauseLinks = it => it.clauses ? `<div class="au-clauses">Annotated Constitution: ${it.clauses.map(([id, name]) => `<a href="${hashFor('corner/constitution', { c: id })}">${esc(name)}</a>`).join(' · ')}</div>` : '';
     const stextHtml = s => `<details class="au-stext"><summary>Text of ${esc(s.head || 'the section')} <small>U.S. Code${s.ed ? ', ' + esc(s.ed) + ' edition' : ''} (govinfo)</small></summary>
       <div class="au-stat">${s.paras.map(([ind, t]) => `<p style="margin-left:${ind * 1.1}em">${esc(t)}</p>`).join('')}${s.more ? '<p class="muted-line">…</p>' : ''}</div>
@@ -1250,8 +1263,8 @@
       ${it.t === 'const' ? clauseLinks(it) : ''}</li>`;
     const nOp = items.filter(it => it.op).length;
     el.innerHTML = `<section class="au">
-      <p class="au-intro">${fmt(items.length)} authorities cited in the Tables of Authorities of ${B.length} merits brief${B.length === 1 ? '' : 's'}${A.opinion ? `; ${nOp} of them named in the Court's opinion` : ''}${A.tr ? '; ranked by how often the opinion and the oral argument discuss them' : ''}.</p>
-      <div class="briefs au-briefs">${B.map((b, i) => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(briefName(b))}</b><span>${esc(b.label)}</span><em>${b.n ? `${b.n} authorities · ` : ''}${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}PDF ↗</em></a>`).join('')}</div>
+      <p class="au-intro">${fmt(items.length)} authorities cited in ${B.every(b => b.toa === false) ? '' : 'the Tables of Authorities of '}${B.length} merits brief${B.length === 1 ? '' : 's'}${A.src && !A.src.includes('docket') ? ` of the United States` : ''}${A.opinion ? `; ${nOp} of them named in the Court's opinion` : ''}${A.tr ? '; ranked by how often the opinion and the oral argument discuss them' : ''}.</p>
+      <div class="briefs au-briefs">${B.map((b, i) => `<a class="brief" href="${esc(b.url)}" target="_blank" rel="noopener"><b>${esc(briefName(b))}</b><span>${esc(b.label)}</span><em>${b.n ? `${b.n} authorities · ` : ''}${b.date ? esc(fmtDate(b.date)) + ' · ' : ''}${esc(b.fmt || 'PDF')} ↗</em></a>`).join('')}</div>
       ${top.length ? `<h2>Most relevant authorities</h2><p class="muted-line au-sub">${byMentions ? `The cases and statutes ${A.opinion ? 'the Court’s opinion' : ''}${A.opinion && A.tr ? ' and ' : ''}${A.tr ? 'the oral argument' : ''} discuss most` : 'Cited in more than one brief (no opinion or argument transcript yet)'}, with what each case held or what each statute covers.</p>
         <div class="au-cards">${top.map(card).join('')}</div>
         ${top.length > 10 ? `<button class="btn btn-ghost btn-sm" id="au-all">Show ${top.length - 10} more</button>` : ''}` : ''}
@@ -1259,7 +1272,7 @@
       <div class="au-tools"><div class="seg" role="group" aria-label="Side"><button data-side="" class="on">All</button><button data-side="both">Both sides</button><button data-side="pet">Petitioner's side</button><button data-side="res">Respondent's side</button></div>
         <span class="au-legend"><span class="au-chip au-pet">Pet.</span> petitioner <span class="au-chip au-res">Resp.</span> respondent <span class="au-chip au-us">U.S.</span> United States · hover a tag for page numbers</span></div>
       ${groups.map(([t, label]) => { const list = sorted(items.filter(it => it.t === t)); return list.length ? `<div class="au-group"><h3 class="au-gh">${label} <span>${list.length}</span></h3><ul class="au-list">${list.map(row).join('')}</ul></div>` : ''; }).join('')}
-      <p class="attrib">Authorities read from each brief's Table of Authorities (briefs from the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener">Supreme Court docket for No. ${esc(A.d)}</a>); entries that could not be read confidently are left out, as are secondary sources. Mentions: the authority's citation or distinctive party name (or "section <i>n</i>") in the opinion, and the argument exchanges that name it. Summaries: the opinion's own description of a cited case where it gives one ("holding that …"), otherwise the case's holding or summary on this site (supremecourt.gov, Oyez, the U.S. Reports syllabus, or an AI-generated brief, as labelled), otherwise a brief's description; statutes by their U.S. Code section heading. Statutory text: U.S. Code (govinfo.gov, public domain). Case links go to this site's page when the case is here, otherwise to Justia or CourtListener.</p>
+      <p class="attrib">Authorities read from each brief's Table of Authorities${B.some(b => b.toa === false) ? ', or, for a brief printed without one, from the full citations in its text (no page references)' : ''}. Briefs from ${briefSource(A)}. Entries that could not be read confidently are left out, as are secondary sources. Mentions: the authority's citation or distinctive party name (or "section <i>n</i>") in the opinion, and the argument exchanges that name it. Summaries: the opinion's own description of a cited case where it gives one ("holding that …"), otherwise the case's holding or summary on this site (supremecourt.gov, Oyez, the U.S. Reports syllabus, or an AI-generated brief, as labelled), otherwise a brief's description; statutes by their U.S. Code section heading. Statutory text: U.S. Code (govinfo.gov, public domain). Case links go to this site's page when the case is here, otherwise to Justia or CourtListener.</p>
     </section>`;
     const all = el.querySelector('#au-all');
     if (all) all.addEventListener('click', () => { el.querySelectorAll('.au-more').forEach(x => { x.hidden = false; }); all.remove(); });
@@ -1502,7 +1515,7 @@
     if (!pend && adk) loadAuth(adk).then(A => {
       const el = document.getElementById('case-briefs');
       if (token !== routeToken || !el || !A.briefs.length) return;
-      el.innerHTML = `<h2>Merits briefs</h2>${briefTiles(A.briefs)}<p class="attrib">From the <a href="https://www.supremecourt.gov/docket/docketfiles/html/public/${esc(A.d)}.html" target="_blank" rel="noopener" style="color:var(--accent)">Supreme Court docket for No. ${esc(A.d)}</a>. What the briefs cite, and the cases and statutes that matter most: <a href="${esc(tabHref('authorities'))}" data-goto-tab="authorities" style="color:var(--accent)">Authorities →</a></p>`;
+      el.innerHTML = `<h2>Merits briefs</h2>${briefTiles(A.briefs)}<p class="attrib">From ${briefSource(A)}. What the briefs cite, and the cases and statutes that matter most: <a href="${esc(tabHref('authorities'))}" data-goto-tab="authorities" style="color:var(--accent)">Authorities →</a></p>`;
       el.querySelector('[data-goto-tab]').addEventListener('click', e => { e.preventDefault(); app.querySelector('.case-tabs [data-tab="authorities"]').click(); window.scrollTo({ top: 0 }); });
     }).catch(() => {});
     if (c.s === 1) {   // listed from the Supreme Court Database only; Oyez has no record of it
@@ -1855,6 +1868,7 @@
     </div>`;
   }
   function renderDoctrine(A, partId, secId, Q, C) {
+    if (!partId && A.parts[0]) { location.replace('#/doctrine/' + A.parts[0].id); return; }   // bare #/doctrine: open the first part
     const pi = A.parts.findIndex(p => p.id === partId);
     const p = A.parts[pi];
     if (!p) return viewNotFound();

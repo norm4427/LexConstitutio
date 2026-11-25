@@ -239,6 +239,60 @@ COLLECTIONS = [
 ]
 
 
+FARRAND_DAY = r'^(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY),?\s+(?:MAY|JUNE|JULY|AUGUST|SEPTEMBER)\.?\s+[\w ]{1,4}?[,.]?\s*1\s?7\s?8\s?7\b'
+
+ELLIOT_DAY = r'^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday),?\s+(?:(?:January|February|March|April|May|June|July|August|September|October|November|December|J\w{1,3}/?\w?)\.?,?\s*)?[\dIilSoQ\^/AhtTHn]{1,5}(?:th|st|d)?[.,;]'
+ELLIOT_HEADS = (r'^(?:[\w\[\]. ]{0,25}\]\s*)?(?:MASSACHUSETTS|CONNECTICUT|NEW\s+HAMPSHIRE|NEW\s+YORK|PENNSYLVANIA|MARYLAND|VIRGINIA|'
+                r'NORTH\s+CAROLINA|SOUTH\s+CAROLINA|DEBATES|PROCEEDINGS|CONSTITUTIONAL\s+PRINCIPLES|OPINIONS)\.?(?:\s+[\w\[\]^.,"\'-]{1,14}){0,3}\s*$'
+                r'|^\d+\s+[A-Z][A-Z .]+\.\s*\[')
+
+ARCHIVE = [
+    # id, title, author, year, Internet Archive identifiers (volumes in order), Corner source id, options (build_archive)
+    ('farrand-1-2', 'The Records of the Federal Convention of 1787, Volumes I–II: The Daily Records', 'Max Farrand (ed.)',
+     '1787 (pub. 1911)', ['recordsoffederal01unit', 'recordsoffederal02unit'], '',
+     {'head_re': FARRAND_DAY, 'start_re': r'^(?:May 14|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b', 'stop_re': r'^(?:Index|Appendix)',
+      'vol_opt': {1: {'head_re': FARRAND_DAY + r'|^In f\w{1,3}deral-Convention\.\s*$'}},
+      'sub_re': r'^(?:JOURNAL|MADISON|YATES|KING|PATERSON|HAMILTON|PIERCE|McHENRY|MASON|LANSING|WILSON|BREARLEY|BREARLY|PINCKNEY|RANDOLPH|DETAIL OF AYES AND NOES|COMMITTEE OF DETAIL|COMMITTEE OF STYLE|[IVX]+\.)\s*$',
+      'title_sub': [(r'^In f\w{1,3}deral-Convention\.\s*$', 'May 14–25, 1787'), (r'^(\w+),?\s+(\w+)\.?\s+([\w ]{1,4}?)[,.]?\s*1\s?7\s?8\s?7.*$', lambda m: f'{m.group(1)}, {m.group(2)} {ocr_num(m.group(3).replace(" ", ""))}, 1787')],
+      'furniture_re': r'^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s+[A-Z][A-Za-z]+\s+(?:May|June|July|August|September)\s+[\w ]{1,4}\.?$|^(?:May|June|July|August|September)\s+[\dIil]{1,2}\.?$',
+      'smart': True, 'merge_below': 20, 'min_words': 10}),
+    ('elliot-debates', "The Debates in the Several State Conventions on the Adoption of the Federal Constitution (Elliot's Debates), Volumes II–IV",
+     'Jonathan Elliot (ed.)', '1787–1788 (2d ed., 1836; 1888 printing)', ['debatesinseveral02elli', 'debatesinseveral03elli', 'debatesinseveral04elli'], '',
+     {'head_re': ELLIOT_DAY, 'head_inline': True, 'merge_below': 40, 'vol_labels': ['', '', ''],
+      'furniture_re': ELLIOT_HEADS,
+      # dates the scanner misread, checked against the convention journals
+      'rename': {'Friday, 11': 'Friday, January 11', 'Saturday, 12': 'Saturday, January 12', 'Saturday, Juli /': 'Saturday, July 5',
+                 'Monday, November 2': 'Monday, November 26', 'Wednesday, October 2': 'Wednesday, November 28',
+                 'Friday, June 16': 'Friday, June 6', 'Monday, June 14': 'Monday, June 16', 'Tuesday, June 15': 'Tuesday, June 17',
+                 'Tuesday, Jult /': 'Tuesday, July 29'},
+      'title_sub': [(r'^(\w+day),?\s+([A-Z][a-z]+)?\.?,?\s*([\w/^\\]{1,5})[.,;]?.*$',
+                     lambda m: f'{m.group(1)}, {m.group(2) + " " if m.group(2) and m.group(2) not in ("A", "P") else ""}{(re.sub(r"[^0-9]", "", ocr_num(m.group(3))) or m.group(3))[:2]}')],
+      'vol_opt': {
+          1: {'start_re': r'^Massachusetts', 'groups': [
+              (r'^COMMONWEALTH\s+OF\s+MASSACHUSETTS,', 'Massachusetts (January–February 1788)'),
+              (r'^STATE\s+O[FP]\s+CONNECTICUT,', 'Connecticut (January 1788)'),
+              (r'^NEW\s+HAMPSHIRE\s+CONVENTION\.', 'New Hampshire (February–June 1788)'),
+              (r'^THE\s+STATE\s+OF\s+NEW\s+YORK,', 'New York (June–July 1788)'),
+              (r'^STATE\s+OF\s+PENNSYLVANIA,', 'Pennsylvania (November–December 1787)'),
+              (r'^THE\s+MARYLAND\s+CONVENTION', 'Maryland (April 1788)')]},
+          2: {'start_re': r'^Virginia', 'groups': [(r'^COMMONWEALTH\s+OF\s+VIRGINIA,', 'Virginia (June 1788)')]},
+          3: {'start_re': r'^North Carolina', 'stop_re': r'^Stop', 'groups': [
+              (r'^STATE\s+OF\s+NORTH\s+CAROLINA,', 'North Carolina (July–August 1788)'),
+              (r'^STATE\s+O[EF]\s+SOUTH\s+CAROLINA,', 'South Carolina (January and May 1788)'),
+              (r'^SELECTED\s+FROM\s+DEBATES\s+IN\s+CONGRESS', 'Debates in Congress on Constitutional Principles, 1789–1836'),
+              (r'^PRONOUNCING\s+THE\s+ALIEN', 'The Virginia and Kentucky Resolutions and the Replies of the States, 1798–1800'),
+              (r'^THE\s+TARIFF\.\s+SOUTH\s+CAROLINA', 'Nullification and the Tariff, 1828–1833'),
+              (r'^MADISON\s+ON\s+THE\s+TARIFF', 'Madison on the Tariff and the Bank; Hamilton on the Bank'),
+              (r'^LIST\s+OF\s+THE\s+VETOES', 'Stop')]}}}),
+]
+
+
+
+def ocr_num(s):
+    # a date the scanner misread: "i" -> 1, "n" -> 11, "io" -> 10
+    return s.translate(str.maketrans({'i': '1', 'l': '1', 'I': '1', 'o': '0', 'O': '0', 'n': '11', 'z': '2', 'S': '5'})).replace('1111', '11')
+
+
 def api(**p):
     p.update(format='json', formatversion=2)
     url = 'https://en.wikisource.org/w/api.php?' + urllib.parse.urlencode(p)
@@ -455,7 +509,10 @@ def gutenberg_html(n):
                 print(f'  {n}: {m.split("/")[2]}: {e}', flush=True)
             time.sleep(2)
         else:
-            raise RuntimeError(f'eBook {n}: no copy found')
+            data = gutenberg_txt_html(n)      # some older eBooks exist only as plain text on the mirrors
+            if not data:
+                raise RuntimeError(f'eBook {n}: no copy found')
+            open(path, 'wb').write(data)
     raw = open(path, 'rb').read()
     m = re.search(rb'charset=["\']?([\w-]+)', raw[:3000])
     enc = (m.group(1).decode() if m else 'utf-8').lower()
@@ -800,6 +857,357 @@ def build_collection(bid, title, author, year, corner, items):
     return entry
 
 
+
+# ---------------------------------------------------------------------------------------------- plain-text Gutenberg
+TXT_MIRRORS = ['https://gutenberg.pglaf.org/{p}/{n}/{n}-0.txt', 'https://gutenberg.pglaf.org/{p}/{n}/{n}.txt',
+               'https://gutenberg.pglaf.org/{p}/{n}/{n}-8.txt', 'http://mirrors.xmission.com/gutenberg/{p}/{n}/{n}.txt']
+
+
+def gutenberg_txt_html(n):
+    """An eBook that Project Gutenberg has only as plain text: fetched once and turned into simple HTML (a paragraph per
+    blank-line-separated block; a short line in capitals on its own is a heading), so gutenberg_html can read it."""
+    s = str(n)
+    p = '/'.join(s[:-1]) if len(s) > 1 else '0'
+    for m in TXT_MIRRORS:
+        try:
+            data = urllib.request.urlopen(urllib.request.Request(m.format(n=n, p=p), headers=UA), timeout=120).read()
+        except Exception as e:
+            print(f'  {n}: {m}: {e}', flush=True)
+            time.sleep(2)
+            continue
+        if b'START OF TH' not in data:
+            continue
+        txt = data.decode('utf-8') if m.endswith('-0.txt') else data.decode('latin-1')
+        txt = txt.replace('\r\n', '\n')
+        out = ['<html><head><meta charset="utf-8"></head><body>']
+        for blk in re.split(r'\n\s*\n', txt):
+            lines = [x.strip() for x in blk.strip().split('\n') if x.strip()]
+            if not lines:
+                continue
+            t = html.escape(' '.join(lines))
+            letters = [c for c in t if c.isalpha()]
+            if len(lines) <= 2 and len(t) <= 90 and letters and sum(c.isupper() for c in letters) > 0.85 * len(letters) and not t.startswith('***'):
+                out.append(f'<h2>{t}</h2>')
+            else:
+                out.append(f'<p>{t}</p>')
+        out.append('</body></html>')
+        return '\n'.join(out).encode('utf-8')
+    return None
+
+
+# ---------------------------------------------------------------------------------------------- the Avalon Project
+LONG_S_VOCAB = None
+
+
+def long_s_vocab():
+    """Word counts from the library's modern-spelled texts, used to undo the long s printed as f ("poffeffion")."""
+    global LONG_S_VOCAB
+    if LONG_S_VOCAB is None:
+        from collections import Counter
+        c = Counter()
+        for bid in ('story', 'tocqueville', 'madison', 'ford-essays', 'ford-pamphlets', 'curtis-history', 'hallam-constitutional',
+                    'mckechnie-magna-carta', 'marshall-washington', 'webster-speeches', 'lincoln-douglas', 'cato', 'spirit-of-laws'):
+            for f in os.listdir(OUT):
+                if re.fullmatch(re.escape(bid) + r'-\d+\.js', f):
+                    c.update(re.findall(r'[a-z]+', open(os.path.join(OUT, f), encoding='utf-8').read().lower()))
+        LONG_S_VOCAB = c
+    return LONG_S_VOCAB
+
+
+def fix_long_s(text):
+    v = long_s_vocab()
+
+    def fix(m):
+        w = m.group(0)
+        low = w.lower()
+        pos = [i for i, ch in enumerate(w[:-1]) if ch == 'f']      # a long s never ends a word, and is never a capital
+        if not pos or len(pos) > 6:
+            return w
+        best, best_n = w, v.get(low, 0)
+        for mask in range(1, 1 << len(pos)):
+            cand = list(w)
+            for k, i in enumerate(pos):
+                if mask >> k & 1:
+                    cand[i] = 's'
+            cand = ''.join(cand)
+            n = v.get(cand.lower(), 0)
+            if n > best_n * 2 or (best_n == 0 and n > 0):
+                best, best_n = cand, n
+        return best
+    return re.sub(r"[A-Za-z]+", fix, text)
+
+
+def avalon_blocks(url, key):
+    os.makedirs(f'{RAW}/avalon', exist_ok=True)
+    path = f'{RAW}/avalon/{key}.html'
+    if not os.path.exists(path):
+        open(path, 'wb').write(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120).read())
+        time.sleep(2)
+    h = open(path, encoding='utf-8', errors='replace').read()
+    a = h.find('</div>', h.find('class="document-title"'))
+    z = h.find('class="page-menu"', a + 10)
+    h = h[a + 6: h.rfind('<div', 0, z) if z > 0 else len(h)]
+    h = re.sub(r'<table class="page-menu".*?</table>', '', h, flags=re.S)
+    h = re.sub(r'\.\{FS\}.*?\.\{FE\}', '', h, flags=re.S)       # footnotes
+    h = re.sub(r'<table.*?</table>', '', h, flags=re.S)          # the printer's signature and catchword line
+    h = re.sub(r'<sup>.*?</sup>', '', h, flags=re.S)
+    h = re.sub(r'</?font[^>]*>', '', h)
+    # a page marker and the running head that follows it ("PRIVATE WRONGS. / BOOK III. / Ch. 1")
+    h = re.sub(r'\.P \d+\s*<br>(?:\s*(?:[A-Z][A-Z ,.;\'&-]{0,40}|BOOK [IVX]+\.?|Ch\. ?\d+\.?)\s*<br>){0,3}', '\n', h)
+    h = re.sub(r'\.P \d+', '', h)
+    out = []
+    for para in re.split(r'<br>\s*<br>', h):
+        lines = [clean(x) for x in re.split(r'<br>|\n', para)]
+        lines = [x for x in lines if x]
+        if not lines:
+            continue
+        caps = all(re.sub(r'[^A-Za-z]', '', x).isupper() and len(x) <= 90 for x in lines)
+        if caps:
+            out.extend(['h', fix_long_s(x)] for x in lines)
+        else:
+            out.append(['p', fix_long_s(' '.join(lines))])
+    return out
+
+
+# ---------------------------------------------------------------------------------------------- Internet Archive OCR
+def ia_text(ident):
+    os.makedirs(f'{RAW}/ia', exist_ok=True)
+    path = f'{RAW}/ia/{ident}.txt'
+    if not os.path.exists(path):
+        data = urllib.request.urlopen(urllib.request.Request(f'https://archive.org/download/{ident}/{ident}_djvu.txt', headers=UA), timeout=600).read()
+        open(path, 'wb').write(data)
+        time.sleep(2)
+    return open(path, encoding='utf-8', errors='replace').read()
+
+
+def ocr_blocks(txt, opt):
+    """OCR text (one line per printed line, blank lines between paragraphs) -> [[kind, text]]: running heads and page
+    numbers dropped (short lines that recur through the volume), words broken at line ends joined, footnotes dropped."""
+    from collections import Counter
+    head = re.compile(opt['head_re']) if opt.get('head_re') else None
+    sub = re.compile(opt['sub_re']) if opt.get('sub_re') else None
+    note = re.compile(opt.get('note_re', r'^(?:\d{1,3}|[*†‡§])\s+[A-Z"“‘(\[]'))
+    furn = re.compile(opt['furniture_re']) if opt.get('furniture_re') else None
+    groups = [(re.compile(g), label) for g, label in opt.get('groups', [])]
+    group_of = lambda x: next((label for g, label in groups if g.match(x)), None)
+    inline = opt.get('head_inline')
+    lines = [re.sub(r'[ \t]+', ' ', x).strip() for x in txt.replace('\r', '').split('\n')]
+    norm = lambda x: re.sub(r'[\W\d_]+', ' ', x.lower()).strip()
+    freq = Counter(norm(x) for x in lines if 0 < len(x) <= 70)
+    keep = []
+    for x in lines:
+        if x and not (head and head.match(x)) and not (sub and sub.match(x)) and not group_of(x):
+            n = norm(x)
+            if (len(x) <= 70 and freq[n] >= opt.get('head_freq', 4) and n.count(' ') <= 6) or not n \
+                    or re.fullmatch(r'[ivxlc]{1,6}\.?', n) or (furn and furn.search(x)):
+                x = ''      # a running head, page number or stray mark
+                keep.append(None)
+                continue
+        keep.append(x)
+    # paragraphs: consecutive lines; a dropped line (page furniture) does not end a paragraph
+    paras, cur = [], []
+    for x in keep:
+        if x is None:
+            continue
+        if x == '':
+            if cur:
+                paras.append(cur)
+                cur = []
+            continue
+        if (head and head.match(x) and not inline) or (sub and sub.match(x)) or group_of(x):
+            if cur:
+                paras.append(cur)
+            paras.append([x])
+            cur = []
+            continue
+        cur.append(x)
+    if cur:
+        paras.append(cur)
+    out = []
+    for p in paras:
+        t = p[0]
+        for x in p[1:]:
+            if re.search(r'[-¬]$', t) and re.match(r'[a-z]', x):
+                t = t[:-1] + x
+            else:
+                t += ' ' + x
+        t = t.replace('¬', '')
+        t = re.sub(r'(?<=[a-z,.;:)”"’\]])\d{1,3}(?=[\s,.;:]|$)', '', t)      # a note number set against a word
+        t = re.sub(r'(?<=[.;:)”"’\]*])\s\d{1,2}(?=\s[A-Z(“"]|$)', '', t)       # ... or set after the sentence
+        t = re.sub(r'\s+([,.;:])', r'\1', t).strip()
+        if not t:
+            continue
+        if group_of(t):
+            out.append(['group', group_of(t)])
+            continue
+        if head and head.match(t):
+            out.append(['split', t])
+            if inline:      # the date opens a paragraph of the text: it names the part and the paragraph stays
+                out.append(['p', t])
+            continue
+        if sub and sub.match(t):
+            out.append(['h', t])
+            continue
+        if note.match(t) and not re.match(r'^\d{1,3}\.', t):
+            continue                                                            # a footnote
+        if opt.get('drop_re') and re.search(opt['drop_re'], t):
+            continue
+        letters = [c for c in t if c.isalpha()]
+        if len(t) <= 80 and letters and sum(c.isupper() for c in letters) > 0.85 * len(letters):
+            out.append(['h', t])
+        elif len(letters) < 0.5 * len(t) and len(t) < 200:
+            continue                                                            # a vote table or OCR debris
+        else:
+            out.append(['p', t])
+    return out
+
+
+def _roman(n):
+    out = ''
+    for v, r in ((1000, 'M'), (900, 'CM'), (500, 'D'), (400, 'CD'), (100, 'C'), (90, 'XC'), (50, 'L'), (40, 'XL'), (10, 'X'), (9, 'IX'), (5, 'V'), (4, 'IV'), (1, 'I')):
+        out += r * (n // v)
+        n %= v
+    return out
+
+
+def build_archive(bid, title, author, year, idents, corner, opt):
+    """opt: head_re (a line that opens a part), sub_re (lines kept as headings inside a part), start_re / stop_re (the
+    text begins at the first part whose title matches / ends before it, per volume), note_re (footnote paragraphs),
+    furniture_re (more lines to drop), drop_re, head_freq, vol_labels, title_sub, rename, smart, sub_title, vol_opt,
+    groups ([(regex, label)]: a line naming a section, such as a state's convention; it opens a part and prefixes the part
+    titles that follow), head_inline (head_re matches the start of a paragraph, which stays in the text), merge_below,
+    min_words, star_splits ([(part title, page)]: parts open where the original edition's page, marked [*n] in the text,
+    begins: the lecture headings of Kent's Commentaries that the scanner missed), strip_re (patterns removed from the text
+    after splitting), seq (parts numbered in order, "Chapter" -> Chapter I, II, ..., restarting at each group, instead of
+    the misread numerals)."""
+    parts, group, seq_n = [], '', 0
+    for v, ident in enumerate(idents, 1):
+        vo = dict(opt, **opt.get('vol_opt', {}).get(v, {}))
+        blocks = ocr_blocks(ia_text(ident), vo)
+        if vo.get('star_splits'):
+            marks, last = {}, -1
+            for title_, page in vo['star_splits']:
+                pat = re.compile(r'\[\s*\*\s*%d\s*\]' % page)
+                k = next((i for i, (_, t) in enumerate(blocks) if i > last and pat.search(t)), None)
+                if k is not None:
+                    marks[k], last = title_, k
+            out = []
+            for i, b in enumerate(blocks):
+                if i in marks:
+                    out.append(['split', marks[i]])
+                    if b[0] == 'h' and re.match(r'^\W*L\s?E\s?C', b[1]):      # the misread "LECTURE VI." line itself
+                        continue
+                out.append(b)
+            blocks = out
+        for pat in vo.get('strip_re', []):
+            blocks = [[k, re.sub(pat, '', t).strip()] for k, t in blocks]
+            blocks = [b for b in blocks if b[1]]
+        vparts, cur, name = [], [], None
+        for kind, t in blocks:
+            if kind == 'group':      # a new section (a state's convention): its opening text is a part of its own
+                if name is not None or cur:
+                    vparts.append((name or 'Front matter', cur))
+                group, seq_n = t, 0
+                name, cur = t, [['h', t]]
+            elif kind == 'split':
+                if name is not None or cur:
+                    vparts.append((name or 'Front matter', cur))
+                seq_n += 1
+                ttl = f"{vo['seq']} {_roman(seq_n)}" if vo.get('seq') else part_title(t, vo)
+                name = (f'{group} · ' if group else '') + ttl
+                cur = [] if vo.get('head_inline') or vo.get('star_splits') else [['h', ttl if vo.get('seq') else t]]
+            else:
+                cur.append([kind, t])
+        vparts.append((name or 'Front matter', cur))
+        if vo.get('start_re'):
+            k = next((i for i, (n, _) in enumerate(vparts) if re.match(vo['start_re'], n, re.I)), 0)
+            vparts = vparts[k:]
+        if vo.get('stop_re'):
+            k = next((i for i, (n, _) in enumerate(vparts) if re.match(vo['stop_re'], n, re.I)), None)
+            vparts = vparts[:k] if k is not None else vparts
+        if vo.get('sub_title'):
+            vparts = [(sub_title(n, b), b) for n, b in vparts]
+        merged = []
+        for n, b in vparts:
+            w = sum(len(x[1].split()) for x in b)
+            if merged and merged[-1][2] < vo.get('merge_below', 120):
+                pn, pb, pw = merged.pop()
+                n, b, w = (pn if pn != 'Front matter' else n), pb + b, pw + w
+            merged.append((n, b, w))
+        labels = vo.get('vol_labels')
+        prefix = (labels[v - 1] + ' · ' if labels[v - 1] else '') if labels else (f'Vol. {["I", "II", "III", "IV", "V"][v - 1]} · ' if len(idents) > 1 else '')
+        parts.extend((prefix + n, b) for n, b, w in merged if w >= vo.get('min_words', 60))
+    parts = split_long(parts)
+    lic = ('Public-domain text; OCR of the Internet Archive scan' + ('s ' if len(idents) > 1 else ' ') + ', '.join(idents) +
+           ', cleaned automatically (running heads, page numbers and footnotes removed). OCR errors remain; check quotations against the page images')
+    return write_book({'id': bid, 'title': title, 'author': author, 'year': year, 'src': f'https://archive.org/details/{idents[0]}',
+                       'srcName': 'Internet Archive', 'license': lic, 'corner': corner}, parts)
+
+
+# ---------------------------------------------------------------------------------------------- supplements
+def read_book(bid):
+    s = open(f'{OUT}/{bid}.js', encoding='utf-8').read()
+    meta = json.loads(s[s.index(']=') + 2:].rstrip().rstrip(';'))
+    parts = []
+    for n in range(1, len(meta['toc']) + 1):
+        c = open(f'{OUT}/{bid}-{n}.js', encoding='utf-8').read()
+        c = json.loads(c[c.index(']=') + 2:].rstrip().rstrip(';'))
+        parts.append((c['t'], c['b']))
+    return meta, parts
+
+
+def supplement(bid, cut_re, label, src_note, new_parts):
+    """Add parts from another source to the end of a built work (Blackstone's Books III-IV from Avalon, Montesquieu's
+    second volume from an Internet Archive scan), first dropping its own parts from the first whose title matches
+    cut_re; the earlier parts keep their numbers, so readers' places and highlights stay put."""
+    meta, parts = read_book(bid)
+    k = next((i for i, (n, _) in enumerate(parts) if cut_re and re.match(cut_re, n)), len(parts))
+    parts = parts[:k] + [(f'{label}{n}', b) for n, b in new_parts]
+    meta = {x: meta[x] for x in ('id', 'title', 'author', 'year', 'src', 'srcName', 'license', 'corner')}
+    meta['license'] = meta['license'].split(' · Supplemented')[0] + f' · Supplemented: {src_note}'
+    return write_book(meta, parts)
+
+
+SUPPLEMENTS = [
+    # id, parts of the work to drop from (regex on part title, '' for none), part-title prefix, source note, builder
+    ('blackstone', r'^Of Redress by the mere operation of Law', '', 'Books III and IV from the Avalon Project (Yale Law School), '
+     'transcribed from the first edition (1768–1769); the long s, printed there as f, is restored automatically',
+     lambda: avalon_blackstone()),
+    ('spirit-of-laws', '', 'Volume II · ', 'Books XX–XXXI from the Internet Archive scan spiritoflawsincl02montuoft (Nugent '
+     'trans., Colonial Press ed., 1900), OCR cleaned automatically', lambda: montesquieu_vol2()),
+]
+
+
+def avalon_blackstone():
+    idx = urllib.request.urlopen(urllib.request.Request('https://avalon.law.yale.edu/subject_menus/blackstone.asp', headers=UA), timeout=60).read().decode('utf-8', 'replace')
+    parts = []
+    for m in re.finditer(r'href="\.\./18th_century/(blackstone_bk([34])(ch\d+|app\d*|supp))\.asp">([^<]+)', idx):
+        key, book, name = m.group(1), m.group(2), clean(m.group(4))
+        b = avalon_blocks(f'https://avalon.law.yale.edu/18th_century/{key}.asp', key)
+        name = re.sub(r'^Chapter the ([\w-]+)\s*:\s*', lambda x: f'Chapter {x.group(1).title()}: ', name)
+        parts.append((f'Book {"III" if book == "3" else "IV"} · {name}', b))
+    return parts
+
+
+def montesquieu_vol2():
+    opt = {'head_re': r'^BOOK [XVIL]{2,6}\.?$', 'start_re': r'^BOOK XX\b', 'stop_re': r'^INDEX', 'sub_title': True,
+           'note_re': r'^(?:\d{1,3}|[a-z]|[*†‡§])\s+(?:[A-Z"“‘(\[]|ibid|see\b)'}
+    blocks = ocr_blocks(ia_text('spiritoflawsincl02montuoft'), opt)
+    parts, cur, name = [], [], None
+    for kind, t in blocks:
+        if kind == 'split':
+            if name:
+                parts.append((name, cur))
+            name, cur = smart_title(t.rstrip('.')), [['h', t]]
+        elif name:
+            cur.append([kind, t])
+    if name:
+        parts.append((name, cur))
+    k = next((i for i, (n, _) in enumerate(parts) if n == 'Book XX'), 0)
+    parts = [(sub_title(n, b), b) for n, b in parts[k:]]
+    return split_long([(n, b) for n, b in parts if sum(len(x[1].split()) for x in b) >= 60])
+
+
 def main():
     only = sys.argv[1:]
     idx_path = 'docs/data/lib-index.js'
@@ -828,8 +1236,22 @@ def main():
             index[b[0]] = build_collection(*b)
         except Exception as e:
             print(f'{b[0]}: FAILED {e}', flush=True)
+    for b in ARCHIVE:
+        if only and b[0] not in only:
+            continue
+        try:
+            index[b[0]] = build_archive(*b)
+        except Exception as e:
+            print(f'{b[0]}: FAILED {e}', flush=True)
+    for bid, cut, label, note, fn in SUPPLEMENTS:      # after the work itself is built (or on its own: "blackstone+")
+        if only and bid not in only and bid + '+' not in only:
+            continue
+        try:
+            index[bid] = supplement(bid, cut, label, note, fn())
+        except Exception as e:
+            print(f'{bid} supplement: FAILED {e}', flush=True)
     # re-read the index before writing: another run may have added works meanwhile; keep theirs, update ours
-    built = {k: v for k, v in index.items() if not only or k in only}
+    built = {k: v for k, v in index.items() if not only or k in only or k + '+' in only}
     if os.path.exists(idx_path):
         s = open(idx_path, encoding='utf-8').read()
         index = {x['id']: x for x in json.loads(s[s.index('=') + 1:].rstrip().rstrip(';'))}

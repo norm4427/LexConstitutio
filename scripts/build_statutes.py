@@ -5,7 +5,7 @@
   summary         the statute's Wikipedia article (CC BY-SA 4.0): the introduction, then the opening paragraphs of its
                   background / provisions / history sections, up to about 450 words; the hover blurb is the first two
                   sentences of the introduction
-  link            the official U.S. Code (uscode.house.gov, public domain) for statutes still in the Code; otherwise the
+  link            the official U.S. Code via GovInfo (public domain) for statutes still in the Code; otherwise the
                   enacted text on Wikisource when Wikipedia links to one
   cases           SCDB-coded cases first, then cases whose summaries name the statute, ranked by later citations (CAP)
   tags            the site's area-of-law tags, plus a few statute-only areas (labor, business, environment, tax, benefits)
@@ -287,7 +287,28 @@ def sentences(p, n=2):
 
 
 def usc_url(t, s):
-    return f'https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title{t}-section{s}&num=0&edition=prelim'
+    # uscode.house.gov's granuleid URLs now all return 404; GovInfo's stable link service redirects to the section
+    return f'https://www.govinfo.gov/link/uscode/{t}/{s}'
+
+
+WS = 'https://en.wikisource.org/wiki/'
+# Enacted-text links checked by hand (200) for statutes with no U.S. Code section and no GovInfo Statutes at Large PDF (before vol. 65);
+# the infobox gives no usable link for these. id: (url, label). Wikipedia's generic "url" field is a citation, not the text, so it is not used.
+LINK_OVERRIDES = {
+    'dta': (usc_url(42, '2000dd'), '42 U.S.C. § 2000dd (GovInfo)'),
+    'enforcement': (WS + 'Enforcement_Act_of_1870', 'Enacted text (Wikisource)'),
+    'firststep': ('https://www.govinfo.gov/content/pkg/STATUTE-132/pdf/STATUTE-132-Pg5194.pdf', '132 Stat. 5194 (GovInfo)'),
+    'fugitive': (WS + 'Fugitive_Slave_Act_of_1850', 'Enacted text (Wikisource)'),
+    'chinese': ('https://www.archives.gov/milestone-documents/chinese-exclusion-act', 'Enacted text (National Archives)'),
+    'isa': (WS + 'Internal_Security_Act_of_1950', 'Enacted text (Wikisource)'),
+    'ica': ('https://www.archives.gov/milestone-documents/interstate-commerce-act', 'Enacted text (National Archives)'),
+    'mca': ('https://www.archives.gov/milestone-documents/interstate-commerce-act', 'Enacted text (National Archives)'),
+    'cra1875': (WS + 'Civil_Rights_Act_of_1875', 'Enacted text (Wikisource)'),
+    'ja1789': (WS + 'Judiciary_Act_of_1789', 'Enacted text (Wikisource)'),
+    'missouri': (WS + 'Missouri_Compromise', 'Enacted text (Wikisource)'),
+    'nira': ('https://www.archives.gov/milestone-documents/national-industrial-recovery-act', 'Enacted text (National Archives)'),
+    'naturalization': (WS + 'United_States_Statutes_at_Large/Volume_1/1st_Congress/2nd_Session/Chapter_3', 'Enacted text (Wikisource, 1 Stat. 103)'),
+}
 
 
 def scdb_cases():
@@ -343,17 +364,19 @@ def main():
         enacted, publaw = field(wt, 'enacted by'), field(wt, 'cite public law', 'public law')
         stat = field(wt, 'cite statutes at large', 'statutes at large')
         sm = re.match(r'^(\d+)\s+Stat\.\s+(\d+)', stat or '')
-        purl = field(wt, 'public law url', 'url')
-        purl = purl if purl and purl.startswith('http') else None
-        link = ({'url': usc_url(*usc), 'label': f'{usc[0]} U.S.C. § {usc[1]} (uscode.house.gov)'} if usc else
+        purl = field(wt, 'public law url')
+        purl = (re.match(r'https?://[^\s|}\]]+', purl or '') or [None])[0]   # stop at the first space, | or }
+        link = ({'url': usc_url(*usc), 'label': f'{usc[0]} U.S.C. § {usc[1]} (GovInfo)'} if usc else
                 {'url': f'https://www.govinfo.gov/content/pkg/STATUTE-{sm[1]}/pdf/STATUTE-{sm[1]}-Pg{sm[2]}.pdf', 'label': f'{sm[1]} Stat. {sm[2]} (GovInfo)'} if sm and int(sm[1]) >= 65 else
                 {'url': purl, 'label': f'{stat} (enacted text)' if stat else 'Enacted text'} if purl else
                 {'url': 'https://en.wikisource.org/wiki/' + urllib.parse.quote(w['wikisource'].replace(' ', '_')), 'label': 'Enacted text (Wikisource)'} if w.get('wikisource') else None)
+        if sid in LINK_OVERRIDES:
+            link = {'url': LINK_OVERRIDES[sid][0], 'label': LINK_OVERRIDES[sid][1]}
         out.append({'id': sid, 'n': name, 'blurb': sentences(paras[0]['p']), 'paras': paras, 'tags': tags, 'rx': rx,
                     'link': link, 'enacted': enacted and re.sub(r'^(?:the )?(\d+(?:st|nd|rd|th))$', r'\1 Congress', enacted), 'publaw': publaw, 'stat': stat,
                     'wiki': {'title': w.get('title'), 'url': w.get('url')}, 'cases': ids, 'coded': len(hits)})
     out.sort(key=lambda x: x['n'].lstrip('0123456789 .U.S.C§').lower())
-    data = {'src': 'Summaries from Wikipedia (CC BY-SA 4.0). Statute text from the Office of the Law Revision Counsel (uscode.house.gov) and Wikisource. Case links from the Supreme Court Database (lawSupp) and case summaries.', 'statutes': out}
+    data = {'src': 'Summaries from Wikipedia (CC BY-SA 4.0). Statute text from the U.S. Code (GovInfo, Office of the Law Revision Counsel), the National Archives and Wikisource. Case links from the Supreme Court Database (lawSupp) and case summaries.', 'statutes': out}
     open('docs/data/statutes.js', 'w', encoding='utf-8').write('window.STATUTES=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
     print(f'{len(out)} statutes ({sum(1 for x in out if x["link"])} with a link to the text); {sum(len(x["cases"]) for x in out)} case links')
     if missing:

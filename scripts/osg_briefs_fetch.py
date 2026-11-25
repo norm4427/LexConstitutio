@@ -9,19 +9,23 @@ text PDFs. Other parties' briefs are not in it, so a case gets the federal gover
 government took part (about two thirds of argued cases).
 
 Steps (each cached, so a run can be stopped and resumed):
-  1. listing pages, all brief types, per Term   data/raw/osg/list/<term>-<page>.html
-  2. rows matched to the site's argued cases of that Term (or the next) that have no authorities data yet, by docket
-     number, or by both party names when the row has no number; merits-stage types only where the row is typed
+  1. for each argued case without authorities data, the archive rows whose title contains a distinctive party name
+     (its title filter; the table's further pages are disallowed by robots.txt)   data/raw/osg/list/<word>-<term>.html
+  2. rows matched to the case by docket number, or by both party names when the row has no number, filed in the
+     case's Term or the one before or after; merits-stage types only where the row is typed
   3. each matched brief's text                  data/raw/briefs/<docket>/osg-<media id>.txt
      classified from its cover (merits stage only: "On writ of certiorari" / "On appeal", not "in opposition",
      petitions, memoranda or supplemental briefs) into petitioner / respondent / reply / united-states (amicus)
-  4. the opinion from the U.S. Reports (the site's tile.loc.gov PDF for the case)   data/raw/briefs/<docket>/opinion.txt
-Output: data/raw/briefs/osg-manifest.json ({docket: {briefs: [...], opinion: url}}), read by build_authorities.py
-alongside manifest.json. Cases are fetched most cited first (docs/data/case_impact.js).
+  4. (--opinions, a separate process: another host) the opinion from the U.S. Reports, the site's tile.loc.gov PDF of
+     the case                                    data/raw/briefs/<docket>/opinion.txt, data/raw/briefs/osg-opinions.json
+Output: data/raw/briefs/osg-manifest.json ({docket: {briefs: [...]}}) and osg-opinions.json ({docket: url}), read by
+build_authorities.py alongside manifest.json. Cases are fetched in order: the site's essential cases, then the most cited (docs/data/case_impact.js).
 User-Agent "LexConstitutio/1.0 (static site build)"; about one request per 1.5 s (justice.gov) and 3 s (loc.gov).
-Run from the repo root:  python scripts/osg_briefs_fetch.py [--terms 1985-2017] [--limit N] [--no-opinions]
+Run from the repo root:  python scripts/osg_briefs_fetch.py [--terms 1982-2017] [--limit N]
+                    and, at the same time,  python scripts/osg_briefs_fetch.py --opinions [--follow]
+                    (--relabel re-reads the cached briefs' covers after a change to classify(); no fetching)
 """
-import glob, html, json, os, re, subprocess, sys, time, urllib.request
+import html, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 
 LIST = 'data/raw/osg/list'
 OUT = 'data/raw/briefs'
@@ -55,44 +59,68 @@ def get(url, timeout=120, pause=1.5):
 
 
 # ------------------------------------------------------------------ 1. listing
+# The archive's table pages past the first (?page=n) are disallowed by justice.gov's robots.txt and refused (403) to
+# non-browser clients, so it is read through its title filter instead: for each case, the briefs whose title contains a
+# distinctive party name, first in all Terms and, when that fills the 25-row first page, in the case's Term and the one
+# before (when merits briefs of a case granted late in a Term are filed).
 def cell(x):
     return re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', x))).strip()
 
 
-def listing(term):
-    """Rows (term, number, title, type, date, detail href, [media hrefs]) for one Term. Terms whose briefs are typed
-    (about OT2003 on) are listed by the three merits-stage types; earlier ones, untyped, in full."""
-    typed = list_type(term, 'merits_stage_brief')
-    if typed:
-        return typed + list_type(term, 'merits_stage_reply_brief') + list_type(term, 'merits_stage_amicus_brief')
-    return list_type(term, 'All')
-
-
-def list_type(term, typ):
+def query(word, term='All'):
     os.makedirs(LIST, exist_ok=True)
-    rows, page = [], 0
-    while True:
-        p = f'{LIST}/{term}-{page}.html' if typ == 'All' else f'{LIST}/{term}-{typ}-{page}.html'
-        if not os.path.exists(p):
-            t = '2025_term' if term == 2025 else str(term)
-            b = get(f'{BASE}/osg/supreme-court-briefs?sc_term={t}&type={typ}&subject=All&page={page}')
-            open(p, 'wb').write(b)
-        h = open(p, encoding='utf-8', errors='replace').read()
-        got = 0
-        for tr in re.findall(r'<tr>(.*?)</tr>', h, re.S):
-            td = re.findall(r'<td[^>]*>(.*?)</td>', tr, re.S)
-            if len(td) < 7:
-                continue
-            det = re.search(r'href="(/osg/brief/[^"]+)"', td[2])
-            media = re.findall(r'href="(/osg/media/\d+/dl[^"]*)"', td[3])
-            dt = re.search(r'datetime="(\d{4}-\d\d-\d\d)', td[6])
-            got += 1
-            rows.append({'term': term, 'no': cell(td[1]), 'title': cell(td[2]), 'type': cell(td[4]), 'date': dt.group(1) if dt else '',
-                         'detail': det.group(1) if det else '', 'media': media})
-        pages = [int(x) for x in re.findall(r'(?:[?&]|&amp;)page=(\d+)', h)]
-        if not got or page >= max(pages or [0]):
-            return rows
-        page += 1
+    p = f"{LIST}/{re.sub(r'[^a-z0-9]+', '_', word.lower())}-{term}.html"
+    if not os.path.exists(p):
+        t = '2025_term' if term == 2025 else str(term)
+        b = get(f'{BASE}/osg/supreme-court-briefs?sc_term={t}&type=All&subject=All&text={urllib.parse.quote(word)}')
+        open(p, 'wb').write(b)
+    h = open(p, encoding='utf-8', errors='replace').read()
+    rows = []
+    for tr in re.findall(r'<tr>(.*?)</tr>', h, re.S):
+        td = re.findall(r'<td[^>]*>(.*?)</td>', tr, re.S)
+        if len(td) < 7:
+            continue
+        det = re.search(r'href="(/osg/brief/[^"]+)"', td[2])
+        media = re.findall(r'href="(/osg/media/\d+/dl[^"]*)"', td[3])
+        dt = re.search(r'datetime="(\d{4}-\d\d-\d\d)', td[6])
+        tm = re.match(r'(\d{4})', cell(td[0]))
+        rows.append({'term': int(tm.group(1)) if tm else 0, 'no': cell(td[1]), 'title': cell(td[2]), 'type': cell(td[4]),
+                     'date': dt.group(1) if dt else '', 'detail': det.group(1) if det else '', 'media': media})
+    return rows
+
+
+GENERIC = set('''united states state states city county commissioner people secretary attorney general board department
+commonwealth town village school district government federal national american the of in re ex parte matter inc co corp
+llc ltd company corporation association international commission service services authority administrator director
+warden superintendent bureau office trust bank et al and motor'''.split()) | set(w.lower() for w in '''Alabama Alaska Arizona
+Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois Indiana Iowa Kansas Kentucky Louisiana
+Maine Maryland Massachusetts Michigan Minnesota Mississippi Missouri Montana Nebraska Nevada Hampshire Jersey Mexico York Carolina
+Dakota Ohio Oklahoma Oregon Pennsylvania Rhode Island Tennessee Texas Utah Vermont Virginia Washington West Wisconsin Wyoming
+North South'''.split())
+
+
+def search_words(name):
+    """A distinctive word of each side of the case name, petitioner's first ("Burwell v. Hobby Lobby Stores" ->
+    Burwell, Hobby): the archive titles a case by its name when the brief was filed, which may name another officer."""
+    m = re.match(r'^\s*(?:The\s+)?(.+?)\s+v\.\s+(?:The\s+)?(.+)$', name)
+    out = []
+    for side in ([m.group(1), m.group(2)] if m else [name]):
+        w = next((w for w in re.findall(r"[A-Za-z][A-Za-z'\-]+", side) if len(w) >= 3 and w.lower() not in GENERIC), None)
+        if w and w not in out:
+            out.append(w)
+    return out
+
+
+def search_word(name):
+    return (search_words(name) or [None])[0]
+
+
+def rows_for(case, w):
+    rows = query(w)
+    if len(rows) >= 25:
+        t = int(case['t'])
+        rows = query(w, t) + query(w, t - 1)
+    return rows
 
 
 # ------------------------------------------------------------------ 2. matching
@@ -200,10 +228,21 @@ def classify(t, title=''):
             return None
     if not re.search(r'ON WRITS? OF CERTIORARI|ON APPEALS? FROM|ON CERTIFI', C):
         return None
-    m = re.search(r'\b((?:REPLY )?BRIEFS? (?:FOR|OF) (?:THE )?[A-Z ,.\'\-]{3,200}?)(?=\s+(?:[A-Z][A-Z.]+ [A-Z]\.? ?[A-Z]+|[A-Z]+ [A-Z]+,?\s*(?:JR|III|II)\b|DREW|KENNETH|CHARLES|WALTER|SETH|THEODORE|PAUL|DONALD|ELENA|NOEL|DONALD|REX|ROBERT|WILLIAM|EDWIN|SOLICITOR|DEPARTMENT|ATTORNEYS?\b)|$)', C)
-    label = m.group(1).strip(' ,.') if m else 'BRIEF FOR THE UNITED STATES'
-    label = re.sub(r'\s+(?:[A-Z]\.\s*)?[A-Z]+,?\s*(?:JR|III|II)\.?$', '', label)
-    label = label[:160]
+    lines = [norm(x) for x in c.splitlines() if x.strip()]
+    label = ''
+    for i, ln in enumerate(lines):
+        m = re.search(r'\b(?:REPLY )?BRIEFS? (?:FOR|OF)\b.*$', ln.upper())
+        if m and not re.search(r'COURT OF|^ON ', ln.upper()):
+            label = ln[m.start():]
+            for nx in lines[i + 1: i + 3]:     # "BRIEF FOR THE UNITED STATES AS AMICUS CURIAE" / "SUPPORTING RESPONDENTS"
+                if re.match(r'^(?:AS|SUPPORTING|IN SUPPORT|URGING|FOR|OF|AND|ON BEHALF|AMICUS|AMICI|CURIAE|PETITIONERS?|RESPONDENTS?)\b', nx.upper()) and len(label) < 200:
+                    label += ' ' + nx
+                else:
+                    break
+            break
+    # a cover read as one line runs on into the Solicitor General's name
+    label = re.split(r'\s+(?=[A-Z][A-Za-z.]*(?: [A-Z][A-Za-z.]*){0,3},? (?:Jr\.,? |III,? |II,? )?(?:Solicitor|Acting Solicitor|Attorney|Assistant|Deputy|Counsel)\b)|\s+(?:Solicitor General|Counsel of Record)\b', label)[0]
+    label = (label or 'BRIEF FOR THE UNITED STATES')[:200].strip(' ,.')
     L = label.upper()
     if L.startswith('REPLY'):
         kind = 'reply'
@@ -215,16 +254,77 @@ def classify(t, title=''):
         kind = 'respondent'
     else:   # "Brief for the United States": the government's side in the caption
         cap = re.split(r'ON (?:WRITS? OF CERTIORARI|APPEALS? FROM)', C)[0]
-        cap = re.sub(r'^.*?OCTOBER TERM,? \d{4}', '', cap)
+        cap = re.sub(r'^.*?(?:OCTOBER TERM,? \d{4}|SUPREME COURT OF THE UNITED STATES)', '', cap)
         parts = re.split(r'\s+V\.?\s+', cap, 1)
         pet_gov = len(parts) == 2 and re.search(GOVWORDS, parts[0])
         kind = 'petitioner' if pet_gov else 'respondent'
-    return kind, label[:1] + label[1:].lower().replace('united states', 'United States').replace('amicus curiae', 'amicus curiae')
+    lab = label[:1].upper() + label[1:].lower()
+    for w in ('United States', 'Secretary', 'Commissioner', 'Attorney General'):
+        lab = re.sub(r'\b' + w.lower() + r'\b', w, lab)
+    return kind, lab
+
+
+def norm(s):
+    return re.sub(r'\s+', ' ', s).strip()
 
 
 def head_docket(t):
     m = re.search(r'Nos?\.\s*(\d{2}-\d{1,5})', t[:600])
     return dk_norm(m.group(1)) if m else None
+
+
+# ------------------------------------------------------------------ 4. opinions (a separate pass, another host)
+OPS = f'{OUT}/osg-opinions.json'
+
+
+def opinions(follow=False):
+    """The U.S. Reports text of each case that has briefs here: the site's tile.loc.gov PDF of the case, to
+    data/raw/briefs/<docket>/opinion.txt, listed in osg-opinions.json ({docket: url}). Runs alongside the briefs pass
+    (it only reads osg-manifest.json); with --follow it keeps picking up new cases until the manifest stops growing."""
+    S = {c['id']: c for c in load_js('docs/data/scotus.js')['cases']}
+    ops = json.load(open(OPS)) if os.path.exists(OPS) else {}
+    idle = 0
+    while True:
+        try:
+            man = json.load(open(MAN))
+        except (OSError, ValueError):
+            man = {}
+        todo = [dk for dk, v in man.items() if not dk.startswith('_') and v.get('briefs') and dk not in ops
+                and re.match(r'https://tile\.loc\.gov/', (S.get(v.get('id')) or {}).get('pdf') or '')]
+        for dk in todo:
+            url = S[man[dk]['id']]['pdf']
+            if to_text(url, f'{OUT}/{dk}/opinion.txt', pause=3):
+                ops[dk] = url
+            else:
+                ops[dk] = None
+            if len(ops) % 20 == 0:
+                json.dump(ops, open(OPS, 'w'), indent=0)
+                print('opinions', len(ops), dk, flush=True)
+        json.dump(ops, open(OPS, 'w'), indent=0)
+        if not follow:
+            return
+        idle = 0 if todo else idle + 1
+        if idle >= 20:
+            return
+        time.sleep(30)
+
+
+def relabel():
+    """Re-read the cover of every cached brief (no fetching), after a change to classify()."""
+    man = json.load(open(MAN))
+    n = 0
+    for dk, v in man.items():
+        if dk.startswith('_'):
+            continue
+        for b in v['briefs']:
+            p = f"{OUT}/{dk}/{b['f']}.txt"
+            got = classify(open(p, encoding='utf-8', errors='replace').read()) if os.path.exists(p) else None
+            if got and (b['k'], b['label']) != got:
+                b['k'], b['label'] = got
+                n += 1
+    json.dump(man, open(MAN + '.tmp', 'w'), indent=0)
+    os.replace(MAN + '.tmp', MAN)
+    print('relabelled', n)
 
 
 # ------------------------------------------------------------------ main
@@ -246,45 +346,70 @@ def main():
                 by_dk.setdefault(dk, c)
         by_term.setdefault(int(c['t']), []).append(c)
     man = json.load(open(MAN)) if os.path.exists(MAN) else {}
-    rows = []
-    for term in range(lo, hi + 1):
-        r = listing(term)
-        print('term', term, len(r), 'listed', flush=True)
-        rows += r
-    # match rows to cases
-    want = {}       # case id -> [(row, docket)]
-    for r in rows:
-        if r['type'] and r['type'] not in MERITS_TYPES:
-            continue
-        if re.search(r'\((?:Opposition|Petition|Invitation|Response|Supplemental)\)|\bOpposition\b', r['title'], re.I):
-            continue
-        if not r['media']:
-            continue
-        c, dk = None, None
-        for d in row_dockets(r['no']):
-            if d in by_dk:
-                c, dk = by_dk[d], d
+    cases = {}
+    for dk, c in by_dk.items():
+        if lo <= int(c['t']) <= hi:
+            cases[c['id']] = c
+    ess = set(load_js('docs/data/essential.js'))     # the site's essential cases first, then the most cited
+    order = sorted(cases, key=lambda cid: (cid not in ess, -(imp.get(cid) or [0, 0])[1]))
+    print(len(order), 'argued cases without authorities in OT', lo, '-', hi, flush=True)
+
+    def matches(c):
+        """[(row, docket)] of the archive's merits-stage rows for this case."""
+        dks = [dk_norm(d) for d in re.split(r'[,;\s]+', c['d']) if d]
+        out = []
+        for w in search_words(c['n']):
+            out = matches_word(c, w, dks)
+            if out:
                 break
-        if not c and not r['no'].strip():
-            c = name_match(r['title'], by_term.get(r['term'], []) + by_term.get(r['term'] + 1, []))
-            if c:
-                dk = next((dk_norm(d) for d in re.split(r'[,;\s]+', c['d']) if dk_norm(d) in by_dk), None)
-                if not dk:
-                    c = None
-        if c:
-            want.setdefault(c['id'], []).append((r, dk))
-    order = sorted(want, key=lambda cid: -(imp.get(cid) or [0, 0])[1])
-    print(len(rows), 'rows;', sum(len(v) for v in want.values()), 'matched to', len(want), 'cases', flush=True)
+        return out
+
+    def matches_word(c, w, dks):
+        out = []
+        for r in rows_for(c, w):
+            if r['type'] and r['type'] not in MERITS_TYPES:
+                continue
+            if re.search(r'\((?:Opposition|Petition|Invitation|Response|Supplemental)\)|\bOpposition\b|- Petition\b', r['title'], re.I):
+                continue
+            if not r['media'] or not (int(c['t']) - 1 <= r['term'] <= int(c['t']) + 1):
+                continue
+            rd = row_dockets(r['no'])
+            if rd:
+                hit = next((d for d in rd if d in dks), None)
+                if hit:
+                    out.append((r, hit))
+            elif name_match(r['title'], [c]):
+                out.append((r, next((d for d in dks if d in by_dk), dks[0])))
+        return out
     stats = {'briefs': 0, 'skipped': 0, 'cases': 0}
+    done_ids = set(man.get('_none2', [])) | {v.get('id') for k, v in man.items() if k != '_none' and v.get('done')}
     for n, cid in enumerate(order):
         if limit and n >= limit:
             break
-        entries = want[cid]
+        case = cases[cid]
+        if cid in done_ids:
+            continue
+        try:
+            entries = matches(case)
+        except Exception as e:
+            print('  query failed', case['n'], e, flush=True)
+            continue
+        if not entries:
+            man['_none2'] = sorted(set(man.get('_none2', [])) | {cid})     # tried with both sides' names
+            if len(man['_none2']) % 10 == 0:
+                json.dump(man, open(MAN + '.tmp', 'w'), indent=0)
+                os.replace(MAN + '.tmp', MAN)
+            continue
         dk = entries[0][1]
         os.makedirs(f'{OUT}/{dk}', exist_ok=True)
         prev = man.get(dk, {})
         done = {b['url'] for b in prev.get('briefs', [])} | set(prev.get('skipped', []))
         briefs, skipped = list(prev.get('briefs', [])), list(prev.get('skipped', []))
+        for b in briefs:        # re-read the covers of briefs fetched before (the classifier may have improved)
+            p = f"{OUT}/{dk}/{b['f']}.txt"
+            got = classify(open(p, encoding='utf-8', errors='replace').read()) if os.path.exists(p) else None
+            if got:
+                b['k'], b['label'] = got
         for r, _ in entries:
             for mh in r['media']:
                 url = BASE + mh.split('?')[0] + '?inline'
@@ -298,7 +423,7 @@ def main():
                 t = open(dest, encoding='utf-8', errors='replace').read()
                 hd = head_docket(t)
                 got = classify(t, r['title'])
-                if not got or (hd and hd != dk and hd not in [dk_norm(x) for x in re.split(r'[,;\s]+', by_dk[dk]['d'])]):
+                if not got or (hd and hd != dk and hd not in [dk_norm(x) for x in re.split(r'[,;\s]+', case['d'])]):
                     skipped.append(url)
                     os.remove(dest)
                     stats['skipped'] += 1
@@ -316,19 +441,22 @@ def main():
                 continue
             seen.add(key)
             keep.append(b)
-        entry = {'briefs': keep, 'skipped': skipped, 'id': cid, 'opinion': prev.get('opinion')}
-        case = by_dk[dk]
-        if keep and '--no-opinions' not in sys.argv and not entry['opinion'] and re.match(r'https://tile\.loc\.gov/', case.get('pdf') or ''):
-            if to_text(case['pdf'], f'{OUT}/{dk}/opinion.txt', pause=3):
-                entry['opinion'] = case['pdf']
+        entry = {'briefs': keep, 'skipped': skipped, 'id': cid, 'done': True}
         man[dk] = entry
         stats['cases'] += bool(keep)
         if n % 10 == 0:
             print(n, '/', len(order), dk, case['n'][:50], len(keep), 'briefs', flush=True)
-            json.dump(man, open(MAN, 'w'), indent=0)
+        tmp = MAN + '.tmp'      # written every case, atomically (the opinions pass reads it meanwhile)
+        json.dump(man, open(tmp, 'w'), indent=0)
+        os.replace(tmp, MAN)
     json.dump(man, open(MAN, 'w'), indent=0)
     print('done', stats, flush=True)
 
 
 if __name__ == '__main__':
-    main()
+    if '--relabel' in sys.argv:
+        relabel()
+    elif '--opinions' in sys.argv:
+        opinions(follow='--follow' in sys.argv)
+    else:
+        main()

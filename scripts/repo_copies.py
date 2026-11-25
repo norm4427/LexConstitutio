@@ -188,7 +188,7 @@ def harvest_one(key):
                 json.dump(sets, open(sp, 'w', encoding='utf-8'))
             if not sets:
                 return key, 'no law sets'
-        total = 0
+        total, skipped = 0, []
         for fmt in FORMATS[kind]:
             for s in (sets or [None]):
                 slug = fmt + ('-' + re.sub(r'[^A-Za-z0-9_.-]', '_', s) if s else '')
@@ -201,32 +201,39 @@ def harvest_one(key):
                 if n and not tok:
                     open(os.path.join(d, slug + '.done'), 'w').close()
                     continue
-                while True:
-                    q = {'verb': 'ListRecords', 'resumptionToken': tok} if tok else \
-                        dict({'verb': 'ListRecords', 'metadataPrefix': fmt}, **({'set': s} if s else {}))
-                    text = fetch(base + '?' + urllib.parse.urlencode(q), host)
-                    err = oai_error(text)
-                    if err and err[0] == 'noRecordsMatch':
-                        break
-                    if err and err[0] == 'badResumptionToken' and n:       # expired token: start this list again
-                        for f in os.listdir(d):
-                            if f.startswith(slug + '-'):
-                                os.remove(os.path.join(d, f))
-                        n, tok = 0, None
-                        continue
-                    if err:
-                        raise IOError(f'OAI error {err[0]}: {err[1]} ({fmt} {s or ""})')
-                    open(os.path.join(d, f'{slug}-{n:05d}.xml'), 'w', encoding='utf-8').write(text)
-                    n += 1
-                    total += text.count('<record>') + text.count('<record ')
-                    tok = token_of(text)
-                    if n % 25 == 0:
-                        print(f'  {key} {slug}: {n} pages', flush=True)
-                    if not tok:
-                        break
+                try:
+                    while True:
+                        q = {'verb': 'ListRecords', 'resumptionToken': tok} if tok else \
+                            dict({'verb': 'ListRecords', 'metadataPrefix': fmt}, **({'set': s} if s else {}))
+                        text = fetch(base + '?' + urllib.parse.urlencode(q), host)
+                        err = oai_error(text)
+                        if err and err[0] == 'noRecordsMatch':
+                            break
+                        if err and err[0] == 'badResumptionToken' and n:       # expired token: start this list again
+                            for f in os.listdir(d):
+                                if f.startswith(slug + '-'):
+                                    os.remove(os.path.join(d, f))
+                            n, tok = 0, None
+                            continue
+                        if err:
+                            raise IOError(f'OAI error {err[0]}: {err[1]} ({fmt} {s or ""})')
+                        open(os.path.join(d, f'{slug}-{n:05d}.xml'), 'w', encoding='utf-8').write(text)
+                        n += 1
+                        total += text.count('<record>') + text.count('<record ')
+                        tok = token_of(text)
+                        if n % 25 == 0:
+                            print(f'  {key} {slug}: {n} pages', flush=True)
+                        if not tok:
+                            break
+                except Exception as e:
+                    if not s:
+                        raise
+                    skipped.append(f'{fmt} {s}')         # one broken set (HTTP 500, dead token) does not sink the repository
+                    print(f'  {key}: skipped set {s} ({fmt}): {e}', flush=True)
+                    continue
                 open(os.path.join(d, slug + '.done'), 'w').close()
         open(os.path.join(d, '.done'), 'w').close()
-        return key, f'harvested ({total} records this run)'
+        return key, f'harvested ({total} records this run)' + (f'; skipped sets: {", ".join(skipped)}' if skipped else '')
     except Exception as e:
         return key, f'FAILED: {e}'
 
@@ -241,6 +248,7 @@ def records_in(path):
         root = ET.fromstring(text.encode('utf-8'))
     except ET.ParseError:
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+        text = re.sub(r'<(/?)dc:(\d)', r'<\1dc:n\2', text)          # Kentucky's qualified DC has tags such as <dc:1>
         try:
             root = ET.fromstring(text.encode('utf-8'))
         except ET.ParseError:
@@ -413,9 +421,9 @@ def cites_of(r):
                 out.add((ALIAS[mid], int(vol), int(pg)))
         # "Harvard Law Review, vol. 115, no. 3, p. 1234"
         m = re.search(r'\bvol(?:ume)? (\d{1,3})\b', c)
-        for al, j in ALIAS.items():
-            if re.search(r'(?<![a-z])' + al + r'(?![a-z])', c) and len(al) > 8:
-                if m:
+        if m:
+            for al, j in ALIAS.items():
+                if len(al) > 8 and al in c and re.search(r'(?<![a-z])' + al + r'(?![a-z])', c):
                     p = re.search(r'\b(?:p|pp|page|pages) (\d{1,5})\b', c)
                     out.add((j, int(m.group(1)), int(p.group(1)) if p else None))
         # Yale-style file names: 31YaleLJ229

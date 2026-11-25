@@ -22,6 +22,17 @@ SPECIAL = {'SDOConnor': "O'Connor", 'JMarshall': 'John Marshall', 'TMarshall': '
            'JRutledge': 'John Rutledge', 'WBRutledge': 'Wiley B. Rutledge', 'PPBarbour': 'Barbour', 'NClifford': 'Clifford'}
 
 
+# Lineups checked by hand against the Court's own text: (majority, minority, {justice: 1 opinion of the Court,
+# 2 concurrence, 3 dissent}). Roman Catholic Diocese of Brooklyn v. Cuomo, 592 U.S. 14 (2020), per curiam: Oyez codes
+# Sotomayor as not writing, but she filed a dissent joined by Kagan. Trump v. IRAP (Oct. 10, 2017 order list,
+# 16-1436): vacated as moot; "Justice Sotomayor dissents from the order vacating the judgment below".
+HAND = {
+    '2020/20a87': (['CThomas', 'SAAlito', 'NMGorsuch', 'BMKavanaugh', 'ACBarrett'], ['JGRoberts', 'SGBreyer', 'SSotomayor', 'EKagan'],
+                   {'NMGorsuch': 2, 'BMKavanaugh': 2, 'JGRoberts': 3, 'SGBreyer': 3, 'SSotomayor': 3}),
+    '2017/16-1436': (['JGRoberts', 'AMKennedy', 'CThomas', 'RBGinsburg', 'SGBreyer', 'SAAlito', 'EKagan', 'NMGorsuch'], ['SSotomayor'], {}),
+}
+
+
 def display(code):
     if code in SPECIAL:
         return SPECIAL[code]
@@ -231,7 +242,11 @@ def main():
             for v in dec['votes']:
                 m = (v or {}).get('member') or {}
                 key = re.sub(r'[^a-z]', '', fold(m.get('name') or '').lower())
-                code = code_of.get(key) or code_of.get(re.sub(r'[^a-z]', '', fold((m.get('first_name') or '') + (m.get('last_name') or '')).lower()))
+                # "Samuel A. Alito, Jr." / "Brett M. Kavanaugh": also try first name + surname, without initials or suffix
+                toks = [t for t in re.sub(r',?\s+(Jr|Sr|II|III)\.?$', '', fold(m.get('name') or '')).split() if not re.fullmatch(r'[A-Z]\.?', t)]
+                key2 = re.sub(r'[^a-z]', '', (toks[0] + toks[-1]).lower()) if len(toks) >= 2 else ''
+                code = (code_of.get(key) or code_of.get(key2)
+                        or code_of.get(re.sub(r'[^a-z]', '', fold((m.get('first_name') or '') + (m.get('last_name') or '')).lower())))
                 if not code:
                     ok = False; break
                 if code not in idx: idx[code] = len(names); names.append(code)
@@ -244,6 +259,15 @@ def main():
                 out[c['id']] = [dec['majority_vote'], dec['minority_vote'], maj, mino, 2]   # 5th element 2: from Oyez
                 oy += 1
         print(f'filled {oy} more from Oyez')
+    # ---- hand-checked against the Court's own text (essential cases the sources above miss or miscode)
+    for cid, (maj_codes, min_codes, writers) in HAND.items():
+        if not any(c['id'] == cid for c in cases):
+            continue
+        for code in maj_codes + min_codes:
+            if code not in idx: idx[code] = len(names); names.append(code)
+        out[cid] = [len(maj_codes), len(min_codes), [[idx[k], writers.get(k, 0)] for k in maj_codes],
+                    [[idx[k], writers.get(k, 0)] for k in min_codes], 1]   # 5th element 1: from the Court's opinion or order
+    print(f'{len(HAND)} lineups hand-checked')
     # justices as [full name, justice page id] (from build_justices.py), falling back to the surname
     jmap = {}
     if os.path.exists('docs/data/justices.js'):

@@ -116,6 +116,18 @@ def main():
         if p['title'] not in sums:
             sums[p['title']] = get('https://en.wikipedia.org/api/rest_v1/page/summary/' + urllib.parse.quote(p['title'].replace(' ', '_')))
             time.sleep(0.4)
+    for p in people:   # a one-line summary ("X was an American lawyer...") is too thin: use the article's lead section instead (same licence)
+        s0 = sums.get(p['title']) or {}
+        if len(s0.get('extract') or '') < 150 and not s0.get('lead'):
+            d = get('https://en.wikipedia.org/w/api.php?' + urllib.parse.urlencode({'action': 'query', 'format': 'json', 'formatversion': 2, 'prop': 'extracts',
+                    'exintro': 1, 'explaintext': 1, 'redirects': 1, 'titles': p['title']})) or {}
+            txt = ((d.get('query', {}).get('pages') or [{}])[0].get('extract') or '').strip()
+            paras = [re.sub(r'\s+', ' ', x).strip() for x in txt.splitlines() if x.strip()]
+            lead = ' '.join(paras[:2])[:900].rsplit('. ', 1)[0].rstrip('.') + '.' if paras else ''
+            if len(lead) > len(s0.get('extract') or ''):
+                s0['extract'], s0['lead'] = lead, True
+                sums[p['title']] = s0
+            time.sleep(0.4)
     json.dump(sums, open(sum_cache, 'w', encoding='utf-8'), ensure_ascii=False)
     img_cache = f'{CACHE}/images.json'
     imgs = json.load(open(img_cache, encoding='utf-8')) if os.path.exists(img_cache) else {}
