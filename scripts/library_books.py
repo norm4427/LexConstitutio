@@ -95,6 +95,9 @@ GUTENBERG = [
           'Last Debate, at Alton, October 15, 1858': 'Seventh Joint Debate, at Alton, October 15, 1858'}}),
     ('webster-speeches', 'Select Speeches, 1817–1845', 'Daniel Webster', '1817–1845 (George ed.)', [7600], '',
      {'drop_front': True, 'nosplit_re': r'^Select Speeches', 'skip_re': r'^biographical'}),
+    ('blaine-congress-2', 'Twenty Years of Congress, Volume II: From Lincoln to Garfield', 'James G. Blaine', '1886', [20065], '',
+     {'start_re': r'^Twenty Years of Congress$', 'start_last': True, 'toc_titles': True, 'smart': True,
+      'skip_re': r'^(?:twenty years of congress|list of steel portraits)$|^(?:annual production of gold|years\. gold)'}),
     ('douglass-writings', 'Writings and Addresses on Reconstruction and Civil Rights', 'Frederick Douglass', '1866–1886', [99, 67919], '',
      {'drop_front': True, 'nosplit_re': r'^by Frederick', 'vol_labels': ['Collected Articles', 'Three Addresses'], 'rename': {
          'In Louisville, KY': 'Address at Louisville, Kentucky, 1883', 'In Louisville, KY., 1883': 'Address at Louisville, Kentucky, 1883',
@@ -246,6 +249,33 @@ ELLIOT_HEADS = (r'^(?:[\w\[\]. ]{0,25}\]\s*)?(?:MASSACHUSETTS|CONNECTICUT|NEW\s+
                 r'NORTH\s+CAROLINA|SOUTH\s+CAROLINA|DEBATES|PROCEEDINGS|CONSTITUTIONAL\s+PRINCIPLES|OPINIONS)\.?(?:\s+[\w\[\]^.,"\'-]{1,14}){0,3}\s*$'
                 r'|^\d+\s+[A-Z][A-Z .]+\.\s*\[')
 
+# Kent's lectures in volume I and the page of the original edition each begins on (the scan misses most LECTURE headings)
+KENT_LECTURES = [
+    ('Lecture I: Of the Foundation and History of the Law of Nations', 1),
+    ('Lecture II: Of the Rights and Duties of Nations in a State of Peace', 21),
+    ('Lecture III: Of the Declaration and Early Measures of War', 47),
+    ('Lecture IV: Of the Various Kinds of Property Liable to Capture', 73),
+    ('Lecture V: Of the Rights of Belligerents', 89),
+    ('Lecture VI: Of the Rights and Duties of Neutrals', 115),
+    ('Lecture VII: Of Restrictions upon Neutral Trade', 135),
+    ('Lecture VIII: Of Truces, Passports, and Treaties of Peace', 159),
+    ('Lecture IX: Of Offences against the Law of Nations', 181),
+    ('Lecture X: Of the History of the American Union', 201),
+    ('Lecture XI: Of Congress', 221),
+    ('Lecture XII: Of Judicial Constructions of the Powers of Congress', 243),
+    ('Lecture XIII: Of the President', 271),
+    ('Lecture XIV: Of the Judiciary Department', 291),
+    ('Lecture XV: Of the Original and Appellate Jurisdiction of the Supreme Court', 313),
+    ('Lecture XVI: Of the Jurisdiction of the Federal Courts, in Respect to the Common Law, and in Respect to Parties', 331),
+    ('Lecture XVII: Of the District and Territorial Courts of the United States', 353),
+    ('Lecture XVIII: Of the Concurrent Jurisdiction of the State Governments', 387),
+    ('Lecture XIX: Of Constitutional Restrictions on the Powers of the States', 407),
+    ('Lecture XX: Of Statute Law', 447),
+    ('Lecture XXI: Of Reports of Judicial Decisions', 471),
+    ('Lecture XXII: Of the Principal Publications of the Common Law', 499),
+    ('Lecture XXIII: Of the Civil Law', 515),
+]
+
 ARCHIVE = [
     # id, title, author, year, Internet Archive identifiers (volumes in order), Corner source id, options (build_archive)
     ('farrand-1-2', 'The Records of the Federal Convention of 1787, Volumes I–II: The Daily Records', 'Max Farrand (ed.)',
@@ -261,7 +291,7 @@ ARCHIVE = [
      {'head_re': ELLIOT_DAY, 'head_inline': True, 'merge_below': 40, 'vol_labels': ['', '', ''],
       'furniture_re': ELLIOT_HEADS,
       # dates the scanner misread, checked against the convention journals
-      'rename': {'Friday, 11': 'Friday, January 11', 'Saturday, 12': 'Saturday, January 12', 'Saturday, Juli /': 'Saturday, July 5',
+      'rename': {'Friday, 11': 'Friday, January 11', 'Saturday, 12': 'Saturday, January 12', 'Saturday, Juli /': 'Saturday, July 19', 'Saturday, 5': 'Saturday, July 5', 'Thursday, 10': 'Thursday, July 10',
                  'Monday, November 2': 'Monday, November 26', 'Wednesday, October 2': 'Wednesday, November 28',
                  'Friday, June 16': 'Friday, June 6', 'Monday, June 14': 'Monday, June 16', 'Tuesday, June 15': 'Tuesday, June 17',
                  'Tuesday, Jult /': 'Tuesday, July 29'},
@@ -284,6 +314,12 @@ ARCHIVE = [
               (r'^THE\s+TARIFF\.\s+SOUTH\s+CAROLINA', 'Nullification and the Tariff, 1828–1833'),
               (r'^MADISON\s+ON\s+THE\s+TARIFF', 'Madison on the Tariff and the Bank; Hamilton on the Bank'),
               (r'^LIST\s+OF\s+THE\s+VETOES', 'Stop')]}}}),
+    ('kent-commentaries-1', 'Commentaries on American Law, Volume I: The Law of Nations, the Government and Constitutional Jurisprudence of the United States, and the Sources of Municipal Law',
+     'James Kent', '1826 (rev. ed., 1889)', ['commentariesonam01kentuoft'], 'kent',
+     {'start_re': r'^Lecture I\b', 'star_splits': KENT_LECTURES, 'merge_below': 0,
+      'strip_re': [r'\s*\[\s*\*\s*\d+\s*\]', r'\s?\((?:[a-z]{1,2}|\d)\)(?=[\s.,;:]|$)', r'^\*\s*'],
+      'furniture_re': r'^\S{1,6}\.?\s+[\w.]{1,6}\]\s+[A-Z]|^\d+\s+[A-Z ,.]+\[\s*(?:PART|LECT)',
+      'note_re': r'^(?:\([a-z]{1,2}\)|\(\d\)|[*"^]+\s*[A-Z]|\d{1,3}\s+[A-Z])'}),
 ]
 
 
@@ -384,7 +420,7 @@ def smart_title(s):
     roman = re.compile(r'^(?=[ivxlc]+\W*$)(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})\W*$')
 
     def cap(x):      # first letter, letters after a hyphen and initials: "Hayes-Tilden", "B.K. Bruce", '"Negro'
-        return re.sub(r'^([^a-z]*)([a-z])|(?<=[-.])([a-z])', lambda m: (m.group(1) or '') + (m.group(2) or m.group(3)).upper(), x)
+        return x if re.match(r'^\d', x) else re.sub(r'^([^a-z]*)([a-z])|(?<=[-.])([a-z])', lambda m: (m.group(1) or '') + (m.group(2) or m.group(3)).upper(), x)
     out = []
     for i, x in enumerate(w):
         after_break = i and re.search(r'[:.!?—]$', w[i - 1]) and ((roman.match(w[i - 1]) and x not in ('and', 'or', 'to')) or not re.fullmatch(r'(?:[a-z]\.)+|mr\.|st\.|no\.|vol\.', w[i - 1]))
@@ -680,6 +716,17 @@ def build_gutenberg(bid, title, author, year, nums, corner, opt):
         vparts.append((name, cur))
         if vo.get('drop_front') and vparts and vparts[0][0] == 'Front matter':
             vparts = vparts[1:]
+        if vo.get('start_re'):      # begin at the (last, with start_last: past a table of contents) part whose title matches
+            ks = [i for i, (n, _) in enumerate(vparts) if re.match(vo['start_re'], n, re.I)] or [0]
+            k0 = ks[-1] if vo.get('start_last') else ks[0]
+            if vo.get('toc_titles'):      # chapter titles from the summaries printed in the table of contents
+                toc = {}
+                for n, b in vparts[:k0]:
+                    if re.fullmatch(r'Chapter [IVXLC]+', n) and len(b) > 1:
+                        first = re.split(r'\.\s*--|\.\s*—', b[1][1])[0].strip().rstrip('.')
+                        toc[n] = f'{n}: {smart_title(first)}' if len(first) < 110 else n
+                vparts = [(toc.get(n, n), b) for n, b in vparts]
+            vparts = vparts[k0:]
         if vo.get('stop_re'):
             k = next((i for i, (n, _) in enumerate(vparts) if re.match(vo['stop_re'], n, re.I)), None)
             vparts = vparts[:k] if k is not None else vparts
@@ -933,6 +980,8 @@ def fix_long_s(text):
             n = v.get(cand.lower(), 0)
             if n > best_n * 2 or (best_n == 0 and n > 0):
                 best, best_n = cand, n
+        if best == w and best_n == 0:      # a word not in the library at all: f before a consonant no English f precedes is a long s
+            best = re.sub(r'^ft|f(?=[pcbkmnwhqd])', lambda x: 'st' if x.group(0) == 'ft' else 's', w)
         return best
     return re.sub(r"[A-Za-z]+", fix, text)
 
@@ -945,10 +994,11 @@ def avalon_blocks(url, key):
         time.sleep(2)
     h = open(path, encoding='utf-8', errors='replace').read()
     a = h.find('</div>', h.find('class="document-title"'))
-    z = h.find('class="page-menu"', a + 10)
+    z = h.rfind('class="page-menu"')      # the contents link printed again below the text
     h = h[a + 6: h.rfind('<div', 0, z) if z > 0 else len(h)]
     h = re.sub(r'<table class="page-menu".*?</table>', '', h, flags=re.S)
-    h = re.sub(r'\.\{FS\}.*?\.\{FE\}', '', h, flags=re.S)       # footnotes
+    h = re.sub(r'\.?\{FS\}.*?\.?\{FE\}', '', h, flags=re.S)      # footnotes
+    h = re.sub(r'\.?\{\.?\{?F[SE]\}\}?', '', h)      # a footnote marker left unpaired in the transcription
     h = re.sub(r'<table.*?</table>', '', h, flags=re.S)          # the printer's signature and catchword line
     h = re.sub(r'<sup>.*?</sup>', '', h, flags=re.S)
     h = re.sub(r'</?font[^>]*>', '', h)
@@ -1055,11 +1105,36 @@ def ocr_blocks(txt, opt):
         letters = [c for c in t if c.isalpha()]
         if len(t) <= 80 and letters and sum(c.isupper() for c in letters) > 0.85 * len(letters):
             out.append(['h', t])
-        elif len(letters) < 0.5 * len(t) and len(t) < 200:
+        elif len(letters) < 0.5 * len(t) and len(t) < 200 and not re.search(r'\[\s*\*\s*\d+\s*\]', t):
             continue                                                            # a vote table or OCR debris
         else:
             out.append(['p', t])
     return out
+
+
+def fix_ocr_words(title):
+    """Misread words in a part title ("Op the Eight of Indivrdijals") replaced by the closest common word in the library."""
+    import difflib
+    v = long_s_vocab()
+    common = getattr(fix_ocr_words, 'common', None)
+    if common is None:
+        common = fix_ocr_words.common = {}
+        for w, n in v.items():
+            if n >= 20 and len(w) > 1:
+                common.setdefault(len(w), []).append(w)
+    def fix(m):
+        w = m.group(0)
+        low = w.lower()
+        if v.get(low, 0) >= 5 or len(w) < 2 or re.fullmatch(r'[IVXLC]+', w):
+            return w
+        cands = [c for L in (len(low) - 1, len(low), len(low) + 1) for c in common.get(L, [])]
+        best = difflib.get_close_matches(low, cands, n=1, cutoff=0.7)
+        if not best:
+            return w
+        b = best[0]
+        return b.capitalize() if w[0].isupper() else b
+    title = title.replace('£', 'e').replace('«', '').replace('"', '')
+    return re.sub(r"[A-Za-z]+", fix, title)
 
 
 def _roman(n):
@@ -1087,15 +1162,26 @@ def build_archive(bid, title, author, year, idents, corner, opt):
         if vo.get('star_splits'):
             marks, last = {}, -1
             for title_, page in vo['star_splits']:
-                pat = re.compile(r'\[\s*\*\s*%d\s*\]' % page)
-                k = next((i for i, (_, t) in enumerate(blocks) if i > last and pat.search(t)), None)
-                if k is not None:
+                find = lambda pg: next((i for i, (_, t) in enumerate(blocks) if i > last and re.search(r'\[\s*\*\s*%d\s*\]' % pg, t)), None)
+                k = find(page)
+                if k is None and page > 1:      # the first page's marker was lost: go back from the next page's to the title
+                    k = find(page + 1)
+                    if k is not None:
+                        k = next((j for j in range(k, max(last, k - 25), -1) if blocks[j][0] == 'h' and re.match(r'^\W*OF\s', blocks[j][1])), k)
+                if k is None:      # no page marker at all: the lecture's own title line, as printed ("OF THE GENERAL RIGHTS ...")
+                    import difflib
+                    want = re.sub(r'^.*?:\s*', '', title_).lower()
+                    sim = lambda t: difflib.SequenceMatcher(None, want, re.sub(r'[^a-z ]', '', t.lower())).ratio()
+                    cands = [(sim(t), i) for i, (kind, t) in enumerate(blocks) if i > last and kind == 'h' and re.match(r'^\W*O[FP]\s', t)][:40]
+                    best = max(cands, default=(0, None))
+                    k = best[1] if best[0] >= 0.6 else None
+                if k is not None and k > last:
                     marks[k], last = title_, k
             out = []
             for i, b in enumerate(blocks):
                 if i in marks:
                     out.append(['split', marks[i]])
-                    if b[0] == 'h' and re.match(r'^\W*L\s?E\s?C', b[1]):      # the misread "LECTURE VI." line itself
+                    if re.match(r'^\W*L\s?E\s?C', b[1]) and len(b[1]) < 40:      # the misread "LECTURE VI." line itself
                         continue
                 out.append(b)
             blocks = out
@@ -1114,19 +1200,26 @@ def build_archive(bid, title, author, year, idents, corner, opt):
                     vparts.append((name or 'Front matter', cur))
                 seq_n += 1
                 ttl = f"{vo['seq']} {_roman(seq_n)}" if vo.get('seq') else part_title(t, vo)
+                if vo.get('fix_titles'):
+                    ttl = fix_ocr_words(ttl)
                 name = (f'{group} · ' if group else '') + ttl
                 cur = [] if vo.get('head_inline') or vo.get('star_splits') else [['h', ttl if vo.get('seq') else t]]
             else:
                 cur.append([kind, t])
         vparts.append((name or 'Front matter', cur))
         if vo.get('start_re'):
-            k = next((i for i, (n, _) in enumerate(vparts) if re.match(vo['start_re'], n, re.I)), 0)
-            vparts = vparts[k:]
+            ks = [i for i, (n, _) in enumerate(vparts) if re.match(vo['start_re'], n, re.I)] or [0]
+            vparts = vparts[ks[-1] if vo.get('start_last') else ks[0]:]      # start_last: past a table of contents
         if vo.get('stop_re'):
             k = next((i for i, (n, _) in enumerate(vparts) if re.match(vo['stop_re'], n, re.I)), None)
             vparts = vparts[:k] if k is not None else vparts
         if vo.get('sub_title'):
             vparts = [(sub_title(n, b), b) for n, b in vparts]
+        if vo.get('fix_titles'):
+            vparts = [(fix_ocr_words(n), b) for n, b in vparts]
+        if vo.get('word_fix'):      # misread words in titles, corrected by hand
+            wf = vo['word_fix']
+            vparts = [(re.sub(r"[^\s]+", lambda m: wf.get(m.group(0), m.group(0)), n), b) for n, b in vparts]
         merged = []
         for n, b in vparts:
             w = sum(len(x[1].split()) for x in b)
@@ -1170,10 +1263,10 @@ def supplement(bid, cut_re, label, src_note, new_parts):
 
 SUPPLEMENTS = [
     # id, parts of the work to drop from (regex on part title, '' for none), part-title prefix, source note, builder
-    ('blackstone', r'^Of Redress by the mere operation of Law', '', 'Books III and IV from the Avalon Project (Yale Law School), '
+    ('blackstone', r'^(?:Of Redress by the mere operation of Law|Book III · )', '', 'Books III and IV from the Avalon Project (Yale Law School), '
      'transcribed from the first edition (1768–1769); the long s, printed there as f, is restored automatically',
      lambda: avalon_blackstone()),
-    ('spirit-of-laws', '', 'Volume II · ', 'Books XX–XXXI from the Internet Archive scan spiritoflawsincl02montuoft (Nugent '
+    ('spirit-of-laws', r'^Volume II · ', 'Volume II · ', 'Books XX–XXXI from the Internet Archive scans spiritoflawsincl01mont and spiritoflawsincl02montuoft (Nugent '
      'trans., Colonial Press ed., 1900), OCR cleaned automatically', lambda: montesquieu_vol2()),
 ]
 
@@ -1189,23 +1282,148 @@ def avalon_blackstone():
     return parts
 
 
+MONTESQUIEU_BOOKS = {
+    'XX': 'Of Laws in Relation to Commerce, Considered in Its Nature and Distinctions',
+    'XXI': 'Of Laws in Relation to Commerce, Considered in the Revolutions It Has Met With in the World',
+    'XXII': 'Of Laws in Relation to the Use of Money',
+    'XXIII': 'Of Laws in the Relation They Bear to the Number of Inhabitants',
+    'XXIV': 'Of Laws in Relation to Religion, Considered in Itself and in Its Doctrines',
+    'XXV': 'Of Laws in Relation to the Establishment of Religion and Its External Polity',
+    'XXVI': 'Of Laws in Relation to the Order of Things Which They Determine',
+    'XXVII': 'Of the Origin and Revolutions of the Roman Laws on Successions',
+    'XXVIII': 'Of the Origin and Revolutions of the Civil Laws Among the French',
+    'XXIX': 'Of the Manner of Composing Laws',
+    'XXX': 'Theory of the Feudal Laws Among the Franks, in the Relation They Bear to the Establishment of the Monarchy',
+    'XXXI': 'Theory of the Feudal Laws Among the Franks, in the Relation They Bear to the Revolutions of Their Monarchy',
+}
+
+
 def montesquieu_vol2():
-    opt = {'head_re': r'^BOOK [XVIL]{2,6}\.?$', 'start_re': r'^BOOK XX\b', 'stop_re': r'^INDEX', 'sub_title': True,
-           'note_re': r'^(?:\d{1,3}|[a-z]|[*†‡§])\s+(?:[A-Z"“‘(\[]|ibid|see\b)'}
-    blocks = ocr_blocks(ia_text('spiritoflawsincl02montuoft'), opt)
+    """Books XX-XXXI (the Wikisource transcription stops at Book XIX) from the Colonial Press edition's two volumes,
+    each read up to its index."""
+    opt = {'head_re': r'^BOOK\s+[XVIL]{2,6}\.?\s*$', 'note_re': r'^(?:\d{1,3}|[a-z]|[*†‡§])\s+(?:[A-Z"“‘(\[]|ibid|see)'}
+    blocks = []
+    for ident in ('spiritoflawsincl01mont', 'spiritoflawsincl02montuoft'):
+        txt = ia_text(ident)
+        a = re.search(r'^BOOK\s+XX\s*$', txt, re.M) if ident.endswith('01mont') else None
+        txt = txt[a.start():] if a else txt
+        last = list(re.finditer(r'^BOOK\s+[XVIL]+\s*$', txt, re.M))      # the index or the publisher's pages after the last book
+        z = re.compile(r"^(?:INDEX|THE\s+WORLD'S)\s*$", re.M).search(txt, last[-1].end() if last else 0)
+        blocks += ocr_blocks(txt[:z.start()] if z else txt, opt)
     parts, cur, name = [], [], None
     for kind, t in blocks:
         if kind == 'split':
             if name:
                 parts.append((name, cur))
-            name, cur = smart_title(t.rstrip('.')), [['h', t]]
+            num = re.sub(r'[^XVIL]', '', t.split(None, 1)[1])
+            name, cur = f'Book {num}: {MONTESQUIEU_BOOKS.get(num, "")}'.rstrip(': '), [['h', f'Book {num}']]
         elif name:
             cur.append([kind, t])
     if name:
         parts.append((name, cur))
-    k = next((i for i, (n, _) in enumerate(parts) if n == 'Book XX'), 0)
-    parts = [(sub_title(n, b), b) for n, b in parts[k:]]
-    return split_long([(n, b) for n, b in parts if sum(len(x[1].split()) for x in b) >= 60])
+    k = next((i for i, (n, _) in enumerate(parts) if n.startswith('Book XX:')), 0)
+    return split_long([(n, b) for n, b in parts[k:] if sum(len(x[1].split()) for x in b) >= 60])
+
+
+
+# ---------------------------------------------------------------------------------------------- Annals of Congress
+ANNALS_DAY = re.compile(r'^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday),?\s+([A-Z][a-zA-Z^]{2,9})\.?,?\s+([\dIilSoO ]{1,4})[.,]?\s*$', re.I)
+MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+
+def build_annals(bid, title, author, year, ident, first_year):
+    """The Annals of Congress from an Internet Archive scan: each chamber's proceedings read a day per part. The scanner
+    misreads many day numbers ("June 33"), so each date is worked out from its weekday and month, the day falling on or
+    after the previous sitting; a date that goes back marks the next chamber or session, named from the running heads."""
+    import datetime
+    lines = ia_text(ident).replace('\r', '').split('\n')
+    heads = []
+    for i, x in enumerate(lines):
+        m = ANNALS_DAY.match(re.sub(r'[ \t]+', ' ', x).strip())
+        if not m:
+            continue
+        wd = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].index(m.group(1).lower())
+        mon = next((k for k, name in enumerate(MONTHS, 1) if difflib_ratio(m.group(2).lower(), name) >= 0.7), None)
+        if mon:
+            heads.append((i, wd, mon, re.sub(r'\D', '', ocr_num(m.group(3).replace(' ', '')))))
+    # sessions of the First Congress: a misread date can only fall inside one of them
+    sessions = [(datetime.date(1789, 3, 4), datetime.date(1789, 9, 29), 'First Session'),
+                (datetime.date(1790, 1, 4), datetime.date(1790, 8, 12), 'Second Session'),
+                (datetime.date(1790, 12, 6), datetime.date(1791, 3, 3), 'Third Session')]
+    in_session = lambda d: next((name for a_, z_, name in sessions if a_ <= d <= z_), None)
+    dated, prev = [], None
+    for i, wd, mon, num in heads:
+        days = [datetime.date(y, mon, d) for y in (1789, 1790, 1791) for d in range(1, 32)
+                if _valid(y, mon, d) and datetime.date(y, mon, d).weekday() == wd and in_session(datetime.date(y, mon, d))]
+        if not days:
+            continue
+        after = [d for d in days if prev and 0 <= (d - prev).days <= 14]
+        if not after and prev:      # the month misread too ("Monday, January 31" for February 1): the same weekday soon after
+            after = [prev + datetime.timedelta(days=k) for k in range(1, 8) if (prev + datetime.timedelta(days=k)).weekday() == wd]
+            after = [d for d in after if in_session(d)] if (int(num or 0) > 28 or not num) else []
+        if after:
+            d = after[0]
+        else:      # the next chamber begins its record again: the session day nearest the printed number
+            n = int(num) if num else 1
+            sidx = lambda x: next(k for k, (a_, z_, _) in enumerate(sessions) if a_ <= x <= z_)
+            d = min(days, key=lambda x: (abs(x.day - n) + (3 * abs(sidx(x) - sidx(prev)) if prev else 0), x))
+        dated.append((i, d))
+        prev = d
+    # sections where the dates go back; each named from its running heads ("[Senate." or "H. OF R.")
+    sections, start = [], 0
+    for k in range(1, len(dated)):
+        gap = (dated[k][1] - dated[k - 1][1]).days
+        if gap < -3 or gap > 30:      # back to the start of a session, or on to the next session
+            sections.append((start, k))
+            start = k
+    sections.append((start, len(dated)))
+    parts = []
+    for a, z in sections:
+        lo = dated[a][0]
+        hi = dated[z][0] if z < len(dated) else len(lines)
+        seg = '\n'.join(lines[lo:hi])
+        senate = len(re.findall(r'\[Senate\.|Senate\.\]', seg))
+        house = len(re.findall(r'H\.\s*(?:OF|of)\s*R', seg))
+        chamber = 'Senate' if senate > house else 'House of Representatives'
+        sess = in_session(dated[a][1])
+        for k in range(a, z):
+            lo = dated[k][0]
+            hi = dated[k + 1][0] if k + 1 < len(dated) else len(lines)
+            b = ocr_blocks('\n'.join(lines[lo + 1:hi]), {'furniture_re': r'^\S{0,14}(?:Senate|SENATE|H\.\s*(?:OF|of)\s*R)\S{0,3}\s*$|^\S{0,4}\s*[A-Z]{3,9},\s*1\s?7\s?[89]\s?\d\.?\]?\s*\S{0,10}$|^\d{2,4}\s*$'})
+            d = dated[k][1]
+            parts.append((f'{chamber} ({sess}) · {d.strftime("%A")}, {d.strftime("%B")} {d.day}, {d.year}', [['h', lines[lo].strip()]] + b))
+    merged = []
+    for n, b in parts:      # a day whose page ended up empty is joined to the next
+        w = sum(len(x[1].split()) for x in b)
+        if merged and merged[-1][2] < 40:
+            pn, pb, pw = merged.pop()
+            b, w = pb + b, pw + w
+        merged.append((n, b, w))
+    parts = split_long([(n, b) for n, b, w in merged])
+    lic = (f'Public-domain text; OCR of the Internet Archive scan {ident} (Gales and Seaton, 1834), cleaned automatically; dates '
+           'reconstructed from the weekday where the scan misread them. OCR errors remain; check quotations against the page images')
+    return write_book({'id': bid, 'title': title, 'author': author, 'year': year, 'src': f'https://archive.org/details/{ident}',
+                       'srcName': 'Internet Archive', 'license': lic, 'corner': ''}, parts)
+
+
+def _valid(y, m, d):
+    import datetime
+    try:
+        datetime.date(y, m, d)
+        return True
+    except ValueError:
+        return False
+
+
+def difflib_ratio(a, b):
+    import difflib
+    return difflib.SequenceMatcher(None, a, b).ratio()
+
+
+ANNALS = [
+    ('annals-1', 'Annals of Congress, Volume I: The First Congress, March 1789–February 1790 (with the Bill of Rights Debates)', 'Joseph Gales (comp.)',
+     '1789–1790 (pub. 1834)', 'debatesandproce00galegoog', 1789),
+]
 
 
 def main():
@@ -1241,6 +1459,13 @@ def main():
             continue
         try:
             index[b[0]] = build_archive(*b)
+        except Exception as e:
+            print(f'{b[0]}: FAILED {e}', flush=True)
+    for b in ANNALS:
+        if only and b[0] not in only:
+            continue
+        try:
+            index[b[0]] = build_annals(*b)
         except Exception as e:
             print(f'{b[0]}: FAILED {e}', flush=True)
     for bid, cut, label, note, fn in SUPPLEMENTS:      # after the work itself is built (or on its own: "blackstone+")

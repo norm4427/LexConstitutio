@@ -66,7 +66,7 @@ def main():
     idx = load('docs/data/lib-index.js')
     # later-period works (app.js LATER_IDS): listed apart from the founding era
     LATER = ('tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century', 'webster-speeches', 'lincoln-douglas',
-             'douglass-writings', 'dred-scott', 'ross-impeachment', 'lynch-reconstruction')
+             'douglass-writings', 'dred-scott', 'ross-impeachment', 'lynch-reconstruction', 'blaine-congress-2')
     st['libraryWorks'] = len(idx) + 3   # plus The Federalist, the founding documents and the early statutes
     st['libraryWords'] = sum(x['words'] for x in idx)
     st['libraryFounding'] = sum(1 for x in idx if x.get('shelf') != 'gov' and x['id'] not in LATER) + 3

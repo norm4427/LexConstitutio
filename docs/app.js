@@ -2676,9 +2676,9 @@
     ['revolution', 'The Revolutionary argument', 'The pamphlets of the imperial crisis and independence, where the colonists worked out their constitutional claims.',
       ['lib:otis', 'lib:farmer-letters', 'lib:summary-view', 'lib:novanglus', 'lib:common-sense', 'lib:thoughts-government', 'lib:notes-virginia', 'lib:burke-america', 'lib:price-civil-liberty', 'lib:paine-crisis']],
     ['framing', 'Framing and ratification', 'The Convention’s debates and the public argument over ratification, for and against.',
-      ['madison', 'federalist', 'antifederalist', 'lib:farrand-3', 'lib:federalist-pamphlets', 'lib:ford-pamphlets', 'lib:ford-essays', 'lib:curtis-history']],
+      ['madison', 'federalist', 'antifederalist', 'lib:farrand-1-2', 'lib:farrand-3', 'lib:elliot-debates', 'lib:federalist-pamphlets', 'lib:ford-pamphlets', 'lib:ford-essays', 'lib:curtis-history']],
     ['practice', 'Early practice and commentary', 'How the first Congresses, the Virginia and Kentucky Resolutions and the early commentators applied and explained the Constitution.',
-      ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley', 'lib:annual-messages', 'lib:marshall-washington', 'lib:tucker-slavery']],
+      ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley', 'lib:annals-1', 'lib:annual-messages', 'lib:marshall-washington', 'lib:tucker-slavery']],
   ];
   const LIB_DESC = {
     'spirit-of-laws': 'Montesquieu’s comparative study of laws and governments, the source of the founders’ separation of powers.',
@@ -2711,6 +2711,9 @@
     'annual-messages': 'The annual messages of Washington, Adams, Jefferson and Madison to Congress: the early presidents’ own account of the Constitution in practice.',
     'marshall-washington': 'Chief Justice Marshall’s life of Washington; the last volumes cover the Confederation, the Constitution and the first administrations.',
     'tucker-slavery': 'St. George Tucker’s 1796 proposal for gradual abolition in Virginia, by the author of the first American commentary on the Constitution.',
+    'farrand-1-2': 'Farrand’s day-by-day record of the Convention, May 14 to September 17, 1787: the Journal with Madison’s, Yates’s, King’s and others’ notes side by side.',
+    'elliot-debates': 'The state ratifying conventions of Massachusetts, Connecticut, New Hampshire, New York, Pennsylvania, Maryland, Virginia and the Carolinas, with early congressional debates on constitutional questions.',
+    'annals-1': 'The First Congress’s debates, March 1789 to February 1790: Madison’s amendments of June 8 and the House debates of August 1789 that became the Bill of Rights.',
   };
   function libraryLink(sid) {
     const fixed = { federalist: '#/library/federalist', documents: '#/library/documents', statutes: '#/library/statutes' }[sid];
@@ -2879,7 +2882,7 @@
     viewNotFound();
   }
   // later-period texts: listed apart from the founding era
-  const LATER_IDS = ['tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century', 'webster-speeches', 'lincoln-douglas', 'douglass-writings', 'dred-scott', 'ross-impeachment', 'lynch-reconstruction'];
+  const LATER_IDS = ['tocqueville', 'union-slavery-war', 'lincoln-speeches', 'twentieth-century', 'webster-speeches', 'lincoln-douglas', 'douglass-writings', 'dred-scott', 'ross-impeachment', 'lynch-reconstruction', 'blaine-congress-2'];
   function renderLibraryHome() {
     const idx = window.LIB_INDEX || [], yr = b => +((String(b.year).match(/\d{4}/) || [9999])[0]);
     const card = b => `<a class="jcard" href="#/library/book/${esc(b.id)}"><div class="abbr">${esc(b.author)} · ${esc(b.year)}</div><h3>${esc(b.title)}</h3><div class="foot"><span>${fmt(b.chapters)} part${b.chapters === 1 ? "" : "s"} · ${fmtWords(b.words)}</span><b>Read →</b></div></a>`;
