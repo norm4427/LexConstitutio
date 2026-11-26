@@ -71,7 +71,12 @@ def main():
         keys = [w for w in words(c['name']) if len(w) > 6 and w not in ('amendment', 'clauses')]
         tail = ' '.join(words(ov.split(',', 1)[1])) if ',' in ov else ''
         named = any(k in head.split() for k in keys) or (len(tail.split()) >= 2 and tail in head)
-        if (probe and probe in body) or (titles and sum(t in body for t in titles) >= min(2, len(titles))) or named:
+        # or, for an amendment's section, the page at that section's own address is titled with its number ("Section III")
+        # (LII files the essays of the later amendments at the amendment, so their section pages hold only a heading)
+        sec = re.fullmatch(r'am\d+s(\d+)', u['id'])
+        roman = 'I II III IV V VI VII VIII'.split()
+        titled = sec and re.search(r'<title>Section ' + roman[int(sec.group(1)) - 1] + r' \|', page(p))
+        if (probe and probe in body) or (titles and sum(t in body for t in titles) >= min(2, len(titles))) or named or titled:
             c['lii'] = BASE + p; ok += 1
         else:
             bad.append((c['id'], p))
