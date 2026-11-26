@@ -20,6 +20,7 @@ Step 2 (apply): a record is linked to an article only when it offers a full-text
   Only articles with no `oa`, `pdf` or `pub` that are not book reviews get a link: `oa` = the full-text URL and `oav` =
   publishedVersion unless the record calls itself a preprint / working paper (then no `oav`, as free_copies.py does).
   Nothing else in the file changes. Matches are also written to data/raw/repo_copies/matches.json.
+  Penn Carey Law (Quartex, no OAI-PMH): sitemap title slugs matched to our titles, document page meta description parsed.
 Run from the repo root (never before open_copies.py, which clears and rebuilds `oa`):
     python scripts/repo_copies.py harvest [repo ...]     # all repositories, or only the named ones
     python scripts/repo_copies.py apply --dry-run        # counts per journal and repository, 15 random matches; writes nothing
@@ -75,6 +76,9 @@ REPOS = {
     # Harvard DASH (DSpace 7): Harvard Law School sets
     'harvard': ('dspace', 'https://dash.harvard.edu/server/oai/request', 'law'),
     'berkeley': ('invenio', 'https://lawcat.berkeley.edu/oai2d', ['ir']),
+    # Penn Carey Law (Quartex, no OAI-PMH): public sitemap of documents by title slug; a document page is fetched only when its
+    # slug matches one of our titles, and its meta description gives authors and citation. Links the document page.
+    'penn': ('quartex', 'https://repository.law.upenn.edu', None),
 }
 FORMATS = {'dc': ['oai_dc', 'qualified-dublin-core'], 'dspace': ['dim', 'ore'], 'invenio': ['marcxml']}
 # hosts that serve a repository's files under another name
@@ -171,8 +175,78 @@ def law_sets(base, host, kind):
             return sets
 
 
+def harvest_penn(key):
+    kind, base, _ = REPOS[key]
+    host = urllib.parse.urlparse(base).netloc
+    d = os.path.join(CACHE, key)
+    os.makedirs(d, exist_ok=True)
+
+    def cached(name, url):
+        p = os.path.join(d, name)
+        if not os.path.exists(p):
+            open(p, 'w', encoding='utf-8').write(fetch(url, host))
+        return open(p, encoding='utf-8').read()
+    try:
+        idx = cached('sitemap.xml', base + '/sitemap.xml')
+        docs = []
+        for k, loc in enumerate(re.findall(r'<loc>([^<]*type=DOCUMENT[^<]*)</loc>', idx)):
+            docs += re.findall(r'<loc>(' + re.escape(base) + r'/Documents/Detail/([^/<]+)/(\d+))</loc>', cached(f'sitemap-{k}.xml', html.unescape(loc)))
+        by = {}
+        for url, slug, num in docs:
+            by.setdefault(norm(slug.replace('-', ' ')), []).append((url, num))
+        _, data = load()
+        todo = set()
+        for a in data['articles']:
+            if a.get('oa') or a.get('pdf') or a.get('pub') or a.get('rv'):
+                continue
+            n = norm(a['t'])
+            hits = by.get(n, [])
+            if not hits and len(n) > 30:
+                hits = [h for k2, hs in by.items() if min(len(k2), len(n)) > 30 and (k2.startswith(n) or n.startswith(k2)) for h in hs]
+            todo.update(hits[:8])
+        urls = {}
+        for url, num in sorted(todo):
+            cached(f'page-{num}.html', url)
+            urls[num] = url
+        json.dump(urls, open(os.path.join(d, 'urls.json'), 'w', encoding='utf-8'), indent=0)
+        open(os.path.join(d, '.done'), 'w').close()
+        return key, f'harvested ({len(docs)} documents in the sitemap, {len(todo)} pages checked)'
+    except Exception as e:
+        return key, f'FAILED: {e}'
+
+
+def parse_penn(key):
+    d = os.path.join(CACHE, key)
+    urls = json.load(open(os.path.join(d, 'urls.json'), encoding='utf-8'))
+    out = []
+    for fn in sorted(os.listdir(d)):
+        if not fn.startswith('page-') or fn[5:-5] not in urls:
+            continue
+        s = open(os.path.join(d, fn), encoding='utf-8').read()
+        if 'This document contains no images' in s:          # a citation record without the text
+            continue
+        m = re.search(r'<meta name="description" content="([^"]*)"', s)
+        u = re.match(r'(.*)', urls[fn[5:-5]])
+        t = re.search(r'<title>(.*?) - Intellectual Life @ PCL</title>', s, re.S)
+        if not (m and t and u):
+            continue
+        title, desc = html.unescape(t.group(1)).strip(), html.unescape(m.group(1))
+        rest = desc[len(title):].lstrip(', ') if desc.startswith(title) else desc
+        authors = []
+        for part in rest.split(', '):
+            if re.fullmatch(r'Article|Essay|Book Review|Review|Chapter|Book|Comment|Note|Lecture|Other|Speech|Response|Reply|Symposium', part.strip()):
+                break
+            authors.append(part.strip())
+        out.append({'id': fn, 'title': title, 'authors': authors[:8], 'cites': [desc], 'year': year_of([desc]),
+                    'file': html.unescape(u.group(1)), 'page': html.unescape(u.group(1))})
+    json.dump(out, open(os.path.join(CACHE, key + '.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+    return len(out), len(out)
+
+
 def harvest_one(key):
     kind, base, sets = REPOS[key]
+    if kind == 'quartex':
+        return harvest_penn(key)
     host = urllib.parse.urlparse(base).netloc
     d = os.path.join(CACHE, key)
     os.makedirs(d, exist_ok=True)
@@ -292,6 +366,8 @@ def year_of(vals):
 
 def parse_repo(key):
     kind, base, _ = REPOS[key]
+    if kind == 'quartex':
+        return parse_penn(key)
     d = os.path.join(CACHE, key)
     host = urllib.parse.urlparse(base).netloc
     hosts = FILE_HOSTS.get(key, set()) | {host, host.removeprefix('www.')}
@@ -517,6 +593,8 @@ def apply(dry):
         pool = {id(r): r for r in by_title.get(norm(a['t']), []) + by_cite.get((a['j'], a.get('v')), []) + by_cite.get((a['j'], None), [])}
         best = None
         for r in pool.values():
+            if r['repo'] == 'penn' and a['j'] == 'pennlr':      # Penn Law Review itself is archive_copies.py's (stricter) job
+                continue
             how = match(a, r, r['_cites'])
             if how:
                 rank = (how != 'citation', order[r['repo']])
