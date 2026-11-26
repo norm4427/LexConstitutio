@@ -1111,6 +1111,12 @@
           <p class="attrib">The opening of the Wikipedia article “<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.t)}</a>”${h.rev ? ` (<a href="https://en.wikipedia.org/w/index.php?oldid=${esc(h.rev)}" target="_blank" rel="noopener">revision ${esc(h.rev)}</a>)` : ''}, by its contributors, under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. Not an official summary: check it against the opinion.</p></section>`;
         return;
       }
+      if (h.src === 'gpo') {
+        slot.innerHTML = `<section class="headnotes" aria-label="Syllabus"><h2>Syllabus <small>from the United States Reports</small></h2>
+          <div class="prose-sm">${h.h.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>
+          <p class="attrib">The syllabus prepared by the Reporter of Decisions and printed with the opinion${h.cite ? ' at ' + esc(h.cite) : ''} (public domain; it is not part of the Court's opinion), from the <a href="${esc(h.url || 'https://www.govinfo.gov/app/collection/usreports')}" target="_blank" rel="noopener">U.S. Reports on GovInfo</a> (U.S. Government Publishing Office).</p></section>`;
+        return;
+      }
       if (h.src === 'cl') {
         const K = { syllabus: ['Syllabus', 'the syllabus printed with the opinion'], headnotes: ['Headnotes', 'the headnotes printed with the opinion'], summary: ['Summary', 'the case summary'], order: ['Order', 'the whole text of this short order or per curiam'], opening: ['Opening of the opinion', 'the opening of the Court’s opinion (no syllabus or headnote is available)'] }[h.kind] || ['Summary', 'the case text'];
         slot.innerHTML = `<section class="headnotes" aria-label="${esc(K[0])}"><h2>${esc(K[0])} <small>from CourtListener</small></h2>

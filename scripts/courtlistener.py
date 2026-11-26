@@ -4,7 +4,8 @@ Caselaw Access Project graph does not reach, and oral-argument audio links.
 CourtListener's bulk data and API data are "free of known copyright restrictions" (courtlistener.com/help/api/bulk-data/);
 the opinions themselves are public domain. The token is read from .keys.env (COURTLISTENER_TOKEN, via local_keys.py) and
 sent only in the Authorization header; it is never printed or written anywhere. Requests are spaced out
-(CourtListener's stated limit is about 5,000 an hour, but it answers this token with 5 a minute, so about 13.5 s apart).
+(CourtListener's documented limit is about 5,000 an hour, but this token gets 5 a minute and 125 a day: requests
+are 13.5 s apart, and a run stops cleanly when the day's quota is gone; rerun the next day to continue).
 
   summaries  for every case case_summaries.py still leaves without a summary: the case's opinion cluster (by SCDB id,
              else by U.S. Reports citation) and the text of its lead opinion. case_summaries.py build turns them into
@@ -29,7 +30,7 @@ import local_keys  # noqa: E402,F401  (loads .keys.env)
 
 API = 'https://www.courtlistener.com/api/rest/v4/'
 RAW = 'data/raw/courtlistener'
-GAP = 13.5   # the API answers this token with 'Rate limit exceeded: 5/min'
+GAP = 13.5   # this token is limited to 5 requests a minute and 125 a day
 _last = [0.0]
 
 
@@ -54,7 +55,10 @@ def get(path, **params):
                 return None
             if e.code in (401, 403):
                 raise SystemExit(f'CourtListener refused the request (HTTP {e.code}); check COURTLISTENER_TOKEN')
-            time.sleep(int(e.headers.get('Retry-After') or 30) + 3 if e.code == 429 else 10 * (attempt + 1))
+            wait = int(e.headers.get('Retry-After') or 30) if e.code == 429 else 10 * (attempt + 1)
+            if wait > 600:   # the daily quota (125 requests for this token) is used up: stop, so nothing empty is cached
+                raise SystemExit(f'CourtListener quota used up; rerun in about {wait // 3600 + 1} h (finished items are cached)')
+            time.sleep(wait + 3)
         except Exception as e:
             print('  ', type(e).__name__, url.split('?')[0], flush=True)
             time.sleep(10 * (attempt + 1))
@@ -142,8 +146,10 @@ def fetch_cites():
     os.makedirs(f'{RAW}/cites', exist_ok=True)
     path = f'{RAW}/cites/search.json'
     rows = json.load(open(path, encoding='utf-8')) if os.path.exists(path) and '--refresh' not in sys.argv else None
-    if rows is None:
-        rows, url = [], API + 'search/?' + urllib.parse.urlencode({'type': 'o', 'court': 'scotus', 'filed_after': SINCE, 'order_by': 'dateFiled asc'})
+    if rows is None:   # resumable: progress is saved after every page (about 330 pages; 125 requests a day)
+        part = path + '.partial'
+        rows, url = json.load(open(part, encoding='utf-8')) if os.path.exists(part) else ([], None)
+        url = url or (None if rows else API + 'search/?' + urllib.parse.urlencode({'type': 'o', 'court': 'scotus', 'filed_after': SINCE, 'order_by': 'dateFiled asc'}))
         while url:
             r = get(url)
             if r is None:
@@ -153,9 +159,11 @@ def fetch_cites():
                              'cit': x.get('citation') or [], 'scdb': x.get('scdb_id'), 'url': x.get('absolute_url'),
                              'ops': [{'id': o.get('id'), 'cites': o.get('cites') or []} for o in x.get('opinions') or []]})
             url = r.get('next')
+            json.dump([rows, url], open(part, 'w', encoding='utf-8'))
             if len(rows) % 500 < 20:
                 print(' ', len(rows), 'clusters', flush=True)
         json.dump(rows, open(path, 'w', encoding='utf-8'))
+        os.remove(part)
     op_cluster = {o['id']: x['id'] for x in rows for o in x['ops']}
     date = {x['id']: x.get('date') or '' for x in rows}
     cited_by = {}

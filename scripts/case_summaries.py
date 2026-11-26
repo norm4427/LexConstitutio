@@ -10,16 +10,20 @@ Sources, in order of preference (each is only tried for cases that still lack a 
         second page and accepts syllabi that open with "1." (most 1930s-50s cases the first pass missed); a last
         reading takes the short block after the docket line (per curiam orders, decrees, "affirmed by an equally
         divided Court", "Decided on authority of ...").
+  gpo   the syllabus from GovInfo's U.S. Reports granule PDFs (GPO, public domain) for vols 543-587, which the LoC
+        per-case PDFs do not reach; extracted into data/raw/govinfo_syl/syllabi.json by a separate pass (src:'gpo').
   recite  cases whose first page on the site is wrong: the page CAP's volume metadata gives for the same decision date
         and party name, then the LoC PDF (and, through 1930, CAP's head matter) from that page.
   orders  memorandum decisions and short per curiam orders with no syllabus: their whole text (at most 700
         characters, a single opinion), from the CAP case file, shown as "Order" (src:'order').
+  cl    CourtListener (Free Law Project; courtlistener.py summaries): the cluster's syllabus, headnotes or summary
+        field, else the whole text of a short order, else the opening paragraphs of the opinion (src:'cl', with kind).
   wiki  for important cases only (essential list, most cited, linked from the Guide, Corner, Constitution, statutes
         or articles): the lead section of the case's Wikipedia article (CC BY-SA 4.0, attributed and linked on the
         case page). The article is accepted only if its infobox carries the case's U.S. Reports volume and page.
 
 Output: docs/data/summaries/<year>.js (merged into window.HEADNOTES, the format the case page already reads: {h, cite,
-cap} for CAP headnotes, {h, cite, src:'loc'} for syllabi, {h, cite, cap, src:'order'} for order text, {h, src:'wiki', t, url, rev} for Wikipedia) and
+cap} for CAP headnotes, {h, cite, src:'loc'} for syllabi, {h, cite, cap, src:'order'} for order text, {h, cite, src:'gpo', url} for GovInfo syllabi, {h, cite, src:'cl', kind, url} for CourtListener, {h, src:'wiki', t, url, rev} for Wikipedia) and
 docs/data/summaries-index.js. build_headnotes.py's files are not touched.
 
 Caches (gitignored): data/raw/oyez/cases/ (Oyez records for every Oyez case on the site, to know which have no
@@ -103,7 +107,7 @@ class Data:
             return 'oyez'
         h = self.head.get(c['id']) or (self.mine.get(c['id']) if new else None)
         if h:
-            return {'loc': 'syllabus', 'wiki': 'wikipedia', 'order': 'order'}.get(h.get('src'), 'headnotes')
+            return {'loc': 'syllabus', 'gpo': 'syllabus', 'wiki': 'wikipedia', 'order': 'order', 'cl': 'courtlistener'}.get(h.get('src'), 'headnotes')
         return 'ai brief' if c['id'] in self.ai else 'none'
 
     def need(self, c):
@@ -166,7 +170,7 @@ def important(D):
 # ---------------------------------------------------------------- coverage
 ERAS = [(0, 1859, '1791-1859'), (1860, 1899, '1860-1899'), (1900, 1929, '1900-1929'), (1930, 1954, '1930-1954'),
         (1955, 1989, '1955-1989'), (1990, 9999, '1990-2026')]
-COLS = ['oyez', 'headnotes', 'syllabus', 'order', 'wikipedia', 'ai brief', 'none']
+COLS = ['oyez', 'headnotes', 'syllabus', 'order', 'courtlistener', 'wikipedia', 'ai brief', 'none']
 
 
 def table(rows, D, new):
@@ -810,6 +814,109 @@ def build_loc(D):
     return out
 
 
+GPO = 'data/raw/govinfo_syl/syllabi.json'
+LINEUP = re.compile(r"\s(?:[A-Z][a-z]+(?:, C\.)?, J\., (?:delivered the opinion|announced the judgment)|PER CURIAM|Per Curiam)")
+RUNHEAD = re.compile(r"\s(?:[A-Z][A-Z0-9.'&,\-]+ ){1,6}v\. (?:[A-Z][A-Z0-9.'&,\-]+ ?){1,6}(?=\s)|\sSyllabus\s|\s\d{3} OCTOBER TERM, \d{4}\s")
+
+
+def gpo_vocab(D):
+    words = collections.Counter()
+    for h in list(D.head.values()):
+        words.update(re.findall(r"[A-Za-z]+", h.get('h') or ''))
+    return {w for w, n in words.items() if n >= 2}
+
+
+def dehyphen(t, vocab):
+    """Words split at a line end come through as 'accom plice': join two tokens when the joined word is known and
+    either half is not."""
+    toks = t.split(' ')
+    out = []
+    for tok in toks:
+        if out:
+            a = re.match(r"^(.*?)([A-Za-z]+)$", out[-1])
+            b = re.match(r"^([a-z]+)(.*)$", tok)
+            if a and b and (a.group(2) + b.group(1)) in vocab and (a.group(2) not in vocab or b.group(1) not in vocab):
+                out[-1] = out[-1] + tok
+                continue
+        out.append(tok)
+    return ' '.join(out)
+
+
+def build_gpo(D):
+    """U.S. Reports syllabi from GovInfo (GPO; public domain) for vols 543-587, the volumes the LoC per-case PDFs do not
+    reach. Extracted by another pass into data/raw/govinfo_syl/syllabi.json ({cases: {id: {cit, url, syllabus}}})."""
+    if not os.path.exists(GPO):
+        return {}
+    vocab = gpo_vocab(D)
+    out = {}
+    for cid, r in json.load(open(GPO, encoding='utf-8'))['cases'].items():
+        c = D.by_id.get(cid)
+        if not c or not D.need(c):
+            continue
+        t = re.sub(r'\s+', ' ', ' ' + (r.get('syllabus') or '') + ' ')
+        m = LINEUP.search(t)
+        if m and m.start() > 200:
+            t = t[:m.start()]
+        t = re.sub(r"\*Together with .*?(?:same court|the same case)\.", ' ', t)
+        t = RUNHEAD.sub(' ', t)
+        t = dehyphen(re.sub(r'\s+', ' ', t).strip(), vocab)
+        t = re.sub(r'\s(?=Held: )', '\n', t)
+        if len(t) >= 120 and not garbled(t, 3):
+            out[cid] = {'h': t, 'cite': r.get('cit') or c.get('cit'), 'src': 'gpo', 'url': r.get('url')}
+    return out
+
+
+CLC = 'data/raw/courtlistener/cluster'
+OPENS = re.compile(r"(?:delivered the opinion of the Court|announced the judgment of the Court|delivered the following opinion|^\s*PER CURIAM\.?|^\s*Per Curiam\.?)[^\n]*\n", re.M)
+
+
+def build_cl(D):
+    """CourtListener (courtlistener.py summaries): the cluster's syllabus, headnotes or summary field; else the whole text
+    of a short order; else the opening paragraphs of the lead opinion."""
+    import courtlistener as cl
+    out = {}
+    for f in glob.glob(f'{CLC}/*.json'):
+        cid = os.path.basename(f)[:-5].replace('_', '/', 1)
+        c = D.by_id.get(cid)
+        r = json.load(open(f, encoding='utf-8'))
+        if not c or not r or not D.need(c):
+            continue
+        base = {'cite': c.get('cit'), 'src': 'cl', 'url': 'https://www.courtlistener.com' + (r.get('absolute_url') or '')}
+        for kind in ('syllabus', 'headnotes', 'summary'):
+            t = '\n'.join(l for l in cl.strip_html(r.get(kind) or '').split('\n') if len(l) > 2)
+            if len(t) >= 40 and not garbled(t, 3):
+                out[cid] = dict(base, h=t[:3000], kind=kind)
+                break
+        if cid in out or not r.get('ops'):
+            continue
+        t = r['ops'][0].get('text') or ''
+        t = re.sub(r'\[[^\]]{0,80}omitted\]', '', t)
+        ms = [m for m in OPENS.finditer(t[:6000])]
+        body = t[ms[-1].end():] if ms else t
+        paras = [p.strip() for p in body.split('\n') if len(p.strip()) >= 60 and not NOT_SUMMARY.search(p)]
+        if not ms:   # no "delivered the opinion" line: skip the caption block (short lines) at the top
+            paras = [p for p in paras if len(p) >= 120 or paras.index(p) > 3]
+        if not paras:
+            continue
+        whole = ' '.join(paras)
+        if r.get('n_ops') == 1 and len(whole) <= 700 and OUTCOME.search(whole):
+            out[cid] = dict(base, h=whole, kind='order')
+            continue
+        keep, n = [], 0
+        for p in paras:
+            keep.append(p)
+            n += len(p)
+            if n >= 450:
+                break
+        h = '\n'.join(keep)
+        if len(h) > 1600:
+            cut = h[:1600].rfind('. ')
+            h = h[:cut + 1] if cut > 400 else h[:1600] + '…'
+        if len(h) >= 120 and not garbled(h, 3):
+            out[cid] = dict(base, h=h, kind='opening')
+    return out
+
+
 def build():
     D = Data()
     D.mine = {}
@@ -817,8 +924,15 @@ def build():
     for k, v in build_loc(D).items():
         if k not in recs or len(recs[k]['h']) < 120 <= len(v['h']):   # a full syllabus beats a one-line CAP headnote
             recs[k] = v
+    for k, v in build_gpo(D).items():   # official syllabi (GovInfo) before order text and CourtListener
+        if k not in recs or len(recs[k]['h']) < 120:
+            recs[k] = v
     for k, v in build_orders(D).items():
         recs.setdefault(k, v)
+    cl = build_cl(D)
+    for k, v in cl.items():
+        if v['kind'] != 'opening':
+            recs.setdefault(k, v)
     nw = 0
     for f in glob.glob(f'{WIKI}/*.json') + glob.glob(f'{WIKIN}/*.json'):
         cid = os.path.basename(f)[:-5].replace('_', '/', 1)
@@ -831,6 +945,8 @@ def build():
         recs[cid] = {'h': h, 'src': 'wiki', 't': r['t'], 'rev': r.get('rev'),
                      'url': 'https://en.wikipedia.org/wiki/' + urllib.parse.quote(r['t'].replace(' ', '_'))}
         nw += 1
+    for k, v in cl.items():   # the opening of the opinion only where nothing else was found
+        recs.setdefault(k, v)
     by_year = collections.defaultdict(dict)
     for cid, r in recs.items():
         by_year[str(year(D.by_id[cid]))][cid] = r
@@ -841,7 +957,7 @@ def build():
         open(f'{OUT}/{y}.js', 'w', encoding='utf-8').write('window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,' +
                                                             json.dumps(rr, ensure_ascii=False, separators=(',', ':')) + ');')
     open('docs/data/summaries-index.js', 'w', encoding='utf-8').write('window.SUMMARIES_INDEX=' + json.dumps(sorted(by_year)) + ';')
-    n = collections.Counter(r.get('src', 'cap') for r in recs.values())
+    n = collections.Counter(r.get('src', 'cap') + ('/' + r['kind'] if r.get('kind') else '') for r in recs.values())
     print(dict(n), 'summaries in', len(by_year), 'year files')
 
 

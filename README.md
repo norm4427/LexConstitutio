@@ -93,7 +93,8 @@ perl scripts/build_quizzes.pl          # writes quizzes.js from scripts/quizzes/
 python scripts/build_votes.py          # writes votes.js: each justice's vote (SCDB 2026_01 + Legacy 07 CSVs in data/raw/scdb/csv/, then opinion PDFs, then Oyez)
 python scripts/build_justices.py       # writes justices.js: all justices with portraits (Wikimedia Commons) and Wikipedia bios; run build_votes.py again after
 python scripts/cap_fetch.py            # caches Caselaw Access Project citation data for Supreme Court cases (data/raw/cap/)
-python scripts/courtlistener.py cites  # CourtListener citation counts for cases decided after CAP's data ends (needs COURTLISTENER_TOKEN)
+python scripts/courtlistener.py cites  # CourtListener citation counts for cases decided after CAP's data ends (needs COURTLISTENER_TOKEN; the token's 125 requests a day make this a multi-day, resumable run)
+python scripts/courtlistener.py audio  # cl_audio.js: CourtListener argument recordings, played when Oyez has none or is unreachable
 python scripts/build_case_impact.py    # writes case_impact.js: later Supreme Court citations + citation PageRank per case (CAP; CourtListener counts for later cases)
 python scripts/crs_fetch.py           # caches CRS Legal Sidebars (public domain) from EveryCRSReport in data/raw/crs/
 python scripts/flashcards_fetch.py     # caches Oyez case details (facts, conclusion, vote) in data/raw/oyez/cases/
