@@ -1431,6 +1431,7 @@
         <div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/scotus">Supreme Court</a>${pend ? '<span>/</span><a href="#/docket">Current docket</a>' : c.y ? `<span>/</span><a href="${hashFor('scotus', { era: (ERAS.find(e => c.y >= e.from && c.y < e.to) || {}).id })}">${c.y}</a>` : ''}</div>
         <h1>${esc(c.n)}</h1>
         <div class="publine">${c.cit ? esc(c.cit) + ' · ' : ''}${c.dec ? 'Decided ' + esc(fmtDate(c.dec)) : 'October Term ' + esc(c.t)}${c.d ? ' · No. ' + esc(c.d) : ''}${pend && pend.lower ? ' · from the ' + esc(pend.lower) : ''}</div>
+        <div id="case-overruled"></div>
         ${pend ? `<div class="pending-banner status-${docketStatus(pend).k}"><b>Pending</b><span>${esc(docketStatus(pend).label)}</span></div>` : ''}
         ${TABS.length > 1 ? `<div class="subtabs case-tabs" role="tablist">${TABS.map(([k, l]) => `<a href="${esc(tabHref(k))}" data-tab="${k}" role="tab" class="${k === tab ? 'on' : ''}">${l}</a>`).join('')}</div>` : ''}
         ${adk ? `<div class="case-panel" data-panel="authorities"${tab === 'authorities' ? '' : ' hidden'}><p class="muted-line"><span class="spinner sm"></span> Loading the authorities…</p></div>` : ''}
@@ -1482,13 +1483,46 @@
         <div class="panel" id="case-opinions" hidden><h4>Opinions</h4><ul class="mini-list"></ul></div>
         <div class="panel"><h4>Find articles</h4><a class="link-arrow" href="${hashFor('search', { q: '"' + c.n.replace(/\s*\(\d\)$/, '') + '"' })}">Search the index for this case →</a></div>
         <div class="panel" id="case-precedents"><h4>Precedents</h4>
-          <div id="prec-cited"></div>
-          ${(() => { const sim = similarCases(S, c); return sim.length ? `<div class="prec-group"><div class="prec-h">Related decisions</div><ul class="mini-list">${sim.map(precedentItem).join('')}</ul></div>` : '<p class="muted-line" style="font-size:13px">No closely related decisions found.</p>'; })()}
+          <div id="prec-body"><p class="muted-line" style="font-size:13px"><span class="spinner sm"></span> Loading…</p></div>
         </div>
       </aside>
     </div></div>`;
 
     const token = routeToken;
+    // Precedents panel (scripts/build_precedents.py, one file per year): what the opinion cites, the later decisions
+    // citing it, related decisions (shared citations), overruled by / overrules; Oyez's "discussed" cases are merged in.
+    let precRec = null, precLoaded = false, oyezCited = [];
+    const precLine = x => { const k = x && caseById.get(x[0]); return k ? precedentItem(k) : `<li><span class="t">${esc(x[1])}</span>${x[2] ? `<div class="m">${esc(x[2])}</div>` : ''}</li>`; };
+    function drawPrecedents() {
+      const el = document.getElementById('prec-body');
+      if (!el || token !== routeToken || !precLoaded) return;
+      const r = precRec || {}, ids = xs => (xs || []).map(i => caseById.get(i)).filter(Boolean);
+      const group = (h, items, more) => items.length ? `<div class="prec-group"><div class="prec-h">${h}</div><ul class="mini-list">${items.join('')}</ul>${more ? `<p class="muted-line" style="font-size:12px;margin:4px 0 0">${more}</p>` : ''}</div>` : '';
+      const relied = ids(r.c), seen = new Set([...relied.map(x => x.id), ...(r.ob || []).concat(r.ov || []).map(x => x[0]).filter(Boolean)]);
+      const discussed = oyezCited.filter(x => !seen.has(x.id));
+      const related = r.r ? ids(r.r) : similarCases(S, c).filter(x => !seen.has(x.id));
+      el.innerHTML = [
+        group('Overruled by', (r.ob || []).map(precLine)),
+        group('Overrules', (r.ov || []).map(precLine)),
+        group('Precedents relied on', relied.map(precedentItem), r.cn > relied.length ? `${fmt(r.cn)} Supreme Court decisions cited in all; those most closely related to this case shown.` : ''),
+        group(relied.length ? 'Also discussed (Oyez)' : 'Discussed in this case', discussed.slice(0, 8).map(precedentItem)),
+        group('Later decisions citing it', ids(r.b).map(precedentItem), r.bn > (r.b || []).length ? `${fmt(r.bn)} later Supreme Court decisions in all; those most closely related to this case shown.` : ''),
+        group('Related decisions', related.slice(0, 6).map(precedentItem))
+      ].join('') || '<p class="muted-line" style="font-size:13px">No related decisions found.</p>';
+      if (r.c || r.b || r.r) el.insertAdjacentHTML('beforeend', '<p class="attrib" style="font-size:11.5px">From the citation graph of the Caselaw Access Project (Harvard Law School Library); related decisions share cited precedents or are cited together. Overrulings from Wikipedia’s list of overruled decisions.</p>');
+      const flag = document.getElementById('case-overruled');
+      if (flag) {
+        const name = x => { const k = caseById.get(x[0]); return k ? `<a href="#/case/${esc(k.id)}">${esc(k.n)}</a>${k.y ? ' (' + esc(k.y) + ')' : ''}` : esc(x[1]); };
+        flag.innerHTML = r.ob ? `<div class="pending-banner overruled"><b>Overruled</b><span>Overruled by ${r.ob.map(name).join('; ')}.</span></div>`
+          : r.ov ? `<div class="pending-banner overrules"><b>Overrules</b><span>This decision overruled ${r.ov.map(name).join('; ')}.</span></div>`
+          : r.pa ? '<div class="pending-banner overrules"><b>Precedent</b><span>The Supreme Court Database codes this decision as altering an earlier precedent.</span></div>' : '';
+      }
+    }
+    {
+      const decade = parseInt(String(c.y || '').slice(0, 4), 10);   // one file per year
+      loadData('precedents-index', 'PRECEDENTS_INDEX').catch(() => []).then(ix => (ix || []).includes(String(decade)) ? loadScriptOnce(`data/precedents/${decade}.js`).catch(() => {}) : null)
+        .then(() => { precRec = (window.PRECEDENTS || {})[c.id] || null; precLoaded = true; drawPrecedents(); });
+    }
     loadData('votes', 'VOTES').then(V => {
       const ve = document.getElementById('case-vote'); const r = V && V.c[c.id];
       if (token !== routeToken || !ve || !r || ve.dataset.src) return;
@@ -1572,7 +1606,7 @@
       const plain = [d.facts_of_the_case, d.question, d.conclusion].map(h => h ? new DOMParser().parseFromString(h, 'text/html').body.textContent : '').join(' ');
       const cited = citedCases(S, plain, c.id);
       for (const r of d.related_cases || []) { const rid = ((r && r.href) || '').match(/\/cases\/(.+)$/); const x = rid && caseById.get(rid[1]); if (x && x.id !== c.id && !cited.includes(x)) cited.push(x); }
-      if (cited.length) document.getElementById('prec-cited').innerHTML = `<div class="prec-group"><div class="prec-h">Discussed in this case</div><ul class="mini-list">${cited.slice(0, 8).map(precedentItem).join('')}</ul></div>`;
+      oyezCited = cited; drawPrecedents();
       const dec = (d.decisions || [])[0];
       if (dec && dec.majority_vote != null) {
         const ve = document.getElementById('case-vote');

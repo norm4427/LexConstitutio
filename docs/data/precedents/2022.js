@@ -1,0 +1,1 @@
+window.PRECEDENTS=window.PRECEDENTS||{};Object.assign(window.PRECEDENTS,{"2021/21-418":{"ov":[["1970/89","Lemon v. Kurtzman","403 U.S. 602"]]},"2021/19-1392":{"ov":[["1971/70-18","Roe v. Wade","410 U.S. 113"],["1991/91-744","Planned Parenthood v. Casey","505 U.S. 833"]]}});

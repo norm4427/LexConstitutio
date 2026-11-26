@@ -22,8 +22,12 @@ def norm_cite(c):
 STOP = {'united', 'states', 'america', 'commissioner', 'internal', 'revenue', 'company', 'director', 'state', 'city', 'county'}
 
 
-def main():
-    cap = json.load(open('data/raw/cap/scotus_compact.json', encoding='utf-8'))
+def load_cap():
+    return json.load(open('data/raw/cap/scotus_compact.json', encoding='utf-8'))
+
+
+def match(cases, cap):
+    """Site case id -> CAP record: by citation, else docket and year, else decision date and a party's name."""
     by_cite, by_dk = {}, {}
     for c in cap:
         for ct in c['cites']:
@@ -34,18 +38,7 @@ def main():
     by_date = collections.defaultdict(list)
     for c in cap:
         by_date[c.get('date') or ''].append(c)
-    date_of = {c['id']: c.get('date') or '' for c in cap}
-    cited_by = collections.Counter()
-    for c in cap:
-        if len(set(c['to'])) < 3:   # one-line orders (summary vacaturs, filing-restriction orders) are not opinions
-            continue
-        for t in set(c['to']):
-            if t in date_of and date_of[t] <= (c.get('date') or ''):
-                cited_by[t] += 1
-
-    s = open('docs/data/scotus.js', encoding='utf-8').read()
-    cases = json.loads(s[s.index('=') + 1:].rstrip().rstrip(';'))['cases']
-    out, hit = {}, 0
+    out = {}
     for c in cases:
         m = None
         if c.get('cit') and '___' not in c['cit']:
@@ -59,10 +52,30 @@ def main():
             best = max(map(score, hits), default=0)
             hits = [x for x in hits if score(x) == best]
             m = hits[0] if len(hits) == 1 else None
-        if not m or m.get('pr') is None:
+        if m:
+            out[c['id']] = m
+    return out
+
+
+def main():
+    cap = load_cap()
+    date_of = {c['id']: c.get('date') or '' for c in cap}
+    cited_by = collections.Counter()
+    for c in cap:
+        if len(set(c['to'])) < 3:   # one-line orders (summary vacaturs, filing-restriction orders) are not opinions
+            continue
+        for t in set(c['to']):
+            if t in date_of and date_of[t] <= (c.get('date') or ''):
+                cited_by[t] += 1
+
+    s = open('docs/data/scotus.js', encoding='utf-8').read()
+    cases = json.loads(s[s.index('=') + 1:].rstrip().rstrip(';'))['cases']
+    out, hit = {}, 0
+    for cid, m in match(cases, cap).items():
+        if m.get('pr') is None:
             continue
         hit += 1
-        out[c['id']] = [round(m['pr'] * 1e9), round(m['pct'], 5), cited_by[m['id']]]
+        out[cid] = [round(m['pr'] * 1e9), round(m['pct'], 5), cited_by[m['id']]]
     import courtlistener
     names = {c['id']: c['n'] for c in cases}
     ncl = 0

@@ -1,0 +1,1 @@
+window.PRECEDENTS=window.PRECEDENTS||{};Object.assign(window.PRECEDENTS,{"2025/25-332":{"ov":[["1900-1940/295us602","Humphrey's Executor v. United States","295 U.S. 602"]]}});

@@ -1,0 +1,1 @@
+window.PRECEDENTS=window.PRECEDENTS||{};Object.assign(window.PRECEDENTS,{"2023/22-451":{"ov":[["1983/82-1005","Chevron U.S.A., Inc. v. Natural Resources Defense Council, Inc.","467 U.S. 837"]]}});

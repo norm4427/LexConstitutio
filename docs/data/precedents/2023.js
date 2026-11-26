@@ -1,0 +1,1 @@
+window.PRECEDENTS=window.PRECEDENTS||{};Object.assign(window.PRECEDENTS,{"2022/20-1199":{"pa":1}});

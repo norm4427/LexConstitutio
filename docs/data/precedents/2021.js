@@ -1,0 +1,1 @@
+window.PRECEDENTS=window.PRECEDENTS||{};Object.assign(window.PRECEDENTS,{"2020/19-5807":{"ov":[["1988/87-5259","Teague v. Lane","489 U.S. 288"]]}});

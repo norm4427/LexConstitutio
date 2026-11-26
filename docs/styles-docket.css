@@ -185,3 +185,7 @@
 .md-refs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .md-refs a { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); font-size: 14px; font-weight: 600; }
 .md-refs a:hover { border-color: var(--accent); color: var(--accent); }
+.pending-banner.overruled { border-color: #c0392b55; background: #c0392b12; }
+.pending-banner.overruled b { background: #b3261e; color: #fff; }
+.pending-banner.overrules b { background: var(--accent); color: #fff; }
+.pending-banner a { color: var(--accent); }
