@@ -19,7 +19,7 @@ It then fills missing links that follow from the docket number or the citation (
                 only if that transcript was fetched successfully into the cache.
 Run from the repo root after build_extras.pl:  python scripts/fix_citations.py   (then rebuild flashcards)
 """
-import csv, glob, json, os, re, time, urllib.request
+import csv, glob, json, os, re, time, urllib.error, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 FILES = ['data/raw/scdb/csv/SCDB_2026_01_justiceCentered_Citation.csv', 'data/raw/scdb/csv/SCDB_2026_01_justiceCentered_Docket.csv']
@@ -46,8 +46,12 @@ def pdf_ok(url, cache):
         try:
             req = urllib.request.Request(url, headers=dict(UA, Range='bytes=0-1023'))
             cache[url] = urllib.request.urlopen(req, timeout=60).read(5).startswith(b'%PDF')
-        except Exception:
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 429) or e.code >= 500:   # throttled or down: unknown, so neither used nor recorded as broken
+                return False
             cache[url] = False
+        except Exception:
+            return False
         time.sleep(0.3)
     return cache[url]
 
@@ -127,7 +131,67 @@ def govinfo_index(terms, first_vol=578, last_vol=620):
     return out
 
 
-def fill_links(cases):
+def repair_loc(cases, cache, term):
+    """Library of Congress per-page links already found broken (pdf_check.json): memorandum orders and some per curiams
+    have no file of their own at the LoC. Try GovInfo's per-case PDF for the same volume and page, then the volume's
+    orders file at the LoC (usrep<vol>orders or usrep<vol><first page>), used only if its text has the case's docket
+    number; the link then opens at that page. Order files are cached as text in data/raw/scotus/loc_orders/."""
+    D = 'data/raw/scotus/loc_orders'
+    os.makedirs(D, exist_ok=True)
+    base = 'https://tile.loc.gov/storage-services/service/ll/usrep/usrep{v:03d}/{k}/{k}.pdf'
+
+    def pages(k, v):
+        p = f'{D}/{k}.txt'
+        if not os.path.exists(p):
+            txt = ''
+            try:
+                b = urllib.request.urlopen(urllib.request.Request(base.format(v=v, k=k), headers=UA), timeout=300).read()
+                if b.startswith(b'%PDF'):
+                    import subprocess
+                    open(p + '.pdf', 'wb').write(b)
+                    txt = subprocess.run(['pdftotext', '-q', '-enc', 'UTF-8', p + '.pdf', '-'], capture_output=True).stdout.decode('utf-8', 'replace')
+                    os.remove(p + '.pdf')
+            except Exception:
+                pass
+            open(p, 'w', encoding='utf-8').write(txt)
+            time.sleep(1)
+        return re.sub(r'[‐-—�]', '-', open(p, encoding='utf-8').read()).split('\f')
+
+    fixed = 0
+    for c in cases:
+        u = c.get('pdf') or ''
+        m = re.match(r'^(\d+) U\.S\. (\d+)$', c.get('cit') or '')
+        if 'tile.loc.gov' not in u or cache.get(u) is not False or not m:
+            continue
+        v, pg = int(m.group(1)), int(m.group(2))
+        gov = f'https://www.govinfo.gov/content/pkg/USREPORTS-{v}/pdf/USREPORTS-{v}-{pg}.pdf'
+        if pdf_ok(gov, cache):
+            c['pdf'] = gov; fixed += 1
+            continue
+        dks = [d for d in re.split(r'[,\s]+', c.get('d') or '') if re.match(r'^\d', d)]
+        for k in [f'usrep{v:03d}orders'] + [f'usrep{v:03d}{s}' for s in range(pg - pg % 100 + 1, 700, -100)]:
+            pp = pages(k, v)
+            hits = [i for i, t in enumerate(pp) if any(re.search(r'No\.\s*' + re.escape(d) + r'\b', t) for d in dks)]
+            # a docket can appear more than once (cert granted, then decided): prefer the page headed with the cited page
+            hit = next((i for i in hits if re.search(rf'(?<![\d.,]){pg}(?![\d,])', pp[i][:300] + pp[i][-300:])), hits[-1] if hits else None)
+            if hit is not None:
+                c['pdf'] = base.format(v=v, k=k) + f'#page={hit + 1}'; fixed += 1
+                break
+    print(f'broken Library of Congress links repaired: {fixed}')
+
+
+def tr_names(url, docket):
+    """True if the cached transcript's cover page lists this docket: cases decided together are not always argued together
+    (Bostock and Zarda were argued in one session, Harris Funeral Homes in another)."""
+    m = re.search(r'/(\d{4})/([^/]+)\.pdf$', url)
+    p = f'data/raw/transcripts/{m.group(1)}/{m.group(2)}.txt' if m else ''
+    if not os.path.exists(p):
+        return False
+    head = re.sub(r'[‐-—�]', '-', open(p, encoding='utf-8', errors='replace').read()[:4000])
+    return re.search(r'(?<![\d-])' + re.escape(docket) + r'(?![\d])', head) is not None
+
+
+def fill_links(cases, siblings):
     term = lambda c: int(c['t']) if str(c.get('t') or '').isdigit() else 0
     cache = json.load(open(CHECK)) if os.path.exists(CHECK) else {}
     # ---- opinion PDFs (cases added from SCDB, s: 1, get theirs on the page from the citation)
@@ -165,6 +229,7 @@ def fill_links(cases):
                 src[host] = src.get(host, 0) + 1
                 break
     print(f'opinion PDFs: {len(need)} cases lacked one; filled {sum(src.values())} {src}; checked {len(todo)} new links')
+    repair_loc(cases, cache, term)
     # ---- argument transcripts
     tr = {}
     for f in glob.glob('data/raw/transcripts/list-*.html'):
@@ -175,7 +240,8 @@ def fill_links(cases):
             if not os.path.exists(f'data/raw/transcripts/{y}/{name}.txt'):
                 continue   # not fetched (or the fetch failed): don't link what was not seen to work
             url = ('https://www.supremecourt.gov' + href) if href.startswith('/') else 'https://www.supremecourt.gov/oral_arguments/' + href.replace('../', '')
-            for d in re.split(r'[,\s]+', text):
+            whole = re.sub(r'-question-\d+$', '', text.strip().lower())   # "105 Orig.", "126-Orig", "14-556-Question-1"
+            for d in [whole] + re.split(r'[,\s]+', text):
                 if re.match(r'^\d', d):
                     tr.setdefault((y, dk_key(d)), url)
     n_tr = 0
@@ -189,12 +255,36 @@ def fill_links(cases):
                 n_tr += 1
                 break
     print(f'argument transcripts: filled {n_tr}')
+    # ---- consolidated cases: a case filed under a non-lead docket shares the opinion and the argument of the case it
+    #      was decided with (SCDB's docket-organized file lists every docket of a decision under one caseId)
+    by_key = {}
+    for c in cases:
+        for d in re.split(r'[,\s]+', c.get('d') or ''):
+            if d:
+                by_key.setdefault((term(c), dk_key(d)), []).append(c)
+    sib = {'pdf': 0, 'tr': 0}
+    for c in cases:
+        for field in ('pdf', 'tr'):
+            if c.get(field) or (field == 'pdf' and (not c.get('dec') or c.get('s') == 1)):
+                continue
+            for d in re.split(r'[,\s]+', c.get('d') or ''):
+                for od in siblings.get((term(c), dk_key(d)), ()) if d else ():
+                    donor = next((x for x in by_key.get((term(c), od), []) if x.get(field) and x.get('dec') == c.get('dec')
+                                  and (field == 'pdf' or tr_names(x['tr'], d))), None)
+                    if donor:
+                        c[field] = donor[field]; sib[field] += 1
+                        break
+                if c.get(field):
+                    break
+    print(f'from the case decided with them (same decision date, docket listed under the same SCDB caseId): {sib}')
 
 
 def main():
-    found = {}
+    found, groups = {}, {}
     for f in FILES:
         for r in csv.DictReader(open(f, encoding='latin-1')):
+            if r['term'].isdigit():
+                groups.setdefault((int(r['term']), r['caseId']), set()).add(dk_key(r['docket']))
             key = (r['term'], dk(r['docket']))
             us, sct = r['usCite'].strip(), r['sctCite'].strip()
             prev = found.get(key, ('', ''))
@@ -205,7 +295,7 @@ def main():
     us_n = sct_n = left = 0
     for c in data['cases']:
         cit = c.get('cit') or ''
-        if '___' not in cit:
+        if '___' not in cit and not re.match(r'^\d+ U\.S\.\s*$', cit):   # "545 U.S. " (no page) is a placeholder too
             continue
         us, sct = found.get((str(c.get('t')), dk(c.get('d'))), ('', ''))
         if us:
@@ -223,7 +313,11 @@ def main():
         if m and t.isdigit() and int(t) >= 1990 and int(m.group(1)) != int(t) - 1879:
             c['cit'] = f'{int(t) - 1879} S. Ct. {m.group(2)}'; vol_fixed += 1
     print(f'S. Ct. volumes corrected: {vol_fixed}')
-    fill_links(data['cases'])
+    siblings = {}
+    for (t, _), dks in groups.items():
+        for d in dks:
+            siblings.setdefault((t, d), set()).update(dks - {d})
+    fill_links(data['cases'], siblings)
     open(path, 'w', encoding='utf-8').write('window.SCOTUS=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
     print(f'U.S. Reports pages filled: {us_n}; cited to S. Ct. instead: {sct_n}; placeholders left (too recent): {left}')
 
