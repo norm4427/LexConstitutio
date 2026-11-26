@@ -678,6 +678,101 @@ def main():
             for x in m_['web']:
                 x.pop('n', None)
     print('CRS report links:', n_crs)
+    # --- newspaper articles from the New York Times and Guardian APIs (media_fetch.py nyt / guardian): link, headline, outlet,
+    # date and the API's short abstract. A hit counts only when its headline or abstract names the case in full, or both
+    # distinctive party names together with the Court.
+    STATES = set(x.lower() for x in 'Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois Indiana Iowa Kansas Kentucky Louisiana Maine Maryland Massachusetts Michigan Minnesota Mississippi Missouri Montana Nebraska Nevada Hampshire Jersey Mexico York Carolina Dakota Ohio Oklahoma Oregon Pennsylvania Rhode Island Tennessee Texas Utah Vermont Virginia Washington Wisconsin Wyoming Columbia Puerto Rico Trump Biden'.split())
+    TOPIC_STOP = set('court supreme justices states united whether federal should would which their about other under after before there these those where while because'.split())
+
+    def topic_overlap(c_, text):
+        """How many distinctive topic words (5-letter stems) of the case's question and summary the article text shares"""
+        stems = lambda t: {w[:5] for w in re.findall(r'[a-z]{5,}', (t or '').lower()) if w not in TOPIC_STOP}
+        return len(stems((c_.get('q') or '') + ' ' + (c_.get('ds') or '')) & stems(text))
+
+    n_news = collections.Counter()
+    dec_count = collections.Counter(c_['dec'] for c_ in every.values() if c_.get('dec'))     # the same-day exception needs a day with one decision
+    key_to_id = {k.replace('/', '_'): k for k in every}
+    for src in ('nyt', 'guardian'):
+        for p_ in glob.glob(f'{RAW}/news/{src}/*.json'):
+            cid = key_to_id.get(os.path.basename(p_)[:-5])
+            if not cid:
+                continue
+            nm = re.sub(r'\s*\(\d\)$', '', every[cid]['n'])
+            full = re.compile(re.escape(nm).replace(r' v\.', r' v\.?'), re.I)   # the Guardian writes "v" without the period
+            m_sd = re.match(r'^\s*(?:The\s+)?(.+?)\s+v\.\s+(?:The\s+)?(.+)$', nm)
+            ws = []
+            if m_sd:
+                for side in m_sd.groups():
+                    w_ = [w for w in re.findall(r"[A-Z][A-Za-z'’\-]{3,}", side) if w.lower() not in GENERIC]
+                    ws.append(w_[0] if w_ else None)
+            have = {x['u'].split('?')[0].rstrip('/') for x in media[cid].get('web', [])}
+            got = 0
+            for it in json.load(open(p_, encoding='utf-8')).get('items', []):
+                if not it.get('u') or not it.get('t'):
+                    continue
+                # Article Search / Content API hit: kept only when a distinctive party name (not "United States", a state or a
+                # generic word) is in the headline, abstract/trail text or lead; or, failing that, when the headline names the
+                # Supreme Court and the article is dated the day of the decision (+-1 day)
+                txt = ' '.join([it['t'], it.get('sn', ''), it.get('lead', '')])
+                dw = {w for side in (m_sd.groups() if m_sd else ()) for w in re.findall(r"[A-Z][A-Za-z'’\-]{3,}", side)
+                      if w.lower() not in GENERIC and w.lower() not in STATES}
+                dd = abs((date.fromisoformat(it['d']) - date.fromisoformat(every[cid]['dec'])).days) if it.get('d') else 99
+                ok = got < (3 if src == 'guardian' else 5) and (any(re.search(r'' + re.escape(w) + r'', txt) for w in dw)
+                                                               or (dd <= 1 and (dec_count.get(every[cid]['dec'], 0) <= 1 or topic_overlap(every[cid], txt) >= 2) and re.search(r'supreme court|justices|high court', it['t'], re.I)))
+                u0 = it['u'].split('?')[0].rstrip('/')
+                if not ok or u0 in have:
+                    continue
+                have.add(u0)
+                rec = {'u': it['u'], 't': it['t'][:300], 'o': it.get('o') or src, 'd': it.get('d', ''), 'pw': 1 if src == 'nyt' else 0}
+                if src == 'guardian' and it.get('sn'):
+                    rec['sn'] = it['sn'][:240]
+                media[cid].setdefault('web', []).append(rec)
+                got += 1
+            if got:
+                n_news[src] += 1
+                n_news[src + '_links'] += got
+                media[cid]['web'].sort(key=lambda x: x['d'] or '0000', reverse=True)
+    # NYT Archive API months (media_fetch.py nytarchive): the court articles of the month of a decision and the next,
+    # kept for a case when printed from two days before the decision to 30 days after and naming the case as above
+    arch = {}
+    for p_ in glob.glob(f'{RAW}/nyt-archive/*.json'):
+        arch[os.path.basename(p_)[:-5]] = json.load(open(p_, encoding='utf-8'))
+    n_arch = collections.Counter()
+    for cid, c in every.items():
+        d0 = c.get('dec')
+        if not d0 or d0 < '1851-09-18' or not arch:
+            continue
+        y, m = int(d0[:4]), int(d0[5:7])
+        docs = arch.get(f'{y}-{m:02d}', []) + arch.get(f'{y + (m == 12)}-{m % 12 + 1:02d}', [])
+        if not docs:
+            continue
+        lo = (date.fromisoformat(d0) - timedelta(days=2)).isoformat()
+        hi = (date.fromisoformat(d0) + timedelta(days=30)).isoformat()
+        nm = re.sub(r'\s*\(\d\)$', '', c['n'])
+        full = re.compile(re.escape(nm).replace(r' v\.', r' v\.?'), re.I)
+        m_sd = re.match(r'^\s*(?:The\s+)?(.+?)\s+v\.\s+(?:The\s+)?(.+)$', nm)
+        ws = []
+        if m_sd:
+            for side in m_sd.groups():
+                w_ = [w for w in re.findall(r"[A-Z][A-Za-z'’\-]{3,}", side) if w.lower() not in GENERIC]
+                ws.append(w_[0] if w_ else None)
+        have = {x['u'].split('?')[0].rstrip('/') for x in media[cid].get('web', [])}
+        got = 0
+        for it in docs:
+            if not (lo <= it['d'] <= hi):
+                continue
+            txt = ' '.join([it['t'], it.get('sn', ''), it.get('lead', '')])
+            ok = bool(full.search(txt)) or (len(ws) == 2 and all(ws) and all(re.search(r'' + re.escape(w) + r'', txt) for w in ws))
+            u0 = it['u'].split('?')[0].rstrip('/')
+            if ok and u0 not in have:
+                have.add(u0)
+                media[cid].setdefault('web', []).append({'u': it['u'], 't': it['t'][:300], 'o': 'The New York Times', 'd': it['d'], 'pw': 1})
+                got += 1
+        if got:
+            n_arch['cases'] += 1; n_arch['links'] += got
+            media[cid]['web'].sort(key=lambda x: x['d'] or '0000', reverse=True)
+    print('news from the NYT Archive months:', dict(n_arch))
+    print('news from the NYT and Guardian APIs:', dict(n_news))
     # --- recent headlines from GDELT (media_fetch.py gdelt): link, title, outlet and date only
     n_gd = 0
     for p_ in glob.glob(f'{RAW}/gdelt/*.json'):
@@ -699,6 +794,11 @@ def main():
     # --- never lose what an earlier build found: the raw caches (podcast feeds, Chronicling America, Wikipedia) are
     # refetched piecemeal, so entries of the previous output are merged back in wherever the new build lacks them
     n_old = collections.Counter()
+    api_urls = set()
+    for pth in glob.glob(f'{RAW}/news/*/*.json') + glob.glob(f'{RAW}/nyt-archive/*.json'):
+        dd_ = json.load(open(pth, encoding='utf-8'))
+        for it in (dd_ if isinstance(dd_, list) else dd_.get('items', [])):
+            api_urls.add(it['u'].split('?')[0].rstrip('/'))
     for fp in glob.glob(f'{OUT}/*.js'):
         t_ = open(fp, encoding='utf-8').read()
         for cid, o in json.loads(t_[t_.index('Object.assign(window.MEDIA,') + 27:].rstrip().rstrip(';').rstrip(')')).items():
@@ -717,6 +817,8 @@ def main():
             m['print'].sort(key=lambda x: x['date'])
             hw = {x['u'] for x in m.get('web', [])}
             for x in o.get('web', []):
+                if x['u'].split('?')[0].rstrip('/') in api_urls:
+                    continue                      # an API hit the current matching rules did not accept
                 if x['u'] not in hw:
                     m.setdefault('web', []).append(x); n_old['web'] += 1
             for k in ('wiki', 'sb'):

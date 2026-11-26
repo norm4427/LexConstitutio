@@ -323,6 +323,159 @@ def gdelt():
     print('gdelt: new headlines', n, 'for', len(todo), 'cases', flush=True)
 
 
+def news_queue():
+    """Cases in the order the news step takes them: essential, then most cited, then every other case from 1950 on."""
+    S = load_js('docs/data/scotus.js')['cases']
+    I = load_js('docs/data/case_impact.js')['c']
+    ess = load_js('docs/data/essential.js')
+    cs = [c for c in S if c.get('dec') and ' v. ' in c['n']]
+    byid = {c['id']: c for c in cs}
+    out = [byid[i] for i in ess if i in byid]
+    seen = {c['id'] for c in out}
+    top = sorted(cs, key=lambda c: -(I.get(c['id']) or [0, 0, 0])[2])[:1500]
+    out += [c for c in top if c['id'] not in seen]
+    seen |= {c['id'] for c in out}
+    out += sorted([c for c in cs if c['dec'] >= '1950' and c['id'] not in seen], key=lambda c: c['dec'], reverse=True)
+    return out
+
+
+def news(which):
+    """Newspaper coverage from two official APIs, searched by case name + "Supreme Court" in the window from about 200
+    days before the decision to 30 days after: New York Times Article Search (archive to 1851; 5 requests a minute, 500 a
+    day) and the Guardian Content API (from 1999; 1 a second, 500 a day). Keys NYT_API_KEY / GUARDIAN_API_KEY come from
+    .keys.env. Only link, headline, date, outlet and the API's short abstract/trail text are cached, never article text;
+    build_media.py keeps a hit only when its headline or lead names the case. Resumable: data/raw/media/news/<src>/<case>.json,
+    with the day's request count in data/raw/media/news/usage-<src>.json (stops at NEWS_BUDGET, default 450).
+    A 401 from the NYT stops the run (the key may be the Secret rather than the Key)."""
+    key = os.environ.get('NYT_API_KEY' if which == 'nyt' else 'GUARDIAN_API_KEY')
+    if not key:
+        print('news skipped: no key for', which)
+        return
+    os.makedirs(f'{RAW}/news/{which}', exist_ok=True)
+    up = f'{RAW}/news/usage-{which}.json'
+    us = json.load(open(up)) if os.path.exists(up) else {}
+    today = date.today().isoformat()
+    used = us.get(today, 0)
+    budget = int(os.environ.get('NEWS_BUDGET', 450))
+    n = 0
+    for c in news_queue():
+        if c['dec'] < ('1999-01-01' if which == 'guardian' else '1851-09-18'):
+            continue                                    # before the archives begin
+        dest = f"{RAW}/news/{which}/{c['id'].replace('/', '_')}.json"
+        if os.path.exists(dest):
+            continue
+        if used >= budget:
+            break
+        name = re.sub(r'\s*\(\d\)$', '', c['n'])
+        d = date.fromisoformat(c['dec'])
+        a, b = d - timedelta(days=200), d + timedelta(days=30)
+        try:
+            if which == 'nyt':
+                u = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?' + urllib.parse.urlencode(
+                    {'q': f'"{name}" "Supreme Court"', 'begin_date': a.strftime('%Y%m%d'), 'end_date': b.strftime('%Y%m%d'), 'api-key': key})
+            else:
+                u = 'https://content.guardianapis.com/search?' + urllib.parse.urlencode(
+                    {'q': f'"{name}" AND "Supreme Court"', 'from-date': a.isoformat(), 'to-date': b.isoformat(), 'show-fields': 'trailText',
+                     'page-size': 15, 'order-by': 'relevance', 'api-key': key})
+            used += 1
+            r = json.loads(get(u))
+        except urllib.error.HTTPError as e:
+            print('  news', which, 'HTTP', e.code, c['id'], flush=True)
+            if e.code in (401, 403, 429):
+                break                                   # bad key or the day's limit: stop and report
+            continue
+        except Exception as e:
+            print('  news', which, 'failed', c['id'], type(e).__name__, flush=True)
+            time.sleep(10)
+            continue
+        if which == 'nyt':
+            items = [{'u': x.get('web_url'), 't': (x.get('headline') or {}).get('main') or '', 'd': (x.get('pub_date') or '')[:10],
+                      'sn': (x.get('abstract') or '')[:300], 'lead': (x.get('lead_paragraph') or '')[:300], 'o': 'The New York Times'}
+                     for x in ((r.get('response') or {}).get('docs') or [])]
+        else:
+            items = [{'u': x.get('webUrl'), 't': x.get('webTitle') or '', 'd': (x.get('webPublicationDate') or '')[:10],
+                      'sn': re.sub(r'<[^>]+>', '', html.unescape((x.get('fields') or {}).get('trailText') or ''))[:300], 'o': 'The Guardian'}
+                     for x in ((r.get('response') or {}).get('results') or [])]
+        json.dump({'q': name, 'from': a.isoformat(), 'to': b.isoformat(), 'items': items}, open(dest, 'w', encoding='utf-8'), ensure_ascii=False)
+        n += 1
+        us[today] = used
+        json.dump(us, open(up, 'w'))
+        time.sleep(13 if which == 'nyt' else 1.2)
+    print('news', which, 'searched', n, 'cases today; requests today', used, flush=True)
+
+
+def nyt_archive():
+    """New York Times Archive API (/svc/archive/v1/<year>/<month>.json): one request returns the metadata of every article
+    of a month, so the month of a decision and the one after cost two requests for all the cases decided then, against
+    one Article Search request per case. Months are taken in the order of news_queue (essential and most-cited cases first,
+    then every case from 1950 on), from 1851 on. Only articles whose headline, abstract or lead mentions the Supreme
+    Court or the justices are kept, and only link, headline, date, abstract and lead are cached (never article text):
+    data/raw/media/nyt-archive/<yyyy-mm>.json. Shares the day's request counter (usage-nyt.json, NEWS_BUDGET, default 450)
+    with the Article Search step. A 401/403/429 stops the run."""
+    key = os.environ.get('NYT_API_KEY')
+    if not key:
+        print('nyt archive skipped: no key')
+        return
+    os.makedirs(f'{RAW}/nyt-archive', exist_ok=True)
+    up = f'{RAW}/news/usage-nyt.json'
+    os.makedirs(f'{RAW}/news', exist_ok=True)
+    us = json.load(open(up)) if os.path.exists(up) else {}
+    today = date.today().isoformat()
+    used = us.get(today, 0)
+    budget = int(os.environ.get('NEWS_BUDGET', 450))
+    months, seen = [], set()
+    q = [c for c in news_queue() if c['dec'] >= '1851-09-18']
+    q = [c for c in q if c['dec'] >= '1950'] + [c for c in q if c['dec'] < '1950']     # headlines of the 1950s on name cases; older ones rarely do
+    for c in q:
+        y, m = int(c['dec'][:4]), int(c['dec'][5:7])
+        for ym in ((y, m), (y + (m == 12), m % 12 + 1)):
+            if ym not in seen:
+                seen.add(ym)
+                months.append(ym)
+    keep = re.compile(r'supreme court|justices?|high court', re.I)
+    n = 0
+    todo = [ym for ym in months if not os.path.exists(f'{RAW}/nyt-archive/{ym[0]}-{ym[1]:02d}.json')]
+    for y, m in todo:
+        if used >= budget:
+            break
+        if (y, m) > (date.today().year, date.today().month):
+            continue
+        try:
+            used += 1
+            r = json.loads(get(f'https://api.nytimes.com/svc/archive/v1/{y}/{m}.json?api-key={key}', timeout=300))
+        except urllib.error.HTTPError as e:
+            print('  nyt archive HTTP', e.code, y, m, flush=True)
+            if e.code in (401, 403, 429):
+                break
+            continue
+        except Exception as e:
+            print('  nyt archive failed', y, m, type(e).__name__, flush=True)
+            time.sleep(15)
+            continue
+        docs = []
+        for x in (r.get('response') or {}).get('docs') or []:
+            h = (x.get('headline') or {}).get('main') or ''
+            ab, ld = x.get('abstract') or '', x.get('lead_paragraph') or ''
+            if keep.search(' '.join((h, ab, ld))) and x.get('web_url'):
+                docs.append({'u': x['web_url'], 't': h, 'd': (x.get('pub_date') or '')[:10], 'sn': ab[:300], 'lead': ld[:300], 'o': 'The New York Times'})
+        del r
+        json.dump(docs, open(f'{RAW}/nyt-archive/{y}-{m:02d}.json', 'w', encoding='utf-8'), ensure_ascii=False)
+        n += 1
+        us[today] = used
+        json.dump(us, open(up, 'w'))
+        print('archive', y, m, len(docs), 'court articles', flush=True)
+        time.sleep(13)
+    print('nyt archive: months fetched', n, '; left', len(todo) - n, '; requests today', used, flush=True)
+
+
+def news_nyt():
+    news('nyt')
+
+
+def news_guardian():
+    news('guardian')
+
+
 def wiki():
     """Each case's English Wikipedia article (wikitext), for the news and commentary it cites. Titles are tried in
     batches of 50 (the case name as the site writes it, redirects followed); build_media.py keeps an article only when
@@ -441,4 +594,4 @@ def epfind():
 
 if __name__ == '__main__':
     for w in sys.argv[1:] or ['pod', 'yt', 'search', 'loc']:
-        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod, 'wiki': wiki, 'epfind': epfind, 'gdelt': gdelt}[w]()
+        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod, 'wiki': wiki, 'epfind': epfind, 'gdelt': gdelt, 'nyt': news_nyt, 'nytarchive': nyt_archive, 'guardian': news_guardian}[w]()
