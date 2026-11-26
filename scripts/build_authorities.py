@@ -199,7 +199,7 @@ def parse_case(txt):
     if not m:
         return None
     name = norm_ws(m.group('name'))
-    name = re.sub(r'^(?:See\s+|Cf\.\s+|also\s+)', '', name)
+    name = re.sub(r'^(?:See\s+(?!v\.)|Cf\.\s+|also\s+)', '', name)
     name = re.sub(r',\s*(?:Nos?\.|Civ\.|Case No\.|Civil Action).*$', '', name)
     if len(name) > 160 or len(name) < 5:
         return None
@@ -330,10 +330,12 @@ def parse_statutes(txt, sec_head):
 
 def classify(sec, txt, prev_const):
     """Authorities in one table entry."""
-    txt = re.sub(r'^(?:See,?\s+|Cf\.\s+)', '', txt)
+    txt = re.sub(r'^(?:See,?\s+(?!v\.)|Cf\.\s+)', '', txt)
     # early U.S. Reports with the nominative reporter: "22 U.S. (9 Wheat.) 1"; a colon for the comma: "McConnell v. FEC: 540 U.S. 93"
     txt = re.sub(r'(\d+\s+U\.\s?S\.)\s*\(\d+\s+[A-Z][A-Za-z.]*\)\s*(?=\d)', lambda m: m.group(1) + ' ', txt)
     txt = re.sub(r'(?<=[A-Za-z.)]):\s+(?=\d+\s+(?:U\.\s?S\.|F\.|S\.\s?Ct\.))', ', ', txt)
+    # a missing comma before the reporter: "United States v. O'Brien 391 U.S. 367"
+    txt = re.sub(r"(?<=[A-Za-z.)'’])\s+(?=\d+\s+(?:U\.\s?S\.|F\.\s?(?:2d|3d|4th|Supp\.)|S\.\s?Ct\.)\s*\d)", ', ', txt, count=1) if ' v. ' in txt and not re.search(r',\s+\d+\s+(?:U\.\s?S\.|F\.|S\.\s?Ct\.)', txt) else txt
     in_const = 'constitution' in sec or prev_const
     if re.search(r'\bConst\b|^(?:Art(?:icle|\.)\s*[IVX]+|Amend(?:ment|\.)\s*[IVXL]+|(?:%s)\s+Amendment\b)' % '|'.join(ORD), txt, re.I):
         c = parse_const(txt, in_const and re.match(r'^(?:art|amend|[a-z\-]+\s+amendment)', txt, re.I) is not None)

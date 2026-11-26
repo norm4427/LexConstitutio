@@ -235,11 +235,26 @@ def classify(t, title=''):
         if m and not re.search(r'COURT OF|^ON ', ln.upper()):
             label = ln[m.start():]
             for nx in lines[i + 1: i + 3]:     # "BRIEF FOR THE UNITED STATES AS AMICUS CURIAE" / "SUPPORTING RESPONDENTS"
-                if re.match(r'^(?:AS|SUPPORTING|IN SUPPORT|URGING|FOR|OF|AND|ON BEHALF|AMICUS|AMICI|CURIAE|PETITIONERS?|RESPONDENTS?)\b', nx.upper()) and len(label) < 200:
+                # or a title wrapped mid-phrase: "... OF THE ENVIRONMENTAL PROTECTION" / "AGENCY"
+                wrapped = re.search(r'\b(?:THE|OF|AND|FOR|ENVIRONMENTAL|PROTECTION|NATIONAL|FEDERAL|LABOR|RELATIONS|SECURITIES|EXCHANGE|COMMUNICATIONS|TRADE|POSTAL|SOCIAL|SECRETARY|DEPARTMENT|COMMISSIONER|INTERNAL|REVENUE|IMMIGRATION|NATURALIZATION|EQUAL|EMPLOYMENT|OPPORTUNITY)$', label.upper()) \
+                    and re.match(r'^[A-Z][A-Za-z.,\'’&\- ]{1,60}$', nx) and len(nx.split()) <= 6
+                if (wrapped or re.match(r'^(?:AS|SUPPORTING|IN SUPPORT|URGING|FOR|OF|AND|ON BEHALF|AMICUS|AMICI|CURIAE|PETITIONERS?|RESPONDENTS?)\b', nx.upper())) and len(label) < 200:
                     label += ' ' + nx
                 else:
                     break
             break
+    # a title-case cover read as one line runs on into the brief's first sentence ("Reply Brief For the Petitioner
+    # Respondent's job at ..."): cut before the capitalized word that opens the first run of ordinary lowercase words
+    if re.search(r'[a-z]', label):
+        w = label.split()
+        small = {'of', 'the', 'and', 'for', 'as', 'in', 'on', 'to', 'a', 'an', 'de', 'ex', 'rel.', 'et', 'al.', 'amicus', 'amici', 'curiae',
+                 'supporting', 'support', 'urging', 'affirmance', 'reversal', 'vacatur', 'behalf', 'federal', 'parties',
+                 'brief', 'briefs', 'reply', 'party', 'opposition'}
+        for j in range(2, len(w)):
+            if w[j][:1].islower() and w[j].strip('.,') not in small \
+                    and not re.match(r'(?:cross-)?(?:petitioner|respondent|appellant|appellee|defendant|plaintiff)s?\b', w[j]):
+                label = ' '.join(w[:j - 1]) if w[j - 1][:1].isupper() and j - 1 >= 3 else ' '.join(w[:j])
+                break
     # a cover read as one line runs on into the Solicitor General's name
     label = re.split(r'\s+(?=[A-Z][A-Za-z.]*(?: [A-Z][A-Za-z.]*){0,3},? (?:Jr\.,? |III,? |II,? )?(?:Solicitor|Acting Solicitor|Attorney|Assistant|Deputy|Counsel)\b)|\s+(?:Solicitor General|Counsel of Record)\b', label)[0]
     label = (label or 'BRIEF FOR THE UNITED STATES')[:200].strip(' ,.')
@@ -261,6 +276,20 @@ def classify(t, title=''):
     lab = label[:1].upper() + label[1:].lower()
     for w in ('United States', 'Secretary', 'Commissioner', 'Attorney General'):
         lab = re.sub(r'\b' + w.lower() + r'\b', w, lab)
+    # agency names: "the equal employment opportunity commission" -> "the Equal Employment Opportunity Commission"
+    agw = (r'(?:environmental|protection|agency|national|labor|relations|board|equal|employment|opportunity|commission|'
+           r'securities|exchange|federal|communications|trade|deposit|insurance|corporation|reserve|system|governors|'
+           r'comptroller|currency|credit|union|administration|administrator|internal|revenue|service|immigration|'
+           r'naturalization|postal|social|security|energy|regulatory|occupational|safety|health|review|merit|systems|'
+           r'office|personnel|management|department|bureau|veterans|affairs|interstate|commerce|transportation|'
+           r'surface|general|accounting|resolution|trust|thrift|supervision|america|army|navy|air|force|'
+           r'education|agriculture|interior|justice|treasury|state|defense|housing|urban|development|human|services|'
+           r'homeland|elections?|consumer|product|nuclear|tennessee|valley|authority|small|business|central|intelligence)')
+    lab = re.sub(r'\b%s(?:\s+(?:(?:of|and)\s+(?:the\s+)?)?%s)+\b' % (agw, agw),
+                 lambda m: re.sub(r'\b(?!of\b|the\b|and\b)([a-z])', lambda x: x.group(1).upper(), m.group(0)), lab)
+    lab = re.sub(r'\b(?:Secretary|Commissioner|Department|Administrator|Board) of (?:the )?(?!the\b)([a-z])',
+                 lambda m: m.group(0)[:-1] + m.group(1).upper(), lab)
+    lab = re.sub(r'\bfederal (petitioners?|respondents?|appellants?|appellees?|cross-appellees?)\b', r'federal \1', lab, flags=re.I)
     return kind, lab
 
 
@@ -283,20 +312,19 @@ def opinions(follow=False):
     (it only reads osg-manifest.json); with --follow it keeps picking up new cases until the manifest stops growing."""
     S = {c['id']: c for c in load_js('docs/data/scotus.js')['cases']}
     ops = json.load(open(OPS)) if os.path.exists(OPS) else {}
-    idle = 0
+    idle, tried = 0, set()
     while True:
         try:
             man = json.load(open(MAN))
         except (OSError, ValueError):
             man = {}
-        todo = [dk for dk, v in man.items() if not dk.startswith('_') and v.get('briefs') and dk not in ops
+        todo = [dk for dk, v in man.items() if not dk.startswith('_') and v.get('briefs') and not ops.get(dk) and dk not in tried
                 and re.match(r'https://tile\.loc\.gov/', (S.get(v.get('id')) or {}).get('pdf') or '')]
         for dk in todo:
             url = S[man[dk]['id']]['pdf']
+            tried.add(dk)          # once per run; a failure (network, missing PDF) is retried by the next run
             if to_text(url, f'{OUT}/{dk}/opinion.txt', pause=3):
                 ops[dk] = url
-            else:
-                ops[dk] = None
             if len(ops) % 20 == 0:
                 json.dump(ops, open(OPS, 'w'), indent=0)
                 print('opinions', len(ops), dk, flush=True)
@@ -382,7 +410,7 @@ def main():
                 out.append((r, next((d for d in dks if d in by_dk), dks[0])))
         return out
     stats = {'briefs': 0, 'skipped': 0, 'cases': 0}
-    done_ids = set(man.get('_none2', [])) | {v.get('id') for k, v in man.items() if k != '_none' and v.get('done')}
+    done_ids = set(man.get('_none2', [])) | {v.get('id') for k, v in man.items() if not k.startswith('_') and v.get('done')}
     for n, cid in enumerate(order):
         if limit and n >= limit:
             break
