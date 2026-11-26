@@ -83,6 +83,7 @@ perl scripts/build_extras.pl            # writes scotus.js, lectures.js, guide.j
 python scripts/guide_lectures.py           # adds a "Lectures and debates" shelf to each guide topic (after build_extras.pl)
 bash scripts/corner.sh && bash scripts/wikisource_retry.sh   # founding-era sources (Wikisource rate-limits; the retry script backs off)
 perl scripts/build_corner.pl           # writes corner.js and library-*.js
+python scripts/corner_curated.py       # then adds the hand-picked passages in scripts/corner_curated.json (from the library's full texts)
 python scripts/library_books.py         # full texts for the book reader (docs/data/lib/, lib-index.js) from Wikisource and Project Gutenberg; cached in data/raw/library/
 python scripts/library_gov.py           # the Constitution Annotated and CRS Legal Sidebars in the book reader (after conan_extract.py and crs_fetch.py)
 python scripts/site_stats.py            # writes site-stats.js: the counts quoted in the home page, section intros and About (run after rebuilding data)

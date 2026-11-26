@@ -17,6 +17,7 @@
 Resumable.  Run from the repo root:  python scripts/media_fetch.py [yt|search|loc]   (YT_API_KEY=... for the back catalog)
 """
 import html, json, os, re, sys, time, urllib.parse, urllib.request
+import local_keys  # noqa: F401  (loads API keys from .keys.env)
 from datetime import date, timedelta
 
 RAW = 'data/raw/media'

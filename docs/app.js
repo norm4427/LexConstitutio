@@ -1170,8 +1170,11 @@
     const refs = [];
     if (M.sb) refs.push([M.sb, 'SCOTUSblog case file']);
     if (c.ju) refs.push([c.ju, 'Justia']);
-    if (um) refs.push([`https://www.law.cornell.edu/supremecourt/text/${um[1]}/${um[2]}`, 'Cornell LII']);
-    else if (c.d && /^\d{2}-\d+$/.test(c.d.trim())) refs.push([`https://www.law.cornell.edu/supremecourt/text/${c.d.trim()}`, 'Cornell LII']);
+    // LII keys recent cases by docket (its pages by citation stop around 541 U.S., 2004) and older ones by citation
+    // (its docket pages before about 2000 are empty)
+    const lDk = c.d && /^\d{2}-\d+$/.test(c.d.trim()) ? c.d.trim() : '', lYr = +String(c.y || c.t || c.date || '').slice(0, 4);
+    const lii = lDk && (lYr >= 2000 || !um) ? lDk : um ? `${um[1]}/${um[2]}` : '';
+    if (lii) refs.push([`https://www.law.cornell.edu/supremecourt/text/${lii}`, 'Cornell LII']);
     if (c.s !== 1 && !c.pending) refs.push([`https://www.oyez.org/cases/${c.id}`, 'Oyez']);
     if (um) refs.push([`https://www.courtlistener.com/c/U.S./${um[1]}/${um[2]}/`, 'CourtListener']);
     else if (sct) refs.push([`https://www.courtlistener.com/c/S.%20Ct./${sct[1]}/${sct[2]}/`, 'CourtListener']);
@@ -2717,7 +2720,7 @@
   };
   function libraryLink(sid) {
     const fixed = { federalist: '#/library/federalist', documents: '#/library/documents', statutes: '#/library/statutes' }[sid];
-    const book = (window.LIB_INDEX || []).find(b => b.corner === sid);
+    const book = (window.LIB_INDEX || []).find(b => b.corner === sid) || (window.LIB_INDEX || []).find(b => b.id === sid);
     const href = fixed || (book ? `#/library/book/${book.id}` : '');
     return href ? `<a class="link-arrow" href="${href}">Read →</a>` : '';
   }
@@ -2848,6 +2851,7 @@
     const readLink = p => p.fed ? `<a href="#/library/federalist/${p.fed}">Read Federalist No. ${p.fed} →</a>`
       : p.doc ? `<a href="#/library/doc/${esc(p.doc)}">Read the full document →</a>`
       : p.st ? `<a href="#/library/statute/${esc(p.st)}">Read the full act →</a>`
+      : p.lib ? `<a href="#/library/book/${esc(p.lib)}/${+p.n || 1}">Read in the library →</a>`
       : p.u ? `<a href="${esc(p.u)}" target="_blank" rel="noopener">Source text ↗</a>` : '';
     app.innerHTML = `<div class="fade-in">
       <div class="page-head"><div class="crumbs"><a href="#/">Home</a><span>/</span><a href="#/corner">Originalist's Corner</a><span>/</span><span>${esc(t.name)}</span></div>
@@ -2865,7 +2869,7 @@
               <div class="passage-f">${readLink(p)}</div>
             </figure>`).join('')}
           </section>`).join('') || '<div class="empty"><h3>No passages for this topic</h3></div>'}
-          <p class="attrib">Passages are selected automatically by matching each topic's vocabulary against the full texts, so read them in context. Sources: Lonang Institute (Blackstone, Tucker, Story, Kent, Vattel, Locke), Project Gutenberg (<i>The Federalist</i>), the Avalon Project at Yale Law School (Madison's Notes and founding documents), and Wikisource (<i>U.S. Statutes at Large</i>, vol. 1). All texts are in the public domain.</p>
+          <p class="attrib">Passages are selected automatically by matching each topic's vocabulary against the full texts, so read them in context; a few more, hand-picked from the library's convention records, ratification debates and treatises, link to their place in the library. Sources: Lonang Institute (Blackstone, Tucker, Story, Kent, Vattel, Locke), Project Gutenberg (<i>The Federalist</i>), the Avalon Project at Yale Law School (Madison's Notes and founding documents), and Wikisource (<i>U.S. Statutes at Large</i>, vol. 1). All texts are in the public domain.</p>
         </div>
       </div></div>`;
   }

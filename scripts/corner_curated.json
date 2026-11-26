@@ -1,0 +1,57 @@
+{
+  "_about": "Hand-picked Originalist's Corner passages from the library's full texts, merged into docs/data/corner.js by scripts/corner_curated.py (run after build_corner.pl). Each passage is taken from the library text at book/part/block (or from an Internet Archive OCR file), optionally cut to the span from..to; 'fix' lists OCR misreadings corrected against the printed page ([misread, printed]).",
+  "sources": {
+    "spirit-of-laws": {"name": "Montesquieu, The Spirit of Laws", "author": "Montesquieu", "year": "1748 (Nugent trans.)", "desc": "The comparative study of laws and governments behind the founders' separation of powers."},
+    "notes-virginia": {"name": "Jefferson, Notes on the State of Virginia", "author": "Thomas Jefferson", "year": "1785", "desc": "Jefferson's account of Virginia, with his critique of its 1776 constitution."},
+    "thoughts-government": {"name": "Adams, Thoughts on Government", "author": "John Adams", "year": "1776", "desc": "Adams's plan for republican state constitutions."},
+    "farrand-1-2": {"name": "Farrand, The Records of the Federal Convention (vols. I–II)", "author": "Max Farrand (ed.)", "year": "1787 (pub. 1911)", "desc": "The Convention's daily records: the Journal with Madison's, Yates's, King's and others' notes."},
+    "elliot-debates": {"name": "Elliot's Debates: The State Ratifying Conventions", "author": "Jonathan Elliot (ed.)", "year": "1787–1788", "desc": "The debates in the state conventions that ratified the Constitution."},
+    "annals-1": {"name": "Annals of Congress, First Congress", "author": "Joseph Gales (comp.)", "year": "1789–1790", "desc": "The First Congress's debates, including the Bill of Rights and the removal power."},
+    "state-papers": {"name": "State Papers of the Early Republic", "author": "Congress, Jefferson, Madison", "year": "1789–1800", "desc": "The amendments of 1789, the Kentucky Resolutions of 1799 and Madison's Report of 1800."},
+    "ford-pamphlets": {"name": "Ford, Pamphlets on the Constitution", "author": "Paul Leicester Ford (ed.)", "year": "1787–1788", "desc": "Ratification pamphlets for and against the Constitution."},
+    "novanglus": {"name": "Adams, Novanglus, with the Letters to William Tudor", "author": "John Adams", "year": "1774–1775; letters 1818", "desc": "Adams's newspaper debate with Daniel Leonard, and his later letters on the Revolution's origins."},
+    "mckechnie-magna-carta": {"name": "McKechnie, Magna Carta: A Commentary", "author": "William Sharp McKechnie", "year": "1905", "desc": "A clause-by-clause commentary on the Great Charter."},
+    "tocqueville": {"name": "Tocqueville, Democracy in America", "author": "Alexis de Tocqueville", "year": "1835–1840 (Reeve trans.)", "desc": "Tocqueville's account of American democracy, its laws and its manners."},
+    "hume-political": {"name": "Hume, Political Discourses", "author": "David Hume", "year": "1752", "desc": "Hume's essays on commerce, population, parties and government, read closely by Madison."},
+    "wilson-lectures": {"name": "Wilson, Lectures on Law", "author": "James Wilson", "year": "1790–1791 (Andrews ed., 1896)", "desc": "The lectures on law that Justice Wilson gave in Philadelphia in 1790–1791.", "url": "https://archive.org/details/cu31924024339644"}
+  },
+  "passages": [
+    {"topic": "separation", "s": "spirit-of-laws", "book": "spirit-of-laws", "part": 14, "block": 19, "loc": "Book XI, ch. 6: Of the Constitution of England"},
+    {"topic": "separation", "s": "spirit-of-laws", "book": "spirit-of-laws", "part": 14, "block": 20, "loc": "Book XI, ch. 6: Of the Constitution of England"},
+    {"topic": "separation", "s": "notes-virginia", "book": "notes-virginia", "part": 11, "block": 33, "from": "All the powers of government", "to": "despotic government.", "loc": "Query XIII: The Constitution of the State"},
+    {"topic": "separation", "s": "notes-virginia", "book": "notes-virginia", "part": 11, "block": 33, "from": "An elective despotism", "to": "at the same time.", "loc": "Query XIII: The Constitution of the State"},
+    {"topic": "separation", "s": "thoughts-government", "book": "thoughts-government", "part": 1, "block": 20, "loc": "Thoughts on Government (1776)"},
+    {"topic": "separation", "s": "farrand-1-2", "book": "farrand-1-2", "part": 48, "block": 34, "loc": "July 21, 1787, Madison's notes (James Wilson on the council of revision)"},
+    {"topic": "separation", "s": "annals-1", "book": "annals-1", "part": 158, "block": 51, "loc": "House of Representatives, June 1789 (Richard Bland Lee, in the debate on the removal power)", "fix": [["bv one", "by one"], ["thepublic", "the public"]]},
+    {"topic": "separation", "s": "elliot-debates", "book": "elliot-debates", "part": 28, "block": 40, "to": "the language of enthusiasm.", "loc": "New York Convention, June 21, 1788 (Alexander Hamilton)", "fix": [["ttwe", "true"], ["cbtiose", "choose"], ["legislature IS divided", "legislature is divided"]]},
+    {"topic": "separation", "s": "kent", "book": "kent-commentaries-1", "part": 11, "block": 2, "loc": "Vol. I, Lect. 11: Of Congress"},
+
+    {"topic": "supremacy", "s": "elliot-debates", "book": "elliot-debates", "part": 88, "block": 57, "loc": "North Carolina Convention, July 29, 1788 (James Iredell)", "fix": [["we«must", "we must"], ["objected to,''", "objected to?"], ["con sistent", "consistent"]]},
+    {"topic": "supremacy", "s": "farrand-1-2", "book": "farrand-1-2", "part": 44, "block": 12, "loc": "July 17, 1787, Journal (Luther Martin's resolution, agreed to)"},
+    {"topic": "supremacy", "s": "state-papers", "book": "state-papers", "part": 4, "block": 12, "to": "the second, as a guide to the judges of the several states.", "loc": "Madison's Report on the Virginia Resolutions (1800)"},
+    {"topic": "supremacy", "s": "ford-pamphlets", "book": "ford-pamphlets", "part": 12, "block": 72, "loc": "The Federal Farmer, Observations on the System of Government (1787)"},
+
+    {"topic": "criminal-process", "s": "mckechnie-magna-carta", "book": "mckechnie-magna-carta", "part": 45, "block": 2, "loc": "Commentary on Chapter 38 (text of the chapter)"},
+    {"topic": "criminal-process", "s": "mckechnie-magna-carta", "book": "mckechnie-magna-carta", "part": 45, "block": 14, "loc": "Commentary on Chapter 38"},
+    {"topic": "criminal-process", "s": "annals-1", "book": "annals-1", "part": 198, "block": 35, "loc": "House of Representatives, August 17, 1789 (Egbert Benson, on the double jeopardy clause)", "fix": [["rijght", "right"], ["welt known", "well known"], ["nnove", "move"]]},
+    {"topic": "criminal-process", "s": "elliot-debates", "book": "elliot-debates", "part": 17, "block": 3, "loc": "Massachusetts Convention, January 30, 1788 (Abraham Holmes)"},
+
+    {"topic": "marriage-family", "s": "spirit-of-laws", "book": "spirit-of-laws", "part": 26, "block": 22, "to": "makes known the person who ought to fulfil this obligation.", "loc": "Book XXIII, ch. 2: Of Marriage"},
+    {"topic": "marriage-family", "s": "spirit-of-laws", "book": "spirit-of-laws", "part": 26, "block": 23, "to": "the man they want.", "loc": "Book XXIII, ch. 2: Of Marriage"},
+    {"topic": "marriage-family", "s": "tocqueville", "book": "tocqueville", "part": 95, "block": 5, "loc": "Vol. II, Book III, ch. 8: Influence of Democracy on the Family"},
+    {"topic": "marriage-family", "s": "wilson-lectures", "ia": "cu31924024339644", "from": "I begin with marriage", "to": "the true origin of society must be traced.", "loc": "Part II, ch. 12: Of the Natural Rights of Individuals (vol. II, p. 317)"},
+
+    {"topic": "necessary-proper", "s": "elliot-debates", "book": "elliot-debates", "part": 61, "block": 89, "from": "When we once put it in their option", "to": "it admits of the utmost extension.", "loc": "Virginia Convention, June 7, 1788 (Patrick Henry)"},
+    {"topic": "necessary-proper", "s": "elliot-debates", "book": "elliot-debates", "part": 32, "block": 14, "loc": "New York Convention, June 26, 1788 (John Williams)"},
+    {"topic": "necessary-proper", "s": "state-papers", "book": "state-papers", "part": 4, "block": 41, "loc": "Madison's Report on the Virginia Resolutions (1800)"},
+    {"topic": "necessary-proper", "s": "state-papers", "book": "state-papers", "part": 4, "block": 42, "loc": "Madison's Report on the Virginia Resolutions (1800)"},
+
+    {"topic": "search", "s": "elliot-debates", "book": "elliot-debates", "part": 77, "block": 6, "loc": "Virginia Convention, June 24, 1788 (Patrick Henry)", "fix": [["securing om personal", "securing our personal"]]},
+    {"topic": "search", "s": "annals-1", "book": "annals-1", "part": 149, "block": 52, "loc": "House of Representatives, June 8, 1789 (Madison's proposed amendments)", "fix": [["rights of (he people", "rights of the people"], ["particularly describe ing", "particularly describing"]]},
+    {"topic": "search", "s": "novanglus", "book": "novanglus", "part": 33, "block": 5, "loc": "John Adams to William Tudor (1818), on the writs of assistance"},
+
+    {"topic": "life-unborn", "s": "wilson-lectures", "ia": "cu31924024339644", "from": "With consistency, beautiful and undeviating", "to": "from every degree of danger.", "loc": "Part II, ch. 12: Of the Natural Rights of Individuals (vol. II, p. 316)"},
+    {"topic": "life-unborn", "s": "spirit-of-laws", "book": "spirit-of-laws", "part": 26, "block": 176, "loc": "Book XXIII, ch. 22: Of the Exposing of Children", "fix": [["Halicarnassus,^", "Halicarnassus,"]]},
+    {"topic": "life-unborn", "s": "hume-political", "book": "hume-political", "part": 12, "block": 42, "to": "getting rid of their children.", "loc": "Of the Populousness of Ancient Nations"}
+  ]
+}

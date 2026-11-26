@@ -22,6 +22,7 @@ a count was found and the article has none (an existing count is replaced only b
 COCI counts are lower bounds and only fill gaps). Run it when no other session is writing articles.js, then fix_text.py.
 """
 import collections, datetime, html, json, os, re, sys, threading, time, urllib.error, urllib.parse, urllib.request
+import local_keys  # noqa: F401  (loads API keys from .keys.env)
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(__file__))

@@ -5,3 +5,7 @@ data/wp_needed.txt
 .claude/settings.local.json
 data/articles.orig.js
 data/*.log
+
+# Local API keys read by scripts/local_keys.py
+.keys.env
+__pycache__/

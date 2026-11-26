@@ -7,6 +7,7 @@ be re-run each day until done. A match needs the same title (or main title befor
 Usage: python scripts/cite_lookup.py [data/raw/new_articles.js]   (set OPENALEX_KEY to use a key)
 """
 import json, os, re, sys, time, urllib.parse, urllib.request
+import local_keys  # noqa: F401  (loads API keys from .keys.env)
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else 'data/raw/new_articles.js'
 CACHE = 'data/raw/lrc/cites.json'

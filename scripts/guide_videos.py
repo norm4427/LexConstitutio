@@ -11,6 +11,7 @@ guide_lectures.py places on that topic's lecture shelf. Search costs 100 quota u
   YT_API_KEY=... python scripts/guide_videos.py && python scripts/guide_lectures.py && sh scripts/stamp.sh
 """
 import json, os, re, time, urllib.parse, urllib.request
+import local_keys  # noqa: F401  (loads API keys from .keys.env)
 
 KEY = os.environ.get('YT_API_KEY')
 RAW = 'data/raw/guide_yt'

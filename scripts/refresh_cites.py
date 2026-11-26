@@ -12,6 +12,7 @@ nothing leaves an existing count alone).
 Run from the repo root (before fix_text.py):  python scripts/refresh_cites.py [--titles-only|--dois-only]
 """
 import datetime, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+import local_keys  # noqa: F401  (loads API keys from .keys.env)
 
 CACHE = 'data/raw/cites_refresh.json'
 KEY = os.environ.get('OPENALEX_KEY', '')

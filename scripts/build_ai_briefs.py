@@ -30,6 +30,7 @@ Usage (from the repo root):
 Then: sh scripts/stamp.sh
 """
 import collections, glob, json, os, re, subprocess, sys, time, urllib.request
+import local_keys  # noqa: F401  (loads API keys from .keys.env)
 from datetime import date
 
 RAW = 'data/raw/aibriefs'
