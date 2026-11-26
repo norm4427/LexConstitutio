@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/1914-066":{"h":"CERTIORARI to the circuit court of appeals for the SEVENTH CIRCUIT.\nNo. 87.\nArgued December 2, 3, 1914.\nDecided April 5, 1915.\nDecided on authority of Guffey v. Smith, ante, p. 101.","cite":"237 U.S. 120","cap":631808}});

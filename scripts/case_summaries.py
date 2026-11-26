@@ -331,6 +331,31 @@ SYL_END = re.compile(r"^(PER CURIAM\.?$|(MR\. )?(CHIEF )?JUSTICE [A-Z][A-Za-z]+.
                      r"[A-Z][A-Za-z.,' -]{2,60}, pro se\b|(Messrs?|Mrs?)\. [A-Z].{0,160}\bfor (the )?(petitioners?|respondents?|appellants?|appellees?|the United States)\b)")
 
 
+CITE = re.compile(r"\bStat\.( \(Supp\.\))? \d+|\b\d+ U\. ?S\. ?C\.( §+)? \d+|\b\d+ (U\. ?S\.|F\. ?(2d|3d|Supp\.)?|Stat\.|S\. ?Ct\.|L\. ?Ed\.|[A-Z][A-Za-z.]{0,14}( \(\w+\))?) \d+\b")
+
+
+def strip_footnotes(t):
+    """pdftotext puts footnote blocks (of this case or the one ending above it) between the syllabus paragraphs: drop
+    blocks that open with a footnote mark or are mostly citations without the syllabus's 'P. 123' page references."""
+    keep = []
+    for l in t.replace('\f', '\n').split('\n'):
+        s = l.strip()
+        if re.match(r"^([*†‡]|\d{1,2}\s?\*|['‘’]?See,? |['‘’]?Cf\. |\d{1,2} ?[A-Z][a-z]+ v\. )", s):
+            continue
+        if len(CITE.findall(s)) >= 2 and not re.search(r'\bPp?\. \d+', s):
+            continue
+        keep.append(l)
+    return '\n'.join(keep)
+
+
+def polish(h):
+    """Running heads and printer's marks that pdftotext leaves inside a paragraph."""
+    h = re.sub(r"\s*\b\d{5,7}-+\d+-+\d+,?", '', h)
+    h = re.sub(r"\s*\bOCTOBER TER[A-Z]*,? \d{4}\.?", '', h)
+    h = re.sub(r"\s+[A-Z][A-Z0-9 .,&'’-]{2,60} v\. [A-Z][A-Z0-9 .,&'’-]{2,60}\.(?= [a-z(])", '', h)
+    return re.sub(r'[ \t]{2,}', ' ', h).strip()
+
+
 def loc_parse(t, c):
     t = bh.syllabus(t)
     return t or ''
@@ -405,30 +430,55 @@ def wapi(**p):
     return json.loads(raw)
 
 
+_VOLS = {}
+
+
+def volume_names(v):
+    """Case names by first page from Wikipedia's 'List of United States Supreme Court cases, volume N' (SCOTUSRow rows)."""
+    if v not in _VOLS:
+        r = wapi(action='query', prop='revisions', titles=f'List of United States Supreme Court cases, volume {v}', rvprop='content', rvslots='main')
+        pg = ((r.get('query') or {}).get('pages') or [{}])[0]
+        wt = (((pg.get('revisions') or [{}])[0].get('slots') or {}).get('main') or {}).get('content') or ''
+        _VOLS[v] = {}
+        for row in re.findall(r'\{\{\s*SCOTUSRow(.*?)\}\}', wt, re.S):
+            n, pgno = re.search(r'\|\s*case name\s*=\s*([^|\n]+)', row), re.search(r'\|\s*page\s*=\s*(\d+)', row)
+            if n and pgno:
+                _VOLS[v].setdefault(pgno.group(1), []).append(n.group(1).strip())
+    return _VOLS[v]
+
+
+def wiki_page(title, v, p):
+    r = wapi(action='query', prop='revisions|extracts', titles=title, rvprop='content|ids', rvslots='main', exintro=1, explaintext=1, redirects=1)
+    pg = ((r.get('query') or {}).get('pages') or [{}])[0]
+    rev = (pg.get('revisions') or [{}])[0]
+    wt = ((rev.get('slots') or {}).get('main') or {}).get('content') or ''
+    if not re.search(r'\{\{\s*Infobox SCOTUS case', wt, re.I):
+        return None
+    if not (re.search(r'\|\s*USVol\s*=\s*' + v + r'\b', wt) and re.search(r'\|\s*USPage\s*=\s*' + p + r'\b', wt)):
+        return None
+    return {'t': pg['title'], 'rev': rev.get('revid'), 'x': pg.get('extract') or ''}
+
+
 def wiki_one(c):
-    """The case's Wikipedia article, accepted only if its wikitext gives the same U.S. Reports volume and page."""
+    """The case's Wikipedia article, accepted only if its infobox gives the same U.S. Reports volume and page. Candidates:
+    the name Wikipedia's volume list gives for that page, then a search for the citation."""
     m = re.match(r'^(\d+) U\.S\. (\d+)$', c.get('cit') or '')
     if not m:
         return None
     v, p = m.groups()
-    q = f'"{v} U.S. {p}"'
-    hits = (wapi(action='query', list='search', srsearch=q, srlimit=8, srnamespace=0).get('query') or {}).get('search') or []
+    for title in volume_names(v).get(p, []):
+        r = wiki_page(title, v, p)
+        if r:
+            return r
+    hits = (wapi(action='query', list='search', srsearch=f'"{v} U.S. {p}"', srlimit=8, srnamespace=0).get('query') or {}).get('search') or []
     words = [w for w in re.findall(r"[A-Za-z]{4,}", c['n']) if w.lower() not in {'united', 'states', 'company', 'state', 'city', 'county', 'commission'}]
     for h in hits:
         title = h['title']
         if title.startswith('List of') or (words and not any(w.lower() in title.lower() for w in words)):
             continue
-        r = wapi(action='query', prop='revisions|extracts', titles=title, rvprop='content|ids', rvslots='main', exintro=1, explaintext=1, redirects=1)
-        pg = ((r.get('query') or {}).get('pages') or [{}])[0]
-        rev = (pg.get('revisions') or [{}])[0]
-        wt = ((rev.get('slots') or {}).get('main') or {}).get('content') or ''
-        if not re.search(r'\{\{\s*Infobox SCOTUS case', wt, re.I):
-            continue
-        if not (re.search(r'\|\s*USVol\s*=\s*' + v + r'\b', wt) and re.search(r'\|\s*USPage\s*=\s*' + p + r'\b', wt)):
-            continue
-        if words and not any(w.lower() in pg['title'].lower() for w in words):
-            continue
-        return {'t': pg['title'], 'rev': rev.get('revid'), 'x': pg.get('extract') or ''}
+        r = wiki_page(title, v, p)
+        if r:
+            return r
     return {}
 
 
@@ -464,6 +514,12 @@ def wiki_text(x):
 
 
 # ---------------------------------------------------------------- build
+NOT_SUMMARY = re.compile(r"\b(argued|reargued|submitted) the cause\b|\bon the briefs?\b|\bdelivered the opinion\b|\bfiled an? (dissenting|concurring) opinion|"
+                         r"\bJJ\., joined\b|\btook no part\b|\bfor (the )?(appellants?|appellees?|petitioners?|respondents?|movants?|plaintiffs?|defendants?|"
+                         r"complainants?|the United States|the State of [A-Z]\w+)\b|\bpro se\b|\bby appointment of the Court\b|\bAttorneys? General\b|"
+                         r"\bamici curiae\b|\b(also )?on (appeal|certiorari|writ) (from|to) the same\b|^Together with No")
+
+
 def build_cap(D):
     out = {}
     for f in glob.glob(f'{CAPC}/*.json'):
@@ -473,7 +529,9 @@ def build_cap(D):
             continue
         r = json.load(open(f, encoding='utf-8'))
         h = drop_noise_lines(cap_extract(r.get('head') or ''))
-        if len(h) >= 80 and not garbled(h):
+        # later volumes keep only counsel and the line-up of opinions: those lines are not a summary
+        h = '\n'.join(l for l in h.split('\n') if not NOT_SUMMARY.search(l)).strip()
+        if year(c) <= 1930 and len(h) >= 80 and not garbled(h) and re.search(r'[a-z]{3,} [a-z]{3,} [a-z]{3,}', h):
             out[cid] = {'h': h, 'cite': r.get('cite') or c.get('cit'), 'cap': r.get('cap')}
     return out
 
@@ -485,8 +543,8 @@ def build_loc(D):
         c = D.by_id.get(cid)
         if not c or not D.need(c):
             continue
-        t = open(f, encoding='utf-8', errors='replace').read()
-        h = loc_parse(t, c) or loc_parse2(t, c)
+        t = strip_footnotes(open(f, encoding='utf-8', errors='replace').read())
+        h = polish(loc_parse(t, c) or loc_parse2(t, c))
         if h and not garbled(h):
             out[cid] = {'h': h, 'cite': c.get('cit'), 'src': 'loc'}
     return out

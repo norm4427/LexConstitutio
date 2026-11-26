@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/1906-102":{"h":"error to the district court of the united states for the DISTRICT OF PORTO RICO.\nNo. 467.\nArgued January 14, 1907.\nDecided February 25, 1907.\nDecided on the authority of American Railroad Company v. Castro, 204 U. S. 453.","cite":"210 U.S. 440","cap":3651205}});
