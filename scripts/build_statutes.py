@@ -11,7 +11,9 @@
   tags            the site's area-of-law tags, plus a few statute-only areas (labor, business, environment, tax, benefits)
 Cached: data/raw/statutes/wiki.json. Run from the repo root after build_case_impact.py:  python scripts/build_statutes.py
 """
-import collections, csv, html, json, os, re, time, urllib.parse, urllib.request
+import collections, csv, html, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 RAW = 'data/raw/statutes'
 UA = {'User-Agent': 'LexConstitutio/1.0 (static site build script)'}
@@ -328,6 +330,217 @@ def scdb_cases():
     return out
 
 
+# ---- legislative history -------------------------------------------------------------------------------------------
+# Laws of the 93rd Congress (1973) on: Congress.gov's API (api.data.gov key DATA_GOV_KEY in .keys.env, loaded by
+# local_keys.py): the public law's bill, its sponsor and the Library of Congress's key actions, with the tallies the
+# action text gives and the roll-call links. Older laws: the legislation infobox of the statute's Wikipedia article
+# (bill, sponsor, passage votes, signature). Cached in data/raw/statutes/congress/ and data/raw/statutes/links.json.
+CG = f'{RAW}/congress'
+# Library of Congress action codes kept: introduced, reported, passed/failed in each chamber, the chambers agreeing to
+# each other's amendments or the conference report, presented to the President, vetoed, veto overrides, became law
+KEEP = {'1000', '10000', '5000', '14000', '8000', '9000', '17000', '18000', '19000', '19500', '20000', '21000', '22000',
+        '23000', '24000', '28000', '31000', '32000', '33000', '34000', '35000', '36000'}
+
+
+def ordinal(n):
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def cg_get(path):
+    """Congress.gov API, cached by path. None when there is no key and no cached copy."""
+    os.makedirs(CG, exist_ok=True)
+    f = f"{CG}/{re.sub(r'[^A-Za-z0-9]+', '-', path.split('?')[0]).strip('-')}.json"
+    if os.path.exists(f):
+        return json.load(open(f, encoding='utf-8'))
+    import local_keys  # noqa: F401  (sets DATA_GOV_KEY from .keys.env)
+    key = os.environ.get('DATA_GOV_KEY')
+    if not key:
+        return None
+    url = 'https://api.congress.gov/v3' + path + ('&' if '?' in path else '?') + 'format=json'
+    for attempt in range(4):
+        try:
+            d = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={**UA, 'X-Api-Key': key}), timeout=60))
+            break
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                d = {}
+                break
+            time.sleep(10 * (attempt + 1))
+        except Exception:
+            time.sleep(10 * (attempt + 1))
+    else:
+        return None
+    json.dump(d, open(f, 'w', encoding='utf-8'), ensure_ascii=False)
+    time.sleep(0.8)
+    return d
+
+
+def link_ok(url, cache):
+    """True if the link ends at a PDF or an HTML page (GovInfo's link service redirects). Cached."""
+    if url not in cache:
+        try:
+            r = urllib.request.urlopen(urllib.request.Request(url, headers={**UA, 'Range': 'bytes=0-1023'}), timeout=60)
+            cache[url] = r.status in (200, 206)
+        except Exception:
+            cache[url] = False
+        time.sleep(0.5)
+    return cache[url]
+
+
+def tally(t):
+    m = re.search(r'(\d+)\s*[-–—]\s*(\d+)', t or '')
+    if m:
+        return f'{m[1]}–{m[2]}'
+    m = re.search(r'\b(voice vote|unanimous consent|without objection|unanimously)\b', t or '', re.I)
+    return m[1].lower() if m else None
+
+
+CR_PAGES = re.compile(r'CR (?:\d+/\d+/\d+ )?([HSE]\d+(?:-\d+)?(?:,\s*[HSE]\d+(?:-\d+)?)*)')
+
+
+def clean_action(t):
+    t = re.sub(r'^(?:Passed/agreed to in (?:House|Senate)|Conference report agreed to in (?:House|Senate)|Resolving differences -- (?:House|Senate) actions|Failed of passage/not agreed to in (?:House|Senate)|Introduced in (?:House|Senate)(?=:)):\s*', '', t)
+    t = re.sub(r'\s*\((?:consideration|text)[^)]*(?:\)|$)', '', t)                      # Congressional Record pages: kept apart
+    t = re.sub(r'\s*(?:Record Vote (?:No|Number):?\s*\d+\.?|\(Roll [Nn]o\.\s*\d+\)\.?|,?\s*roll call #\d+\s*\(\d+-\d+\))', '', t)
+    t = re.sub(r'\s*(?:by (?:Yea-Nay Vote|recorded vote|the Yeas and Nays|Yea-Nay)|:)\s*\.?\s*\d+\s*-\s*\d+\.?', '', t)
+    t = re.sub(r'\s*\(\s*\)|:\s*(?=\()|\.?\s*Report No\.?\s*$', '', t.strip())
+    # a committee's report: "Committee on X. Reported to Senate by Senator Y under the authority of ... With written report ..."
+    m = re.match(r'^(?:The )?(?:(House|Senate) )?(Committee on [^.]+)\.\s*(?:Original measure )?[Rr]eported(?: to (House|Senate))?', t)
+    if m:
+        t = f"Reported{' to the ' + m[3] if m[3] else ''} by the {m[1] + ' ' if m[1] else ''}{m[2]}"
+    else:
+        t = re.split(r'(?<=[a-z0-9)])\.\s+(?=(?:With|Without|Additional|Minority|Under)\b)', t)[0]
+    t = re.sub(r'^Measure presented to President', 'Presented to President', t)
+    t = re.sub(r'^On (?=passage|agreeing|motion)', 'In the House: on ', t)        # the House Clerk's wording names no chamber
+    return re.sub(r'\s+', ' ', t).strip(' .:') + '.'
+
+
+def crec(d, pages, links):
+    """GovInfo's Congressional Record issue of that day (daily edition, 1994 on), if GovInfo has it (API, cached)."""
+    if not d or d < '1994-01-01':
+        return None
+    k = f'crec:{d}'
+    if k not in links:
+        r = cg_govinfo(f'/packages/CREC-{d}/summary')
+        links[k] = bool(r and r.get('packageId'))
+    return {'pages': ', '.join(re.sub(r'-', '–', x.strip()) for x in pages.split(',')), 'url': f'https://www.govinfo.gov/app/details/CREC-{d}'} if links[k] else None
+
+
+def cg_govinfo(path):
+    import local_keys  # noqa: F401
+    key = os.environ.get('DATA_GOV_KEY')
+    if not key:
+        return None
+    try:
+        d = json.load(urllib.request.urlopen(urllib.request.Request('https://api.govinfo.gov' + path, headers={**UA, 'X-Api-Key': key}), timeout=60))
+    except Exception:
+        d = None
+    time.sleep(0.5)
+    return d
+
+
+def leg_congress(c, n, links):
+    law = cg_get(f'/law/{c}/pub/{n}')
+    b = (law or {}).get('bill')
+    if not b:
+        return None
+    typ, num = b.get('type') or '', b.get('number')
+    if not typ:
+        m = re.search(r'/bill/\d+/([a-z]+)/(\d+)', json.dumps(b))
+        typ, num = (m[1], m[2]) if m else ('', num)
+    acts = cg_get(f'/bill/{c}/{typ.lower()}/{num}/actions?limit=250') or {}
+    out, seen = [], set()
+    for a in reversed(acts.get('actions') or []):
+        if (a.get('sourceSystem') or {}).get('code') != 9 or str(a.get('actionCode')) not in KEEP:
+            continue
+        raw = a.get('text') or ''
+        t = clean_action(raw)
+        if (a.get('actionDate'), t) in seen or re.match(r'^(?:Became )?Public [Ll]aw', t) and any(x['t'].startswith('Signed by President') for x in out):
+            continue
+        seen.add((a.get('actionDate'), t))
+        v = (a.get('recordedVotes') or [{}])[0]
+        cr = CR_PAGES.search(raw)
+        out.append({k: x for k, x in {'d': a.get('actionDate'), 't': t, 'v': tally(raw) if re.search(r'vote|Yeas|recorded|roll call', raw, re.I) else None,
+                                     'url': v.get('url'), 'cr': crec(a.get('actionDate'), cr[1], links) if cr else None}.items() if x})
+    sp = (b.get('sponsors') or [{}])[0]
+    kind = ('house-' if typ.upper().startswith('H') else 'senate-') + ('bill' if typ.upper() in ('HR', 'S') else 'joint-resolution' if 'JRES' in typ.upper() else 'concurrent-resolution')
+    label = {'HR': 'H.R.', 'S': 'S.', 'HJRES': 'H.J.Res.', 'SJRES': 'S.J.Res.', 'HCONRES': 'H.Con.Res.', 'SCONRES': 'S.Con.Res.'}.get(typ.upper(), typ.upper())
+    return {'src': 'congress', 'bill': f'{label} {num}', 'congress': c, 'title': b.get('title'),
+            'url': f'https://www.congress.gov/bill/{ordinal(c)}-congress/{kind}/{num}',
+            'sponsor': sp.get('fullName'), 'introduced': b.get('introducedDate'), 'actions': out}
+
+
+def leg_wiki(wt):
+    """The legislation infobox: bill, sponsor, introduction, each passage (with its vote), veto, override, signature."""
+    if not wt:
+        return None
+    wt = re.sub(r'\{\{\s*USBill\s*\|\s*\d+\s*\|\s*([^|}]+)\|\s*(\d+)[^}]*\}\}', lambda m: f'{m[1].strip()} {m[2]}', wt, flags=re.I)
+
+    def g(name):
+        m = re.search(r'\|[ \t]*' + name + r'[ \t]*=[ \t]*([^\n]*)', wt)
+        return m and m.group(1)
+
+    def date(s):
+        s = wclean(re.sub(r'<ref.*', '', s or ''))
+        try:
+            return time.strftime('%Y-%m-%d', time.strptime(re.sub(r'\s+', ' ', s or '').strip(' .,'), '%B %d, %Y'))
+        except Exception:
+            return None
+    acts = []
+    if date(g('introduceddate')):
+        acts.append({'d': date(g('introduceddate')), 't': f"Introduced in the {wclean(g('introducedin')) or 'Congress'}."})
+    for kind, body_f, date_f, vote_f, verb in (('passed', 'passedbody', 'passeddate', 'passedvote', 'Passed'),
+                                              ('agreed', 'agreedbody', 'agreeddate', 'agreedvote', 'Agreed to in'),
+                                              ('overridden', 'overriddenbody', 'overriddendate', 'overriddenvote', 'Veto overridden in')):
+        for i in range(1, 7):
+            d = date(g(f'{date_f}{i}'))
+            if not d:
+                continue
+            body = wclean(g(f'{body_f}{i}')) or (wclean(g(f'overridenbody{i}')) if kind == 'overridden' else None) or ''
+            raw = g(f'{vote_f}{i}') or ''
+            url = (re.search(r'\[(https?://[^\s\]]+)', raw) or [None, None])[1]
+            v = tally(wclean(re.sub(r'\[https?://\S+\s*', '', raw)))
+            acts.append({k: x for k, x in {'d': d, 't': f'{verb} the {body}.' if body else f'{verb}.', 'v': v, 'url': url}.items() if x})
+    if date(g('vetoeddate')):
+        acts.append({'d': date(g('vetoeddate')), 't': f"Vetoed by President {wclean(g('vetoedpresident')) or ''}".strip() + '.'})
+    if date(g('signeddate')):
+        acts.append({'d': date(g('signeddate')), 't': f"Signed by President {wclean(g('signedpresident')) or ''}".strip() + '.'})
+    acts.sort(key=lambda a: a['d'])
+    bill = wclean(g('introducedbill'))
+    if not acts and not bill:
+        return None
+    return {'src': 'wikipedia', 'bill': bill, 'sponsor': wclean(g('introducedby')), 'actions': acts}
+
+
+# The enacting law of statutes whose Wikipedia infobox names none (the article is about a Code title, a program or a
+# later-renamed act): id -> (public law, Statutes at Large). An omnibus law is the vehicle bill, as Congress.gov shows it.
+LEG_OVERRIDES = {
+    'bankruptcy': ('95-598', '92 Stat. 2549'), 'eaja': ('96-481', '94 Stat. 2321'), 'plra': ('104-134', '110 Stat. 1321'),
+    'cda': ('104-104', '110 Stat. 56'), 'dta': ('109-148', '119 Stat. 2680'), 'sra': ('98-473', '98 Stat. 1837'),
+    'ssi': ('92-603', '86 Stat. 1329'), 'medicare': ('89-97', '79 Stat. 286'), 'medicaid': ('89-97', '79 Stat. 286'),
+    'jencks': ('85-269', '71 Stat. 595'), 'hobbs': ('79-486', '60 Stat. 420'), 'ucmj': ('81-506', '64 Stat. 107'),
+}
+
+
+def legislative_history(sid, publaw, stat, wt, links):
+    if sid in LEG_OVERRIDES and not re.search(r'\d+\s*[-–−]\s*\d+', publaw or ''):
+        publaw, stat = LEG_OVERRIDES[sid][0], stat or LEG_OVERRIDES[sid][1]
+    m = re.search(r'(\d+)\s*[-–−]\s*(\d+)', publaw or '')
+    c, n = (int(m[1]), int(m[2])) if m else (None, None)
+    leg = leg_congress(c, n, links) if c and c >= 93 and sid not in ('s1983', 's1985') else None
+    if not leg or not leg['actions']:
+        leg = leg_wiki(wt) or leg
+    if not leg:
+        leg = {}
+    # the enacted law: GovInfo's public-law text (104th Congress on) or the Statutes at Large page (82nd Congress on)
+    sm = re.match(r'^(?:ch\.\s*\d+,\s*)?(\d+)\s+Stat\.\s+(\d+)', stat or '')
+    if c and c >= 104 and link_ok(f'https://www.govinfo.gov/link/plaw/{c}/public/{n}', links):
+        leg['plaw'] = {'url': f'https://www.govinfo.gov/link/plaw/{c}/public/{n}', 'label': f'Pub. L. {c}–{n} (GovInfo)'}
+    elif sm and int(sm[1]) >= 65 and link_ok(f'https://www.govinfo.gov/content/pkg/STATUTE-{sm[1]}/pdf/STATUTE-{sm[1]}-Pg{sm[2]}.pdf', links):
+        leg['plaw'] = {'url': f'https://www.govinfo.gov/content/pkg/STATUTE-{sm[1]}/pdf/STATUTE-{sm[1]}-Pg{sm[2]}.pdf', 'label': f'{sm[1]} Stat. {sm[2]} (GovInfo)'}
+    return leg or None
+
+
 def main():
     W = wiki(sorted({x[2] for x in S}))
     cases = load_js('scotus')['cases']
@@ -348,6 +561,8 @@ def main():
             text[cid] += ' ' + re.sub(r'<[^>]+>', ' ', html.unescape((d.get('facts_of_the_case') or '') + ' ' + (d.get('conclusion') or '')))
     IB = infoboxes(sorted({x[2] for x in S}))
     out, missing, dropped = [], [], []
+    LINKS = f'{RAW}/links.json'
+    links = json.load(open(LINKS)) if os.path.exists(LINKS) else {}
     for sid, name, title, codes, usc, tags, rx in S:
         w = W.get(title) or {}
         paras = summarize(w.get('text') or '')
@@ -374,11 +589,16 @@ def main():
             link = {'url': LINK_OVERRIDES[sid][0], 'label': LINK_OVERRIDES[sid][1]}
         out.append({'id': sid, 'n': name, 'blurb': sentences(paras[0]['p']), 'paras': paras, 'tags': tags, 'rx': rx,
                     'link': link, 'enacted': enacted and re.sub(r'^(?:the )?(\d+(?:st|nd|rd|th))$', r'\1 Congress', enacted), 'publaw': publaw, 'stat': stat,
-                    'wiki': {'title': w.get('title'), 'url': w.get('url')}, 'cases': ids, 'coded': len(hits)})
+                    'wiki': {'title': w.get('title'), 'url': w.get('url')}, 'cases': ids, 'coded': len(hits),
+                    'leg': legislative_history(sid, publaw, stat, wt, links)})
+        json.dump(links, open(LINKS, 'w'), indent=0)
     out.sort(key=lambda x: x['n'].lstrip('0123456789 .U.S.C§').lower())
-    data = {'src': 'Summaries from Wikipedia (CC BY-SA 4.0). Statute text from the U.S. Code (GovInfo, Office of the Law Revision Counsel), the National Archives and Wikisource. Case links from the Supreme Court Database (lawSupp) and case summaries.', 'statutes': out}
+    data = {'src': 'Summaries from Wikipedia (CC BY-SA 4.0). Statute text from the U.S. Code (GovInfo, Office of the Law Revision Counsel), the National Archives and Wikisource. Legislative history from Congress.gov (laws since 1973) or the article’s Wikipedia infobox (older laws); public-law text from GovInfo. Case links from the Supreme Court Database (lawSupp) and case summaries.', 'statutes': out}
     open('docs/data/statutes.js', 'w', encoding='utf-8').write('window.STATUTES=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
     print(f'{len(out)} statutes ({sum(1 for x in out if x["link"])} with a link to the text); {sum(len(x["cases"]) for x in out)} case links')
+    L = [x['leg'] for x in out if x.get('leg')]
+    print(f"legislative history: {sum(1 for l in L if l.get('src') == 'congress')} from Congress.gov, {sum(1 for l in L if l.get('src') == 'wikipedia')} from Wikipedia; "
+          f"{sum(1 for l in L if l.get('actions'))} with actions, {sum(1 for l in L if any(a.get('v') for a in l.get('actions') or []))} with votes, {sum(1 for l in L if l.get('plaw'))} with a public-law link")
     if missing:
         print('no Wikipedia text:', missing)
     if dropped:

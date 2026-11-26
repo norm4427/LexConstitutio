@@ -926,7 +926,7 @@
               <button data-sort="oldest" class="${st.sort === 'oldest' ? 'on' : ''}">Oldest</button>
               <button data-sort="cited" class="${st.sort === 'cited' ? 'on' : ''}" title="Cited most often by later Supreme Court opinions">Most cited</button>
             </div></div></div>
-          ${st.sort === 'cited' ? '<p class="muted-line" style="margin:-4px 0 12px">Ranked by how many later Supreme Court opinions cite each case (Caselaw Access Project, Harvard Law School Library). Its data runs to about 2020, so recent decisions are not yet scored.</p>' : ''}
+          ${st.sort === 'cited' ? '<p class="muted-line" style="margin:-4px 0 12px">Ranked by how many later Supreme Court opinions cite each case (Caselaw Access Project, Harvard Law School Library; its data runs to about 2020). Decisions since October 2019 are counted from <a href="https://www.courtlistener.com/" target="_blank" rel="noopener" style="color:var(--accent)">CourtListener</a> (Free Law Project).</p>' : ''}
           ${slice.length ? `<div class="cards">${slice.map(c => caseCard(c, imp(c.id))).join('')}</div>` : '<div class="empty"><h3>No cases found</h3><p>Try fewer keywords or another era.</p></div>'}
           ${pager(list.length, page, 'scotus')}
         </div>
@@ -941,7 +941,7 @@
     bindPager(n => go({ page: n }));
   }
   const topPct = m => { const v = (1 - m[1]) * 100; return v < 0.1 ? v.toFixed(2) : v.toFixed(1); };
-  const impactTitle = m => `Cited in ${fmt(m[2])} later Supreme Court opinion${m[2] === 1 ? '' : 's'}; citation PageRank in the top ${topPct(m)}% of American cases (Caselaw Access Project)`;
+  const impactTitle = m => m[3] ? `Cited in ${fmt(m[2])} later Supreme Court opinion${m[2] === 1 ? '' : 's'} (CourtListener citation data; decided after the Caselaw Access Project's data ends, so no PageRank)` : `Cited in ${fmt(m[2])} later Supreme Court opinion${m[2] === 1 ? '' : 's'}; citation PageRank in the top ${topPct(m)}% of American cases (Caselaw Access Project)`;
   function caseCard(c, m) {
     const summary = c.ds || c.h || c.q || '';
     return `<article class="card case-card">
@@ -1109,6 +1109,13 @@
         slot.innerHTML = `<section class="headnotes" aria-label="Summary from Wikipedia"><h2>Summary <small>from Wikipedia</small></h2>
           <div class="prose-sm">${h.h.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>
           <p class="attrib">The opening of the Wikipedia article “<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.t)}</a>”${h.rev ? ` (<a href="https://en.wikipedia.org/w/index.php?oldid=${esc(h.rev)}" target="_blank" rel="noopener">revision ${esc(h.rev)}</a>)` : ''}, by its contributors, under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. Not an official summary: check it against the opinion.</p></section>`;
+        return;
+      }
+      if (h.src === 'cl') {
+        const K = { syllabus: ['Syllabus', 'the syllabus printed with the opinion'], headnotes: ['Headnotes', 'the headnotes printed with the opinion'], summary: ['Summary', 'the case summary'], order: ['Order', 'the whole text of this short order or per curiam'], opening: ['Opening of the opinion', 'the opening of the Court’s opinion (no syllabus or headnote is available)'] }[h.kind] || ['Summary', 'the case text'];
+        slot.innerHTML = `<section class="headnotes" aria-label="${esc(K[0])}"><h2>${esc(K[0])} <small>from CourtListener</small></h2>
+          <div class="prose-sm">${h.h.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>
+          <p class="attrib">${K[1][0].toUpperCase() + K[1].slice(1)}${h.cite ? ' at ' + esc(h.cite) : ''}, from <a href="${esc(h.url || 'https://www.courtlistener.com/')}" target="_blank" rel="noopener">CourtListener</a> (Free Law Project; court opinions are public domain and CourtListener's data is free of known copyright restrictions).${h.kind === 'opening' ? ' Not a summary: read the full opinion.' : ''}</p></section>`;
         return;
       }
       if (h.src === 'order') {
@@ -1358,7 +1365,7 @@
         <div class="panel"><h4>Most-cited opinions for the Court</h4>${maj.length ? `<ol class="mini-list ranked">${maj.slice(0, 15).map(item).join('')}</ol>` : '<p class="muted-line">No majority opinions among the cases indexed here.</p>'}</div>
         <div class="panel"><h4>Most-cited dissents</h4>${dis.length ? `<ol class="mini-list ranked">${dis.slice(0, 8).map(item).join('')}</ol>` : '<p class="muted-line">No written dissents among the cases indexed here.</p>'}</div>
       </div>
-      <p class="attrib">Authorship from the Supreme Court Database (Spaeth et al.) and the Court's opinions. Ranked by later Supreme Court citations from the Caselaw Access Project (Harvard Law School Library), whose data runs to about 2020.</p>
+      <p class="attrib">Authorship from the Supreme Court Database (Spaeth et al.) and the Court's opinions. Ranked by later Supreme Court citations from the Caselaw Access Project (Harvard Law School Library), whose data runs to about 2020, and from CourtListener (Free Law Project) for later decisions.</p>
       <div id="justice-ratings"><p class="muted-line"><span class="spinner sm"></span> Loading ratings…</p></div>
     </div></div>`;
     const tk = routeToken;
@@ -1463,7 +1470,7 @@
           <dt>Term</dt><dd>${esc(c.t)}</dd>
           ${c.d ? `<dt>Docket</dt><dd>${esc(c.d)}</dd>` : ''}
           ${c.dec ? `<dt>Decided</dt><dd>${esc(fmtDate(c.dec))}</dd>` : ''}
-          ${(() => { const m = I && I.c[c.id]; return m ? `<dt>Impact</dt><dd title="${esc(impactTitle(m))}"><b>${fmt(m[2])}</b> later Supreme Court citations<div class="impact-meter"><i style="width:${Math.max(4, Math.round(m[1] * 100))}%"></i></div><span class="muted-line" style="font-size:12px">Top ${topPct(m)}% of American cases by citation PageRank</span></dd>` : ''; })()}
+          ${(() => { const m = I && I.c[c.id]; return m ? `<dt>Impact</dt><dd title="${esc(impactTitle(m))}"><b>${fmt(m[2])}</b> later Supreme Court citations${m[3] ? '<span class="muted-line" style="font-size:12px">From CourtListener (Free Law Project)</span>' : `<div class="impact-meter"><i style="width:${Math.max(4, Math.round(m[1] * 100))}%"></i></div><span class="muted-line" style="font-size:12px">Top ${topPct(m)}% of American cases by citation PageRank</span>`}</dd>` : ''; })()}
           <dt>Areas</dt><dd>${(c.tg || []).map(t => `<a class="tag" href="${hashFor('scotus', { tag: t })}">${esc(topicById[t]?.name || t)}</a>`).join(' ') || '—'}</dd>
         </dl><div id="case-vote"></div></div>
         <div class="panel" id="case-opinions" hidden><h4>Opinions</h4><ul class="mini-list"></ul></div>
@@ -1532,7 +1539,17 @@
       headnotes(document.getElementById('case-live'), c);
       aiBrief(document.getElementById('case-live'), c);
       if (c.arg && !hasArgAudio(c)) document.getElementById('case-audio').innerHTML = '<p class="muted-line">No argument recording exists: the Court began recording oral arguments in October 1955.</p>';
+      else if (hasArgAudio(c)) clAudio();
       return;
+    }
+    // CourtListener's copies of the Court's argument recordings: used when Oyez's live record has no argument audio or Oyez is unreachable
+    function clAudio() {
+      loadScriptOnce('data/cl_audio.js').then(() => {
+        const recs = (window.CL_AUDIO || {})[c.id], el = document.getElementById('case-audio');
+        if (!recs || !recs.length || token !== routeToken || !el) return;
+        mountAudio(el, recs.map(r => ({ kind: 'Oral argument', title: fmtDate(r.d) + ' (recording via CourtListener)', direct: r.mp3 })), c);
+        el.insertAdjacentHTML('beforeend', `<p class="attrib">Recording by the Supreme Court of the United States, from <a href="${esc(recs[0].url)}" target="_blank" rel="noopener">CourtListener</a> (Free Law Project). No synchronized transcript.</p>`);
+      }).catch(() => {});
     }
     oyezP.then(d => { if (!d) throw new Error('no Oyez record');
       if (token !== routeToken) return;
@@ -1572,6 +1589,7 @@
     });
     // the Court posts argument audio within days; Oyez's synced versions follow later
     function courtAudioFallback() {
+      if (!pend && hasArgAudio(c)) { clAudio(); return; }
       if (!pend && c.arg && !hasArgAudio(c)) { document.getElementById('case-audio').innerHTML = '<p class="muted-line">No argument recording exists: the Court began recording oral arguments in October 1955.</p>'; return; }
       if (!pend || !pend.argued || pend.argued > todayIso()) return;
       mountAudio(document.getElementById('case-audio'), [{ kind: 'Oral argument', title: fmtDate(pend.argued) + ' (supremecourt.gov)', direct: `https://www.supremecourt.gov/media/audio/mp3files/${pend.d}.mp3`, trPdf: pend.tr }], c);
@@ -2107,6 +2125,23 @@
       </section></div>`;
     app.querySelector('[data-stat-search]').addEventListener('submit', e => { e.preventDefault(); location.hash = hashFor('statutes', { tag: tag || undefined, sort, q: e.target.q.value.trim() || undefined }); });
   }
+  /* A statute's legislative history: the enacting bill, its sponsor, and the key actions with the recorded votes
+     (Congress.gov for laws since 1973, the Wikipedia infobox for older ones), and the public law as enacted. */
+  function statuteHistory(s) {
+    const L = s.leg;
+    if (!L || (!L.actions?.length && !L.plaw)) return '';
+    const fromCg = L.src === 'congress';
+    const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
+    const head = [L.bill && (L.url ? `<a href="${esc(L.url)}" target="_blank" rel="noopener">${esc(L.bill)}</a>` : esc(L.bill)) + (L.congress ? `, ${ord(L.congress)} Congress` : ''),
+      L.sponsor && `sponsored by ${esc(L.sponsor)}`, L.title && fromCg && `“${esc(L.title)}”`].filter(Boolean).join(' · ');
+    const rows = (L.actions || []).map(a => `<dt>${esc(fmtDate(a.d))}</dt><dd>${esc(a.t)}${a.v ? ` <b>${esc(a.v)}</b>` : ''}${a.url ? ` · <a href="${esc(a.url)}" target="_blank" rel="noopener">${/govtrack/.test(a.url) ? 'vote' : 'roll call'} ↗</a>` : ''}${a.cr ? ` · <a href="${esc(a.cr.url)}" target="_blank" rel="noopener" title="Congressional Record, daily edition">Cong. Rec. ${esc(a.cr.pages)} ↗</a>` : ''}</dd>`).join('');
+    return `<h2>Legislative history</h2>
+        ${head ? `<p class="muted-line" style="margin-top:-6px">${head}</p>` : ''}
+        ${rows ? `<dl class="kv" style="grid-template-columns:150px 1fr;margin:10px 0 6px">${rows}</dl>` : ''}
+        ${L.plaw ? `<p><a href="${esc(L.plaw.url)}" target="_blank" rel="noopener">The law as enacted: ${esc(L.plaw.label)} ↗</a></p>` : ''}
+        <p class="attrib">${rows ? (fromCg ? 'Bill, sponsor, key actions and recorded votes from <a href="https://www.congress.gov/" target="_blank" rel="noopener">Congress.gov</a> (Library of Congress); roll calls from the House Clerk and the Senate; Congressional Record pages on GovInfo.' : `Bill, sponsor and votes from the legislative-history box of the Wikipedia article <a href="${esc(s.wiki.url)}" target="_blank" rel="noopener">“${esc(s.wiki.title)}”</a> (CC BY-SA 4.0); Congress.gov’s bill records begin in 1973.`) + ' ' : ''}${L.plaw ? 'Enacted text from GovInfo (U.S. Government Publishing Office).' : ''}</p>`;
+  }
+
   function renderStatutePage(ST, id, I, params) {
     const s = ST.statutes.find(x => x.id === id);
     if (!s) return viewNotFound();
@@ -2126,6 +2161,7 @@
         <h2>About the statute</h2>
         <div class="prose-sm stat-body">${body}</div>
         <p class="attrib">Text adapted from the Wikipedia article <a href="${esc(s.wiki.url)}" target="_blank" rel="noopener">“${esc(s.wiki.title)}”</a>, licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.${s.link ? ` Statute text: ${esc(s.link.label)}.` : ''}</p>
+        ${statuteHistory(s)}
         <h2>Supreme Court cases <small>(${fmt(cs.length)})</small></h2>
         ${cs.length ? `<p class="muted-line" style="margin-top:-6px">Ranked by later citations. ${s.coded ? `${fmt(s.coded)} turned on this statute according to the Supreme Court Database; the rest name it in their summaries.` : 'Cases whose summaries name this statute.'}</p>
           <ul class="stat-cases">${shown.map(c => { const m = I.c[c.id]; return `<li><a href="#/case/${esc(c.id)}"><b>${esc(c.n)}</b> <span>${esc(c.cit || '')}${c.y ? ` (${c.y})` : ''}</span></a>${c.ds ? `<p>${esc(c.ds.length > 220 ? c.ds.slice(0, 220).replace(/\s+\S*$/, '') + '…' : c.ds)}</p>` : ''}${m ? `<em>${fmt(m[2])} later citations</em>` : ''}</li>`; }).join('')}</ul>
@@ -2137,6 +2173,8 @@
           ${s.publaw ? `<dt>Public law</dt><dd>${esc(s.publaw)}</dd>` : ''}
           ${s.stat ? `<dt>Statutes at Large</dt><dd>${esc(s.stat)}</dd>` : ''}
           ${s.link ? `<dt>Text</dt><dd><a href="${esc(s.link.url)}" target="_blank" rel="noopener">${esc(s.link.label)}</a></dd>` : ''}
+          ${s.leg && s.leg.bill ? `<dt>Bill</dt><dd>${s.leg.url ? `<a href="${esc(s.leg.url)}" target="_blank" rel="noopener">${esc(s.leg.bill)}</a>` : esc(s.leg.bill)}</dd>` : ''}
+          ${s.leg && s.leg.plaw && (!s.link || s.leg.plaw.url !== s.link.url) ? `<dt>As enacted</dt><dd><a href="${esc(s.leg.plaw.url)}" target="_blank" rel="noopener">${esc(s.leg.plaw.label)}</a></dd>` : ''}
           <dt>Areas</dt><dd>${s.tags.map(t => `<a class="tag" href="${hashFor('statutes', { tag: t })}">${esc(statTagName(t))}</a>`).join(' ')}</dd>
         </dl></div>
         ${related.length ? `<div class="panel"><h4>Related statutes</h4><ul class="mini-list">${related.map(x => `<li><a class="t" href="#/statutes/${esc(x.id)}">${esc(x.n)}</a><div class="m">${fmt(x.cases.length)} cases</div></li>`).join('')}</ul></div>` : ''}

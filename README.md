@@ -93,7 +93,8 @@ perl scripts/build_quizzes.pl          # writes quizzes.js from scripts/quizzes/
 python scripts/build_votes.py          # writes votes.js: each justice's vote (SCDB 2026_01 + Legacy 07 CSVs in data/raw/scdb/csv/, then opinion PDFs, then Oyez)
 python scripts/build_justices.py       # writes justices.js: all justices with portraits (Wikimedia Commons) and Wikipedia bios; run build_votes.py again after
 python scripts/cap_fetch.py            # caches Caselaw Access Project citation data for Supreme Court cases (data/raw/cap/)
-python scripts/build_case_impact.py    # writes case_impact.js: later Supreme Court citations + citation PageRank per case
+python scripts/courtlistener.py cites  # CourtListener citation counts for cases decided after CAP's data ends (needs COURTLISTENER_TOKEN)
+python scripts/build_case_impact.py    # writes case_impact.js: later Supreme Court citations + citation PageRank per case (CAP; CourtListener counts for later cases)
 python scripts/crs_fetch.py           # caches CRS Legal Sidebars (public domain) from EveryCRSReport in data/raw/crs/
 python scripts/flashcards_fetch.py     # caches Oyez case details (facts, conclusion, vote) in data/raw/oyez/cases/
 perl scripts/build_flashcards.pl       # writes flashcards.js (run after build_extras.pl and build_advanced.pl)
@@ -113,7 +114,7 @@ python scripts/osg_briefs_fetch.py & python scripts/osg_briefs_fetch.py --opinio
 python scripts/build_parties.py         # parties, counsel of record, who argued -> data/parties/<term>.js
 python scripts/build_ai_briefs.py --generate 50   # AI briefs for the next 50 cases without an Oyez summary (pip install anthropic; ANTHROPIC_API_KEY)
 python scripts/cap_headnotes.py 1 350 && python scripts/loc_syllabus.py && python scripts/build_headnotes.py   # headnotes / syllabi for cases without an Oyez summary
-python scripts/case_summaries.py oyez && python scripts/case_summaries.py cap && python scripts/case_summaries.py loc && python scripts/case_summaries.py wiki && python scripts/case_summaries.py recite && python scripts/case_summaries.py orders && python scripts/case_summaries.py build   # fills what build_headnotes.py left (~1.5 h first run; resumable) -> data/summaries/; `case_summaries.py coverage` prints the coverage table
+python scripts/case_summaries.py oyez && python scripts/case_summaries.py cap && python scripts/case_summaries.py loc && python scripts/case_summaries.py wiki && python scripts/case_summaries.py recite && python scripts/case_summaries.py orders && python scripts/courtlistener.py summaries && python scripts/case_summaries.py build   # fills what build_headnotes.py left (~1.5 h first run; resumable) -> data/summaries/; `case_summaries.py coverage` prints the coverage table
 python scripts/media_fetch.py && python scripts/build_media.py   # In the media tab (YT_API_KEY=... for full show catalogs; LOC_N=600 for more newspaper searches, ~30 s each)
 python scripts/build_models.py           # writes models.js: per-justice vote models + pending-case predictions (needs scikit-learn, scipy; ~15 min; re-run after docket.sh)
 python scripts/oyez_fetch_all.py        # caches Oyez records for every case without a summary (slow; resumable)
