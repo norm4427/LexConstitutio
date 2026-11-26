@@ -5,6 +5,8 @@ did not cover in this checkout. It writes a match file only; it never edits docs
 Sources (cached under data/raw/more_copies/, about one request a second per host, generic User-Agent and contact address):
   unpaywall  api.unpaywall.org record for each DOI: its open-access locations.
   s2         Semantic Scholar batch API (openAccessPdf), 500 DOIs a request.
+  openalex   OpenAlex works (OPENALEX_KEY from .keys.env via local_keys.py; the key is never printed or cached): by DOI,
+             50 a request, and by title for articles without a DOI; its open-access locations.
   sites      the article's own page on its journal's site (nyulawreview.org, uclalawreview.org, texaslawreview.org,
              harvardlawreview.org, ...), for a PDF of the piece on the same site.
 Rules (err toward leaving a link out):
@@ -15,7 +17,7 @@ Rules (err toward leaving a link out):
     must show our title, unless the host answers with a bot check (then kept only for .edu repositories, marked so).
   - sites: our `u` is the piece's page on the journal's site; a PDF counts only when it is on the same site, the page
     links exactly one such PDF in the piece's body, and the PDF answers with application/pdf.
-    python scripts/more_copies.py lookup [unpaywall|s2|sites ...]
+    python scripts/more_copies.py lookup [unpaywall|s2|openalex|sites ...]
     python scripts/more_copies.py match          # writes the match file (see OUT) and prints counts and a sample
 """
 import hashlib, html, json, os, random, re, sys, time, unicodedata, urllib.error, urllib.parse, urllib.request
@@ -160,6 +162,66 @@ def lookup_unpaywall(cands):
     print('unpaywall done', n)
 
 
+OA_SELECT = 'id,doi,display_name,publication_year,authorships,locations,biblio'
+
+
+def openalex(params):
+    """One OpenAlex /works request with the key added; errors are reported without the URL (it holds the key)."""
+    import local_keys  # noqa: F401  (loads OPENALEX_KEY from .keys.env)
+    k = os.environ.get('OPENALEX_KEY', '')
+    q = dict(params, **({'api_key': k} if k else {}))
+    try:
+        return json.loads(get('https://api.openalex.org/works?' + urllib.parse.urlencode(q), gap=0.15)).get('results', [])
+    except urllib.error.HTTPError as e:
+        print('openalex HTTP', e.code, flush=True)
+    except Exception as e:
+        print('openalex request failed', type(e).__name__, flush=True)
+    return None
+
+
+def lookup_openalex(cands):
+    dois = sorted({doi_of(a) for a in cands if doi_of(a)})
+    for i in range(0, len(dois), 50):
+        chunk = dois[i:i + 50]
+        p = cache_path('openalex', 'doi_' + key('|'.join(chunk)) + '.json')
+        if os.path.exists(p):
+            continue
+        res = openalex({'filter': 'doi:' + '|'.join(chunk), 'per-page': 50, 'select': OA_SELECT})
+        if res is None:
+            continue
+        json.dump({(w.get('doi') or '').replace('https://doi.org/', '').lower(): w for w in res}, open(p, 'w', encoding='utf-8'))
+        if i % 1000 == 0:
+            print('openalex doi', i + len(chunk), '/', len(dois), flush=True)
+    rest = [a for a in cands if not doi_of(a) and len(norm(a['t']).split()) >= 2]
+    for i in range(0, len(rest), 20):
+        chunk = rest[i:i + 20]
+        p = cache_path('openalex', 'title_' + key('|'.join(a['id'] for a in chunk)) + '.json')
+        if os.path.exists(p):
+            continue
+        phrases = ['"' + ' '.join(norm(re.split(r'[:?]', a['t'])[0]).split()[:12]) + '"' for a in chunk]
+        res = openalex({'filter': 'title.search:' + '|'.join(phrases), 'per-page': 200, 'select': OA_SELECT})
+        if res is None:
+            continue
+        json.dump({'ids': [a['id'] for a in chunk], 'results': res}, open(p, 'w', encoding='utf-8'))
+        if i % 400 == 0:
+            print('openalex title', i + len(chunk), '/', len(rest), flush=True)
+    print('openalex done')
+
+
+def openalex_records():
+    """doi -> work, and article id -> [works] from the title searches."""
+    by_doi, by_id = {}, {}
+    d = os.path.join(CACHE, 'openalex')
+    for f in os.listdir(d) if os.path.isdir(d) else []:
+        r = json.load(open(os.path.join(d, f), encoding='utf-8'))
+        if f.startswith('doi_'):
+            by_doi.update(r)
+        else:
+            for i in r['ids']:
+                by_id[i] = r['results']
+    return by_doi, by_id
+
+
 def lookup_s2(cands):
     dois = sorted({doi_of(a) for a in cands if doi_of(a)})
     for i in range(0, len(dois), 500):
@@ -299,6 +361,7 @@ def doi_matches(cands):
     for f in os.listdir(os.path.join(CACHE, 's2')) if os.path.isdir(os.path.join(CACHE, 's2')) else []:
         s2.update(json.load(open(os.path.join(CACHE, 's2', f), encoding='utf-8')))
     core = core_records()
+    oa_doi, oa_title = openalex_records()
     for a in cands:
         doi = doi_of(a)
         ours = surnames(a.get('a'))
@@ -338,6 +401,25 @@ def doi_matches(cands):
             url = r['openAccessPdf']['url']
             if (not theirs or not ours or ours & theirs) and host_kind(url):
                 opts.append(('s2', url, '', ''))
+        # OpenAlex: the DOI record, or a title-search hit (title, year and an author surname must all agree)
+        works = ([oa_doi[doi]] if doi in oa_doi else []) + ([w for w in oa_title.get(a['id'], [])] if not doi else [])
+        for w in works:
+            if not title_ok(a['t'], w.get('display_name')) or not w.get('publication_year')                     or abs(w['publication_year'] - a['y']) > 1:
+                continue
+            theirs = surnames((x.get('author') or {}).get('display_name') for x in w.get('authorships') or [])
+            if not doi and not (ours and theirs and ours & theirs):
+                continue
+            if ours and theirs and not ours & theirs:
+                continue
+            urls = [x for l in w.get('locations') or [] for x in (l.get('landing_page_url'), l.get('pdf_url'))]
+            if any((lambda jv: jv and int(jv.group(1)) != a.get('v'))(re.search(r'/[a-z_]+/vol(\d+)/iss\d+', x or '')) for x in urls):
+                continue
+            for l in w.get('locations') or []:
+                if not l.get('is_oa'):
+                    continue
+                for url in (l.get('landing_page_url'), l.get('pdf_url')):
+                    if url and host_kind(url):
+                        opts.append(('openalex', url, l.get('version') or '', ''))
         seen = set()
         for src, url, ver, inst in opts:
             if url in seen:
@@ -442,7 +524,7 @@ def main():
     if cmd == 'lookup':
         which = sys.argv[2:] or ['s2', 'unpaywall', 'sites']
         for w in which:
-            {'unpaywall': lookup_unpaywall, 's2': lookup_s2, 'sites': lookup_sites, 'core': lookup_core}[w](cands)
+            {'unpaywall': lookup_unpaywall, 's2': lookup_s2, 'sites': lookup_sites, 'core': lookup_core, 'openalex': lookup_openalex}[w](cands)
     elif cmd == 'match':
         found = site_matches(cands)
         # law-school repositories added to repo_copies.py for this pass (its `apply --dry-run` writes the matches):
