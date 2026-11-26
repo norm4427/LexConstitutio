@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/1912-238":{"h":"Decided on authority of preceding ease.","cite":"229 U.S. 335","src":"loc"}});

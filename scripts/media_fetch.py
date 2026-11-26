@@ -16,7 +16,7 @@
    Constitutional, Bound By Oath, Opening Arguments, The Citizen's Guide to the Supreme Court, Landmark Decisions): every episode with show notes. -> data/raw/media/pod/<show>.xml
 Resumable.  Run from the repo root:  python scripts/media_fetch.py [yt|search|loc]   (YT_API_KEY=... for the back catalog)
 """
-import html, json, os, re, sys, time, urllib.parse, urllib.request
+import glob, html, json, os, re, sys, time, urllib.parse, urllib.request
 import local_keys  # noqa: F401  (loads API keys from .keys.env)
 from datetime import date, timedelta
 
@@ -132,16 +132,31 @@ def search():
         print('search skipped: set YT_API_KEY (YouTube Data API v3) to search for videos about older cases', flush=True)
         return
     os.makedirs(f'{RAW}/search', exist_ok=True)
-    for c in top_cases('2015-01-01', 500):
+    # essential cases first, then the most cited; cases that already have a video on the site are skipped; at most
+    # YT_SEARCHES (default 95: 100 quota units each against the 10,000 a day) new searches a run
+    ess = set(load_js('docs/data/essential.js'))
+    have = set()
+    for pth in glob.glob('docs/data/media/*.js'):
+        t = open(pth, encoding='utf-8').read()
+        for cid, m in json.loads(t[t.index('Object.assign(window.MEDIA,') + 27:].rstrip().rstrip(';').rstrip(')')).items():
+            if m.get('videos'):
+                have.add(cid)
+    budget = int(os.environ.get('YT_SEARCHES', 95))
+    cs = top_cases('2100-01-01', 3000)
+    cs = [c for c in cs if c['id'] in ess] + [c for c in cs if c['id'] not in ess]
+    for c in cs:
         dest = f"{RAW}/search/{c['id'].replace('/', '_')}.json"
-        if os.path.exists(dest):
+        if os.path.exists(dest) or c['id'] in have:
             continue
+        if budget <= 0:
+            break
+        budget -= 1
         name = re.sub(r'\s*\(\d\)$', '', c['n'])
         try:
             r = json.loads(get('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=10&q='
                                + urllib.parse.quote_plus(f'"{name}"') + f'&key={key}'))
         except Exception as e:
-            print('  search failed', c['id'], e, flush=True)
+            print('  search failed', c['id'], str(e).replace(key, '<key>'), flush=True)
             break
         json.dump([{'id': it['id']['videoId'], 't': html.unescape(it['snippet']['title']), 'ch': it['snippet']['channelTitle'],
                     'date': it['snippet']['publishedAt'][:10]} for it in r.get('items', [])], open(dest, 'w', encoding='utf-8'), ensure_ascii=False)
@@ -266,6 +281,48 @@ def pod():
         time.sleep(1)
 
 
+def gdelt():
+    """News coverage of cases decided in the last three months and of pending cases, from the GDELT DOC 2.0 API (free,
+    no key; it indexes only the most recent three months of news, so older cases get nothing). Only link, title,
+    domain and date are kept. A headline counts when it contains one of the case's distinctive party names.
+    -> data/raw/media/gdelt/<case>.json (re-run every few weeks to accumulate; results are merged, never dropped)"""
+    os.makedirs(f'{RAW}/gdelt', exist_ok=True)
+    S = load_js('docs/data/scotus.js')['cases']
+    K = load_js('docs/data/docket.js')['cases']
+    cut = (date.today() - timedelta(days=92)).isoformat()
+    todo = [{'id': e['id'], 'n': e['n']} for e in K if ' v. ' in e['n']] +            [c for c in S if c.get('dec') and c['dec'] >= cut and ' v. ' in c['n']]
+    n = 0
+    for c in todo:
+        dest = f"{RAW}/gdelt/{c['id'].replace('/', '_')}.json"
+        old = json.load(open(dest, encoding='utf-8')) if os.path.exists(dest) else {'items': []}
+        if old.get('checked') == date.today().isoformat():
+            continue
+        name = re.sub(r'\s*\(\d\)$', '', c['n'])
+        ws = party_words(name)
+        if not ws:
+            continue
+        url = 'https://api.gdeltproject.org/api/v2/doc/doc?' + urllib.parse.urlencode(
+            {'query': f'"{name}" sourcelang:english', 'mode': 'artlist', 'maxrecords': 40, 'format': 'json', 'timespan': '3months', 'sort': 'datedesc'})
+        try:
+            r = json.loads(get(url, timeout=90) or '{}')
+        except Exception as e:
+            print('  gdelt failed', name, e, flush=True)
+            time.sleep(15)
+            continue
+        have = {x['u'] for x in old['items']}
+        for a in r.get('articles', []):
+            t = html.unescape(a.get('title') or '').strip()
+            if a['url'] in have or not t or not any(w.lower() in t.lower() for w in ws):
+                continue
+            sd = a.get('seendate') or ''
+            old['items'].append({'u': a['url'], 't': t, 'o': a.get('domain') or '', 'd': f'{sd[:4]}-{sd[4:6]}-{sd[6:8]}' if len(sd) >= 8 else ''})
+            n += 1
+        old['checked'] = date.today().isoformat()
+        json.dump(old, open(dest, 'w', encoding='utf-8'), ensure_ascii=False)
+        time.sleep(6)                                   # GDELT asks for one request every five seconds
+    print('gdelt: new headlines', n, 'for', len(todo), 'cases', flush=True)
+
+
 def wiki():
     """Each case's English Wikipedia article (wikitext), for the news and commentary it cites. Titles are tried in
     batches of 50 (the case name as the site writes it, redirects followed); build_media.py keeps an article only when
@@ -283,11 +340,15 @@ def wiki():
         batch = names[k:k + 50]
         url = ('https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&redirects=1&prop=revisions'
                '&rvprop=content&rvslots=main&titles=' + urllib.parse.quote('|'.join(batch)))
-        try:
-            r = json.loads(get(url, timeout=120))
-        except Exception as e:
-            print('  wiki failed', k, e, flush=True)
-            time.sleep(10)
+        r = None
+        for attempt in range(8):                      # Wikipedia answers 429 when asked too fast: back off and retry the same batch
+            try:
+                r = json.loads(get(url, timeout=120))
+                break
+            except Exception as e:
+                print('  wiki retry', k, e, flush=True)
+                time.sleep(min(300, 20 * (attempt + 1) ** 2))
+        if r is None:
             continue
         q = r.get('query', {})
         back = {}
@@ -301,7 +362,7 @@ def wiki():
         json.dump(pages, open(dest, 'w', encoding='utf-8'), ensure_ascii=False)
         if k % 1000 == 0:
             print('wiki', k, '/', len(names), flush=True)
-        time.sleep(1)
+        time.sleep(3)
     print('wiki done', flush=True)
 
 
@@ -380,4 +441,4 @@ def epfind():
 
 if __name__ == '__main__':
     for w in sys.argv[1:] or ['pod', 'yt', 'search', 'loc']:
-        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod, 'wiki': wiki, 'epfind': epfind}[w]()
+        {'yt': yt, 'search': search, 'loc': loc, 'pod': pod, 'wiki': wiki, 'epfind': epfind, 'gdelt': gdelt}[w]()

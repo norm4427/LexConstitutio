@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"1993/93-609":{"h":"997 F. 2d 39, affirmed by an equally divided Court.","cite":"511 U.S. 658","src":"loc"}});

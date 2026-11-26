@@ -7,23 +7,33 @@ Sources, in order of preference (each is only tried for cases that still lack a 
         matters put the headnote before the "Appeal from ..." caption line, which the first pass skipped.
   loc   the official syllabus from the Library of Congress U.S. Reports PDF (same cache as loc_syllabus.py,
         data/raw/loc_syl/), read with a parser that does not stop at the "Opinion of the Court." running head of the
-        second page and accepts syllabi that open with "1." (most 1930s-50s cases the first pass missed).
+        second page and accepts syllabi that open with "1." (most 1930s-50s cases the first pass missed); a last
+        reading takes the short block after the docket line (per curiam orders, decrees, "affirmed by an equally
+        divided Court", "Decided on authority of ...").
+  recite  cases whose first page on the site is wrong: the page CAP's volume metadata gives for the same decision date
+        and party name, then the LoC PDF (and, through 1930, CAP's head matter) from that page.
+  orders  memorandum decisions and short per curiam orders with no syllabus: their whole text (at most 700
+        characters, a single opinion), from the CAP case file, shown as "Order" (src:'order').
   wiki  for important cases only (essential list, most cited, linked from the Guide, Corner, Constitution, statutes
         or articles): the lead section of the case's Wikipedia article (CC BY-SA 4.0, attributed and linked on the
         case page). The article is accepted only if its infobox carries the case's U.S. Reports volume and page.
 
 Output: docs/data/summaries/<year>.js (merged into window.HEADNOTES, the format the case page already reads: {h, cite,
-cap} for CAP headnotes, {h, cite, src:'loc'} for syllabi, {h, src:'wiki', t, url, rev} for Wikipedia) and
+cap} for CAP headnotes, {h, cite, src:'loc'} for syllabi, {h, cite, cap, src:'order'} for order text, {h, src:'wiki', t, url, rev} for Wikipedia) and
 docs/data/summaries-index.js. build_headnotes.py's files are not touched.
 
 Caches (gitignored): data/raw/oyez/cases/ (Oyez records for every Oyez case on the site, to know which have no
-summary), data/raw/cap/meta/, data/raw/cap/case/, data/raw/loc_syl/, data/raw/wiki_case/.
+summary), data/raw/cap/meta/, data/raw/cap/meta_full/, data/raw/cap/case/, data/raw/cap/order/, data/raw/loc_syl/,
+data/raw/wiki_case/, data/raw/wiki_name/.
 
 Run from the repo root:
   python scripts/case_summaries.py oyez        # refresh the Oyez cache for all Oyez cases (about 8,500 requests)
   python scripts/case_summaries.py cap         # CAP head matter for cases with no summary
   python scripts/case_summaries.py loc         # LoC syllabus pages for cases still without one
   python scripts/case_summaries.py wiki        # Wikipedia leads for important cases still without any summary
+  python scripts/case_summaries.py wikiname    # Wikipedia by case name for any case still without one (slow; resumable)
+  python scripts/case_summaries.py recite      # LoC/CAP at the right page for cases whose first page is wrong
+  python scripts/case_summaries.py orders      # CAP text of short orders with no syllabus
   python scripts/case_summaries.py build       # write docs/data/summaries/
   python scripts/case_summaries.py coverage    # coverage table, overall, by era and for important cases
 """
@@ -93,7 +103,7 @@ class Data:
             return 'oyez'
         h = self.head.get(c['id']) or (self.mine.get(c['id']) if new else None)
         if h:
-            return {'loc': 'syllabus', 'wiki': 'wikipedia'}.get(h.get('src'), 'headnotes')
+            return {'loc': 'syllabus', 'wiki': 'wikipedia', 'order': 'order'}.get(h.get('src'), 'headnotes')
         return 'ai brief' if c['id'] in self.ai else 'none'
 
     def need(self, c):
@@ -156,7 +166,7 @@ def important(D):
 # ---------------------------------------------------------------- coverage
 ERAS = [(0, 1859, '1791-1859'), (1860, 1899, '1860-1899'), (1900, 1929, '1900-1929'), (1930, 1954, '1930-1954'),
         (1955, 1989, '1955-1989'), (1990, 9999, '1990-2026')]
-COLS = ['oyez', 'headnotes', 'syllabus', 'wikipedia', 'ai brief', 'none']
+COLS = ['oyez', 'headnotes', 'syllabus', 'order', 'wikipedia', 'ai brief', 'none']
 
 
 def table(rows, D, new):
@@ -227,7 +237,7 @@ WORD = re.compile(r"^[(\[\"'“‘]*([A-Za-z][a-z'’-]*|[A-Z][A-Z'’-]+|[A-Z]\
 _VOCAB = None
 
 
-def garbled(text):
+def garbled(text, min_words=8):
     """True if the OCR is mostly noise: too few tokens look like words, or too few lower-case words are ones the
     existing headnotes and syllabi use (a vocabulary built from docs/data/headnotes/)."""
     global _VOCAB
@@ -240,7 +250,7 @@ def garbled(text):
             df.update(set(re.findall(r"[a-z]+", r['h'])))
         _VOCAB = {w for w, n in df.items() if n >= 3}
     words = re.findall(r"(?<![A-Za-z])[a-z]{3,}(?![A-Za-z])", text)
-    return len(words) < 8 or sum(1 for w in words if w in _VOCAB) / len(words) < 0.9
+    return len(words) < min_words or sum(1 for w in words if w in _VOCAB) / len(words) < 0.9
 
 
 def drop_noise_lines(text):
@@ -399,6 +409,62 @@ def loc_parse2(t, c):
     return text
 
 
+DOCKET_LINE = re.compile(r"^[*†\s]*Nos?\.\s*[\w,\s&.-]{1,60}?\.\s*(Argued|Reargued|Submitted|Decided|Order entered|Certiorari granted|Motion|Per curiam|"
+                         r"[A-Z][a-z]+ (granted|denied|dismissed|reversed|affirmed))?.{0,120}?\d{4}\.?", re.I)
+DATE_LINE = re.compile(r"^((Re)?argued|Decided|Submitted)\b.{0,80}\d{4}[.-]*", re.I)
+OUTCOME = re.compile(r"affirm|revers|dismiss|remand|vacat|grant|den(y|ied)|decree|decided on|on authority|authority of|followed|restored|overrul|held|equally divided", re.I)
+
+
+def loc_parse3(t, c):
+    """Last resort for short syllabi: the block between this case's docket line (any form: 'No. 100. Certiorari granted
+    and judgment reversed, Nov. 17, 1952.', 'No. 87-107. Order entered ...') and counsel or the opinion, kept when it
+    states an outcome. Picks up per curiam orders, decrees and 'Decided on authority of ...' syllabi."""
+    lines = [l.strip() for l in t.replace('\f', '\n').split('\n') if l.strip()]
+    words = [w for w in re.findall(r'[A-Za-z]{3,}', c['n'].split(' v. ')[0]) if w.lower() not in {'the', 'united', 'states', 'parte'}]
+    first = (words or re.findall(r'[A-Za-z]{3,}', c['n']) or [''])[0].lower()   # 'School Bd. of ...' is 'SCHOOL BOARD OF ...' in the caption
+    start = None
+    for i, l in enumerate(lines[:120]):
+        m = DOCKET_LINE.match(l) or DATE_LINE.match(l)
+        if m and any(first and first in re.sub(r'[^a-z]', '', lines[j].lower()) for j in range(max(0, i - 4), i)):
+            start, rest = i + 1, l[m.end():].strip()
+            break
+    if start is None:
+        return ''
+    body = [rest] if rest else []
+    for l in lines[start:]:
+        if SYL_END.match(l) or re.match(r"^(DECREE|OPINION|ORDER)\.?$|^(MR\. )?(CHIEF )?JUSTICE [A-Z]+", l):
+            break
+        if SYL_RUN.match(l) or l.startswith('*'):
+            continue
+        if body and body[-1].endswith('-') and l[:1].islower():
+            body[-1] = body[-1][:-1] + l
+        else:
+            body.append(l)
+        if sum(map(len, body)) > 3400:
+            break
+    text = bh.clean(' '.join(body))
+    # the rest of a split 'Argued ...-Decided ...' line or a run of decree dates, then counsel or 'The facts are stated'
+    lead = re.compile(r'^[-–—,\s]*((\w+ ){0,3}(entered|Entered|ENTERED|(Re)?argued|Argued|Decided|Submitted|certified)\b[^.]{0,60}?\d{4}|and [A-Z][a-z]+ \d{1,2}, \d{4})\.?\s*')
+    while lead.match(text):
+        text = lead.sub('', text, count=1)
+    keep = []
+    for sent in re.split(r'(?<=\.) (?=[A-Z])', text):
+        if keep and (re.match(r"(Mr|Messrs|Mrs)\.", sent) or re.search(
+                r"\bfor (the )?(petitioners?|respondents?|appellants?|appellees?|plaintiffs?|defendants?|movants?|applicants?|the United States|the State)\b|"
+                r"\bwith whom\b|\bpro se\b|\bon the (motion|briefs?)\b|\bin opposition\b|\bwas on the brief|(?i:\bfacts a\w{1,3} (stated|sufficiently))", sent)):
+            break
+        keep.append(sent)
+    text = re.sub(r"(?<=\.)\s+([A-Z][a-z]+ )+[A-Z]\.$", '', ' '.join(keep))   # 'John G.' of a counsel line split at the initial
+    text = re.sub(r'(?<=[.:]) (?=\([a-z]\) )', '\n', re.sub(r'\s*\bHeld[:.]?(?=[\sA-Z])\s*', '\nHeld: ', text)).strip()
+    if len(text) < 30 or not OUTCOME.search(text) or not re.search(r'[a-z]{2,} [a-z]{2,} [a-z]{2,}|, (\w+ )?(affirmed|reversed|vacated|dismissed)\b|^[A-Z][a-z]+( [a-z]+)? (dismissed|granted|denied|affirmed|reversed|vacated)\b', text):
+        return ''
+    if len(text) > 3200:
+        cut = text[:3200]
+        m = max(cut.rfind('. '), cut.rfind('.\n'))
+        text = (cut[:m + 1] if m > 1600 else cut) + ' …'
+    return text
+
+
 def fetch_loc():
     import loc_syllabus as ls
     os.makedirs(LOC, exist_ok=True)
@@ -501,6 +567,179 @@ def fetch_wiki():
             print(k, '/', len(todo), flush=True)
 
 
+WIKIN = 'data/raw/wiki_name'
+
+
+def wiki_by_name(c):
+    """Second pass for cases the citation lookup missed (the site's first page is sometimes wrong: Dellmuth v. Muth is
+    491 U.S. 223, not 22): search Wikipedia for the case name; accept an article whose title shares both parties' first
+    words and whose infobox gives the same volume and either the same page or the same decision year. The infobox page is
+    kept, so the LoC syllabus PDF can be fetched at the right address."""
+    m = re.match(r'^(\d+) U\.S\. (\d+)$', c.get('cit') or '')
+    if not m or ' v. ' not in c['n']:
+        return {}
+    v, p = m.groups()
+    sides = [re.findall(r"[A-Za-z]{3,}", s) for s in c['n'].split(' v. ', 1)]
+    skip = {'the', 'united', 'states', 'america', 'and', 'company', 'state', 'city', 'county', 'commission', 'commissioner', 'director', 'inc', 'corp', 'district', 'board'}
+    keys = [next((w.lower() for w in s if w.lower() not in skip), (s[0].lower() if s else '')) for s in sides]
+    q = re.sub(r',.*?(?= v\. )|,.*$', '', c['n'])
+    hits = (wapi(action='query', list='search', srsearch=q, srlimit=6, srnamespace=0).get('query') or {}).get('search') or []
+    yr = (c.get('dec') or '')[:4]
+    for h in [{'title': q}] + hits:   # the name as a title (or redirect) first
+        t = h['title']
+        if ' v. ' not in t or t.startswith('List of') or not all(k and k in t.lower() for k in keys):
+            continue
+        r = wapi(action='query', prop='revisions|extracts', titles=t, rvprop='content|ids', rvslots='main', exintro=1, explaintext=1, redirects=1)
+        pg = ((r.get('query') or {}).get('pages') or [{}])[0]
+        rev = (pg.get('revisions') or [{}])[0]
+        wt = ((rev.get('slots') or {}).get('main') or {}).get('content') or ''
+        vol, page = re.search(r'\|\s*USVol\s*=\s*(\d+)', wt), re.search(r'\|\s*USPage\s*=\s*(\d+)', wt)
+        dec = re.search(r'\|\s*DecideYear\s*=\s*(\d{4})', wt) or re.search(r'\|\s*DecideDate\s*=\s*[^|\n]*?(\d{4})', wt)
+        if not (vol and page and vol.group(1) == v and (page.group(1) == p or (dec and dec.group(1) == yr))):
+            continue
+        return {'t': pg['title'], 'rev': rev.get('revid'), 'x': pg.get('extract') or '', 'page': page.group(1)}
+    return {}
+
+
+def fetch_wiki_name():
+    """Name search for every case still without a summary (important ones first); where the infobox gives another first
+    page, the LoC syllabus PDF is fetched from that page's address into the LoC cache."""
+    import loc_syllabus as ls
+    os.makedirs(WIKIN, exist_ok=True)
+    D = Data()
+    imp = set().union(*important(D).values())
+    have = set(build_cap(D)) | set(build_loc(D)) | {os.path.basename(f)[:-5].replace('_', '/', 1) for f in glob.glob(f'{WIKI}/*.json') if os.path.getsize(f) > 2}
+    todo = [c for c in D.cases if D.need(c) and c['id'] not in have and not os.path.exists(f'{WIKIN}/{fname(c["id"])}.json')]
+    todo.sort(key=lambda c: (c['id'] not in imp, c.get('dec') or ''))
+    print(len(todo), 'cases to look up on Wikipedia by name', flush=True)
+    for k, c in enumerate(todo):
+        try:
+            r = wiki_by_name(c)
+        except RuntimeError as e:
+            print(' ', c['id'], e, flush=True)
+            continue
+        json.dump(r, open(f'{WIKIN}/{fname(c["id"])}.json', 'w', encoding='utf-8'), ensure_ascii=False)
+        v = (c.get('cit') or '').split(' ')[0]
+        if r.get('page') and r['page'] != c['cit'].split(' ')[-1] and v.isdigit() and int(v) <= 542 and not os.path.exists(f'{LOC}/{fname(c["id"])}.txt'):
+            k2 = f'usrep{int(v):03d}{int(r["page"]):03d}'
+            ls.one((c['id'], f'https://tile.loc.gov/storage-services/service/ll/usrep/usrep{int(v):03d}/{k2}/{k2}.pdf'))
+        if k % 50 == 0:
+            print(k, '/', len(todo), flush=True)
+
+
+CAPF = 'data/raw/cap/meta_full'
+
+
+def fetch_recite():
+    """Cases whose first page on the site is wrong get no LoC PDF (the address is built from the page). For cases still
+    without a summary and without a cached LoC page, find the case in the CAP volume metadata by decision date and a
+    party's name, and fetch the LoC syllabus PDF from the page CAP gives. Pre-1931 cases also get CAP's head matter."""
+    import loc_syllabus as ls
+    os.makedirs(CAPF, exist_ok=True)
+    D = Data()
+    have = set(build_cap(D)) | set(build_loc(D))
+    todo = collections.defaultdict(list)
+    for c in D.cases:
+        m = re.match(r'^(\d+) U\.S\. (\d+)$', c.get('cit') or '')
+        if m and D.need(c) and c['id'] not in have and not os.path.exists(f'{LOC}/{fname(c["id"])}.txt') and c.get('dec'):
+            todo[int(m.group(1))].append(c)
+    print(sum(map(len, todo.values())), 'cases in', len(todo), 'volumes', flush=True)
+    found = 0
+    for v in sorted(todo):
+        mp = f'{CAPF}/{v}.json'
+        if not os.path.exists(mp):
+            raw = get(f'https://static.case.law/us/{v}/CasesMetadata.json')
+            meta = [{'f': x['file_name'], 'n': x.get('name_abbreviation') or '', 'd': x.get('decision_date') or '', 'p': x.get('first_page'),
+                     'court': (x.get('court') or {}).get('id')} for x in json.loads(raw)] if raw else []
+            json.dump(meta, open(mp, 'w', encoding='utf-8'))
+            time.sleep(0.5)
+        meta = json.load(open(mp, encoding='utf-8'))
+        for c in todo[v]:
+            keys = [w.lower() for w in re.findall(r"[A-Za-z]{4,}", c['n']) if w.lower() not in {'united', 'states', 'america', 'commissioner', 'internal', 'revenue', 'company', 'director'}][:3]
+            score = lambda x: sum(k in x['n'].lower() for k in keys)
+            hit = [x for x in meta if x['d'] == c['dec'] and x['court'] == 9009 and score(x)]
+            best = max(map(score, hit), default=0)
+            hit = [x for x in hit if score(x) == best]
+            if len(hit) != 1 or not str(hit[0]['p'] or '').isdigit():
+                continue
+            pg = int(hit[0]['p'])
+            if str(pg) == c['cit'].split(' ')[-1]:
+                continue   # same address as before: the LoC has no PDF there
+            if v <= 542:
+                k = f'usrep{v:03d}{pg:03d}'
+                ls.one((c['id'], f'https://tile.loc.gov/storage-services/service/ll/usrep/usrep{v:03d}/{k}/{k}.pdf'))
+                found += os.path.exists(f'{LOC}/{fname(c["id"])}.txt')
+            if v <= 281:   # 1930 and before: CAP head matter at the right page
+                raw = get(f'https://static.case.law/us/{v}/cases/{hit[0]["f"]}.json')
+                if raw:
+                    d = json.loads(raw)
+                    json.dump({'cap': d.get('id'), 'cite': f'{v} U.S. {pg}', 'head': (d.get('casebody') or {}).get('head_matter') or ''},
+                              open(f'{CAPC}/{fname(c["id"])}.json', 'w', encoding='utf-8'), ensure_ascii=False)
+                time.sleep(0.4)
+    print(found, 'LoC pages fetched at corrected addresses', flush=True)
+
+
+CAPO = 'data/raw/cap/order'
+
+
+def fetch_orders():
+    """Memorandum decisions and one-paragraph per curiam orders have no syllabus: their whole text is the summary. For
+    cases still without one, fetch the CAP case file and keep the opinion text when it is short (build decides)."""
+    os.makedirs(CAPO, exist_ok=True)
+    D = Data()
+    have = set(build_cap(D)) | set(build_loc(D))
+    todo = collections.defaultdict(list)
+    for c in D.cases:
+        m = re.match(r'^(\d+) U\.S\. (\d+)$', c.get('cit') or '')
+        if m and D.need(c) and c['id'] not in have and not os.path.exists(f'{CAPO}/{fname(c["id"])}.json'):
+            todo[int(m.group(1))].append(c)
+    print(sum(map(len, todo.values())), 'cases in', len(todo), 'volumes', flush=True)
+    for v in sorted(todo):
+        full = json.load(open(f'{CAPF}/{v}.json', encoding='utf-8')) if os.path.exists(f'{CAPF}/{v}.json') else []
+        meta = json.load(open(f'{CAPM}/{v}.json', encoding='utf-8')) if os.path.exists(f'{CAPM}/{v}.json') else []
+        for c in todo[v]:
+            scdb = 'SCDB ' + c['id'][5:] if c['id'].startswith('scdb/') else None
+            hit = [x for x in meta if scdb and scdb in x['cites']] or [x for x in meta if c['cit'] in x['cites'] and x['court'] == 9009]
+            if len(hit) != 1:
+                keys = [w.lower() for w in re.findall(r"[A-Za-z]{4,}", c['n']) if w.lower() not in {'united', 'states', 'america', 'commissioner', 'internal', 'revenue', 'company', 'director'}][:3]
+                score = lambda x: sum(k in x['n'].lower() for k in keys)
+                hit = [x for x in full if x['d'] == c.get('dec') and x['court'] == 9009 and score(x)]
+                best = max(map(score, hit), default=0)
+                hit = [x for x in hit if score(x) == best]
+            rec = {}
+            if len(hit) == 1:
+                raw = get(f'https://static.case.law/us/{v}/cases/{hit[0]["f"]}.json')
+                if raw:
+                    d = json.loads(raw)
+                    ops = (d.get('casebody') or {}).get('opinions') or []
+                    rec = {'cap': d.get('id'), 'cite': (d.get('citations') or [{}])[0].get('cite') or c['cit'], 'name': d.get('name_abbreviation'),
+                           'ops': [{'type': o.get('type'), 'author': o.get('author'), 'text': o.get('text') or ''} for o in ops]}
+                time.sleep(0.4)
+            json.dump(rec, open(f'{CAPO}/{fname(c["id"])}.json', 'w', encoding='utf-8'), ensure_ascii=False)
+
+
+def build_orders(D):
+    """The text of a short order (a single opinion of at most 700 characters, no dissent), from the CAP file."""
+    out = {}
+    for f in glob.glob(f'{CAPO}/*.json'):
+        cid = os.path.basename(f)[:-5].replace('_', '/', 1)
+        c = D.by_id.get(cid)
+        r = json.load(open(f, encoding='utf-8'))
+        if not c or not D.need(c) or len(r.get('ops') or []) != 1:
+            continue
+        t = re.sub(r'\s+', ' ', r['ops'][0]['text']).strip()
+        t = re.sub(r'^(PER CURIAM|Per Curiam)[.:]?\s*|^M[Rr]\. (Chief )?Justice \w+ delivered the opinion of the [Cc]ourt\.\s*', '', t)
+        keep = []   # counsel printed after the order
+        for sent in re.split(r'(?<=\.)(?<!Mr\.)(?<!Messrs\.) (?=[A-Z])', t):
+            if keep and re.search(r"\bwith whom\b|\bargued the cause|\bon the briefs?\b|\bfor (the )?(petitioners?|respondents?|appellants?|appellees?|plaintiffs?|defendants?)\b", sent):
+                break
+            keep.append(sent)
+        t = ' '.join(keep)
+        if 15 <= len(t) <= 700 and OUTCOME.search(t) and not garbled(t, 1):
+            out[cid] = {'h': t, 'cite': r.get('cite') or c.get('cit'), 'cap': r.get('cap'), 'src': 'order'}
+    return out
+
+
 def wiki_text(x):
     paras = [re.sub(r'\s+', ' ', p).strip() for p in (x or '').split('\n')]
     paras = [p for p in paras if len(p) > 40]
@@ -530,10 +769,28 @@ def build_cap(D):
         r = json.load(open(f, encoding='utf-8'))
         h = drop_noise_lines(cap_extract(r.get('head') or ''))
         # later volumes keep only counsel and the line-up of opinions: those lines are not a summary
-        h = '\n'.join(l for l in h.split('\n') if not NOT_SUMMARY.search(l)).strip()
+        h = '\n'.join(l for l in h.split('\n') if not NOT_SUMMARY.search(l) and not re.match(r'(?i)the (case|facts)\b.{0,12}\bstated\b', l)).strip()
         if year(c) <= 1930 and len(h) >= 80 and not garbled(h) and re.search(r'[a-z]{3,} [a-z]{3,} [a-z]{3,}', h):
             out[cid] = {'h': h, 'cite': r.get('cite') or c.get('cit'), 'cap': r.get('cap')}
+            continue
+        # a one-line headnote such as 'Sevier v. Haskell, 14 Wall. 12, followed.' or 'Decided on the authority of ...'
+        short = [l.strip() for l in (r.get('head') or '').split('\n') if re.match(
+            r"^[A-Z].{4,200}\b(followed|approved|affirmed|reaffirmed|governed by|controlled by|(up)?on (the )?authority of)\b.{0,120}\.$", l.strip())]
+        if year(c) <= 1930 and short and not NOT_SUMMARY.search(short[0]) and not garbled(short[0], 1):
+            out[cid] = {'h': bh.clean(short[0]), 'cite': r.get('cite') or c.get('cit'), 'cap': r.get('cap')}
     return out
+
+
+LEAD = re.compile(r'^[-–—:,\s]*((\w+ ){0,3}(entered|Entered|ENTERED|(Re)?argued|Argued|Decided|Submitted|certified|denied)\s*.{0,40}?\d{4}|and [A-Z][a-z]+ \d{1,2}, \d{4})\.?[-–—\s]*')
+
+
+def tidy(h):
+    """Dates left over from the docket line at the start; 'The facts are stated in the opinion.' and counsel at the end."""
+    for _ in range(4):
+        h = LEAD.sub('', h, count=1)
+    h = re.sub(r'^[-–—:,\s]+', '', h)
+    m = re.search(r"\s(?i:the (facts|case) (are|is|axe) (stated|sufficiently))", h)
+    return (h[:m.start()] if m and m.start() > 25 else h).strip()
 
 
 def build_loc(D):
@@ -543,10 +800,13 @@ def build_loc(D):
         c = D.by_id.get(cid)
         if not c or not D.need(c):
             continue
-        t = strip_footnotes(open(f, encoding='utf-8', errors='replace').read())
-        h = polish(loc_parse(t, c) or loc_parse2(t, c))
-        if h and not garbled(h):
-            out[cid] = {'h': h, 'cite': c.get('cit'), 'src': 'loc'}
+        raw = open(f, encoding='utf-8', errors='replace').read()
+        t = strip_footnotes(raw)
+        for parse in (loc_parse, loc_parse2, loc_parse3):   # the first reading that is not scanning noise
+            h = tidy(polish(parse(raw if parse is loc_parse3 else t, c)))   # a short syllabus may cite two cases: keep it whole
+            if h and not garbled(h, 8 if len(h) > 300 else 3 if len(h) > 150 else 1):
+                out[cid] = {'h': h, 'cite': c.get('cit'), 'src': 'loc'}
+                break
     return out
 
 
@@ -555,9 +815,12 @@ def build():
     D.mine = {}
     recs = build_cap(D)
     for k, v in build_loc(D).items():
+        if k not in recs or len(recs[k]['h']) < 120 <= len(v['h']):   # a full syllabus beats a one-line CAP headnote
+            recs[k] = v
+    for k, v in build_orders(D).items():
         recs.setdefault(k, v)
     nw = 0
-    for f in glob.glob(f'{WIKI}/*.json'):
+    for f in glob.glob(f'{WIKI}/*.json') + glob.glob(f'{WIKIN}/*.json'):
         cid = os.path.basename(f)[:-5].replace('_', '/', 1)
         r = json.load(open(f, encoding='utf-8'))
         if cid in recs or not r.get('t') or cid not in D.by_id or not D.need(D.by_id[cid]):
@@ -584,5 +847,5 @@ def build():
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'coverage'
-    {'oyez': fetch_oyez, 'cap': fetch_cap, 'loc': fetch_loc, 'wiki': fetch_wiki, 'build': build,
+    {'oyez': fetch_oyez, 'cap': fetch_cap, 'loc': fetch_loc, 'wiki': fetch_wiki, 'wikiname': fetch_wiki_name, 'recite': fetch_recite, 'orders': fetch_orders, 'build': build,
      'coverage': coverage, 'before': lambda: coverage(new=False)}[cmd]()

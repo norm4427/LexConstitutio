@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/1907-068":{"h":"Decided on authority of Missouri Valley Land Co. v. Wiese, ante, p. 234.","cite":"208 U.S. 250","cap":3641558}});

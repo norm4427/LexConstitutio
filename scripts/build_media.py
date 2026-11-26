@@ -678,6 +678,51 @@ def main():
             for x in m_['web']:
                 x.pop('n', None)
     print('CRS report links:', n_crs)
+    # --- recent headlines from GDELT (media_fetch.py gdelt): link, title, outlet and date only
+    n_gd = 0
+    for p_ in glob.glob(f'{RAW}/gdelt/*.json'):
+        cid_key = os.path.basename(p_)[:-5]
+        cid = next((k for k in media if k.replace('/', '_') == cid_key), None)
+        if not cid:
+            continue
+        have = {x['u'].split('?')[0].rstrip('/') for x in media[cid].get('web', [])}
+        for it in json.load(open(p_, encoding='utf-8')).get('items', []):
+            host = urlparse(it['u']).netloc.lower().removeprefix('www.')
+            if it['u'].split('?')[0].rstrip('/') in have or PRIMARY.search(it['u']) or host.endswith('.gov'):
+                continue
+            have.add(it['u'].split('?')[0].rstrip('/'))
+            media[cid].setdefault('web', []).append({'u': it['u'], 't': it['t'][:300], 'o': host, 'd': it.get('d', ''), 'pw': 1 if PAYWALL.search(host) else 0})
+            n_gd += 1
+        if media[cid].get('web'):
+            media[cid]['web'].sort(key=lambda x: x['d'] or '0000', reverse=True)
+    print('GDELT headlines:', n_gd)
+    # --- never lose what an earlier build found: the raw caches (podcast feeds, Chronicling America, Wikipedia) are
+    # refetched piecemeal, so entries of the previous output are merged back in wherever the new build lacks them
+    n_old = collections.Counter()
+    for fp in glob.glob(f'{OUT}/*.js'):
+        t_ = open(fp, encoding='utf-8').read()
+        for cid, o in json.loads(t_[t_.index('Object.assign(window.MEDIA,') + 27:].rstrip().rstrip(';').rstrip(')')).items():
+            m = media.get(cid)
+            if m is None:
+                m = media[cid] = {'videos': [], 'print': []}
+            vkey = lambda v: v.get('id') or (v.get('t'), v.get('date'))
+            hv = {vkey(v) for v in m['videos']}
+            for v in o.get('videos', []):
+                if vkey(v) not in hv:
+                    m['videos'].append(v); n_old['videos'] += 1
+            hp = {x.get('url') for x in m['print']}
+            for x in o.get('print', []):
+                if x.get('url') not in hp:
+                    m['print'].append(x); n_old['print'] += 1
+            m['print'].sort(key=lambda x: x['date'])
+            hw = {x['u'] for x in m.get('web', [])}
+            for x in o.get('web', []):
+                if x['u'] not in hw:
+                    m.setdefault('web', []).append(x); n_old['web'] += 1
+            for k in ('wiki', 'sb'):
+                if o.get(k) and not m.get(k):
+                    m[k] = o[k]
+    print('entries kept from the previous build:', dict(n_old))
     # --- write by term
     tmap = {c['id']: str(c.get('t')) for c in S}          # every case, Supreme Court Database-only ones included
     tmap.update({c['id']: str(c.get('t')) for c in pend})

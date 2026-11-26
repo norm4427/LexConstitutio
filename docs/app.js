@@ -1111,6 +1111,12 @@
           <p class="attrib">The opening of the Wikipedia article “<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.t)}</a>”${h.rev ? ` (<a href="https://en.wikipedia.org/w/index.php?oldid=${esc(h.rev)}" target="_blank" rel="noopener">revision ${esc(h.rev)}</a>)` : ''}, by its contributors, under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. Not an official summary: check it against the opinion.</p></section>`;
         return;
       }
+      if (h.src === 'order') {
+        slot.innerHTML = `<section class="headnotes" aria-label="Text of the order"><h2>Order <small>full text, from the United States Reports</small></h2>
+          <div class="prose-sm"><p>${esc(h.h)}</p></div>
+          <p class="attrib">The whole text of this short order or per curiam${h.cite ? ' at ' + esc(h.cite) : ''} (public domain; no syllabus was printed), from the <a href="https://case.law/" target="_blank" rel="noopener">Caselaw Access Project</a> (Harvard Law School Library). Read from page scans by OCR, so it may contain scanning errors.</p></section>`;
+        return;
+      }
       const syl = h.src === 'loc';
       slot.innerHTML = `<section class="headnotes" aria-label="${syl ? 'Syllabus' : "Reporter's headnotes"}"><h2>${syl ? 'Syllabus' : 'Headnotes'} <small>from the United States Reports</small></h2>
         <div class="prose-sm">${h.h.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>

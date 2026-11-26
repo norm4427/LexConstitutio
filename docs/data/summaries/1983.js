@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"1982/81-2318":{"h":"Certiorari dismissed. Reported below: 410 So. 2d 152.","cite":"462 U.S. 637","src":"loc"}});

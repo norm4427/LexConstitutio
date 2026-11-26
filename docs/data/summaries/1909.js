@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/1908-046":{"h":"Decided on the authority of United States v. Biggs, ante, p. 507.","cite":"211 U.S. 525","cap":11927991}});

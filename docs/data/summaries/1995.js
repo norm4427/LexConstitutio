@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"1994/93-2068":{"h":"6 F. 3d 789, vacated and remanded.","cite":"515 U.S. 321","src":"loc"}});

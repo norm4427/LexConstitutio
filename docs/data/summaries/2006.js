@@ -1,0 +1,1 @@
+window.HEADNOTES=window.HEADNOTES||{};Object.assign(window.HEADNOTES,{"scdb/2006-004":{"h":"The writ of certiorari is dismissed as improvidently granted. It is so ordered.","cite":"549 U.S. 69","cap":3553809,"src":"order"}});
