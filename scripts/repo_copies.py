@@ -70,6 +70,18 @@ REPOS = {
     'setonhall': DC('scholarship.shu.edu', 'law'), 'depaul': DC('via.library.depaul.edu', 'law'),
     'washu': DC('repository.library.washu.edu', 'law'), 'stmarys': DC('commons.stmarytx.edu', 'law'),
     'wne': DC('digitalcommons.wne.edu', 'law'), 'montana': DC('scholarworks.umt.edu', 'law'),
+    # third pass (more_copies.py): law schools not harvested before
+    'alabama': DC('scholarship.law.ua.edu'), 'mclaw': DC('dc.law.mc.edu'), 'tulsa': DC('digitalcommons.law.utulsa.edu'),
+    'fiu': DC('ecollections.law.fiu.edu'), 'wyoming': DC('scholarship.law.uwyo.edu'), 'barry': DC('lawpublications.barry.edu'),
+    'ubc': DC('commons.allard.ubc.ca'), 'dalhousie': DC('digitalcommons.schulichlaw.dal.ca'),
+    'pepperdine': DC('digitalcommons.pepperdine.edu', 'law'), 'nebraska': DC('digitalcommons.unl.edu', 'law'),
+    'valpo': DC('scholar.valpo.edu', 'law'), 'rwu': DC('docs.rwu.edu', 'law'), 'denver': DC('digitalcommons.du.edu', 'law'),
+    'dayton': DC('ecommons.udayton.edu', 'law'), 'louisville': DC('ir.library.louisville.edu', 'law'),
+    'siu': DC('opensiuc.lib.siu.edu', 'law'), 'niu': DC('huskiecommons.lib.niu.edu', 'law'),
+    'southcarolina': DC('scholarcommons.sc.edu', 'law'), 'unm': DC('digitalrepository.unm.edu', 'law'),
+    'unh': DC('scholars.unh.edu', 'law'), 'uconn': DC('digitalcommons.lib.uconn.edu', 'law'),
+    'wayne': DC('digitalcommons.wayne.edu', 'law'), 'duquesne': DC('dsc.duq.edu', 'law'),
+    'arkansas': DC('scholarworks.uark.edu', 'law'), 'hamline': DC('digitalcommons.hamline.edu', 'law'),
     # Yale: faculty scholarship, other scholarship and journals communities
     'yale': ('dspace', 'https://openyls.law.yale.edu/server/oai/request',
              ['com_20.500.13051_35', 'com_20.500.13051_37', 'com_20.500.13051_1']),
