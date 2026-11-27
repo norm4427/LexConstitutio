@@ -84,10 +84,20 @@ what changed in this round of work, what is still running, and what does not tra
 
 ## In progress / not committed when this was written
 
-- **"Works cited" lists from article footnotes.** In progress: `scripts/fulltext_cites.py` and its `docs/app.js` edits
-  are uncommitted on the old machine. It parses citations from the free full texts we link (cached in the gitignored
-  `data/raw/fulltext/`) and matches them to indexed articles and cases. It shows "Works cited", "Cases cited" and
-  "Cited by" on article pages. It was mid-pilot (~600 articles) before precision checks and the full run.
+- **"Works cited" lists from article footnotes.** The code is committed: `scripts/fulltext_cites.py` and the
+  `docs/app.js` sections. Article pages get "Works cited", "Cases cited" and "Cited by"; case pages get "Cited in law
+  reviews". The sections stay hidden until the data files exist (`docs/data/ft-index.js`, `docs/data/ft/`), and none
+  are committed yet.
+  - Pilot (565 articles): about 55 of 55 hand-checked matches were correct. The citation pattern parses 95% of visible
+    citations; the misses are OCR digit errors like "9o HARV. L. REV.".
+  - Coverage limit: only about 5,100 of the 21,452 linked full texts can be downloaded by script. Digital Commons and
+    HathiTrust answer scripts with a bot check, which is not bypassed.
+  - The old machine's download cache was deleted on purpose, so the fetch starts from scratch. Run from the repo root;
+    it needs `pdftotext` (poppler) and `curl`. Run `python scripts/fulltext_cites.py fetch` (resumable; caches in
+    `data/raw/fulltext/`), then `python scripts/fulltext_cites.py check 20` (random results to hand-check), then
+    `python scripts/fulltext_cites.py build`, then `sh scripts/stamp.sh` and `python scripts/fix_text.py`.
+  - Known data bug: NYU Law Review vol. 73 articles are dated 2018 instead of 1998 in `articles.js`, so year-checked
+    matching skips them. Fix the years.
 - **CourtListener daily runner** (old machine, background). The token allows about 125 requests a day. It is filling
   citation counts after 2019, then summaries for the last ~309 cases. Resume with `python scripts/courtlistener.py`.
   It picks up from its cache.

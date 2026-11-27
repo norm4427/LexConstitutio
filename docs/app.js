@@ -526,6 +526,7 @@
         </div>
         ${a.tp.length ? `<h2>Topics</h2><div class="tags">${a.tp.map(t => `<a class="tag" href="${hashFor('search', { topic: t })}">${esc(topicById[t]?.parent ? topicById[topicById[t].parent].name + ' › ' : '')}${esc(topicById[t]?.name)}</a>`).join('')}</div>` : ''}
         ${a.kw.length ? `<h2>Keywords</h2><div class="tags">${a.kw.map(k => `<a class="tag" href="${hashFor('search', { q: '"' + k + '"' })}">${esc(k)}</a>`).join('')}</div>` : ''}
+        <div id="art-ftcites" hidden></div>
         ${rel.length ? `<h2>Related articles</h2><div class="cards">${rel.map(b => card(b)).join('')}</div>` : ''}
       </div>
       <aside>
@@ -564,6 +565,7 @@
     document.getElementById('save-article').addEventListener('click', e => { toggleSave(a.id); e.currentTarget.textContent = saved.has(a.id) ? '★ Saved' : '☆ Save to my list'; });
     document.getElementById('read-article').addEventListener('click', e => { toggleRead(a.id); e.currentTarget.textContent = readSet.has(a.id) ? '✓ Read' : 'Mark as read'; });
     articleMentions(a);
+    articleWorksCited(a);
   }
   // Supreme Court cases and indexed articles named in an article's title, abstract and keywords (the full text sits behind
   // the repositories' download protection, so it is not scanned)
@@ -572,6 +574,32 @@
   const loadXL = (kind, key) => loadData('xl-index', 'XL_INDEX').catch(() => null)
     .then(ix => ix && (ix[kind] || []).includes(String(key)) ? loadScriptOnce(`data/xl/${kind}/${key}.js`).catch(() => {}) : null)
     .then(r => r === null ? null : (window[kind === 'art' ? 'XL_ART' : 'XL_CASE'] || {}));   // null: no index file to read
+  // works cited / cases cited / cited by, read from the articles' footnotes (scripts/fulltext_cites.py): one file per decade
+  // for articles (an article's own record also lists the articles citing it), one per year for cases
+  const loadFT = (kind, key) => loadData('ft-index', 'FT_INDEX').catch(() => null)
+    .then(ix => ix && (ix[kind] || []).includes(String(key)) ? loadScriptOnce(`data/ft/${kind}-${key}.js`).catch(() => {}) : null)
+    .then(r => r === null ? null : (window[kind === 'art' ? 'FT_ART' : 'FT_CASE'] || {}));
+  function articleWorksCited(a) {
+    const token = routeToken;
+    Promise.all([loadFT('art', Math.floor((a.y || 0) / 10) * 10), loadData('scotus', 'SCOTUS')]).then(([F, S]) => {
+      const r = F && F[a.id], el = document.getElementById('art-ftcites');
+      if (!r || !el || token !== routeToken) return;
+      if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
+      const cited = (r.a || []).map(([id, n]) => [byId.get(id), n]).filter(([b]) => b && b !== a);
+      const cases = (r.c || []).map(([id, n]) => [caseById.get(id), n]).filter(([c]) => c);
+      const by = (r.b || []).map(id => byId.get(id)).filter(b => b && b !== a);
+      if (!cited.length && !cases.length && !by.length) return;
+      const times = n => `<div class="muted-line" style="font-size:12px;margin:4px 2px 0">Cited ${n} times in the footnotes</div>`;
+      const more = (id, n) => n > 0 ? `<p class="muted-line" style="font-size:13px"><button class="btn btn-ghost btn-sm" data-more="${id}">Show ${fmt(n)} more</button></p>` : '';
+      const cardsOf = (xs, id, max) => `<div class="cards">${xs.slice(0, max).map(([b, n]) => n > 1 ? `<div>${card(b)}${times(n)}</div>` : card(b)).join('')}</div><div id="${id}-rest" hidden><div class="cards">${xs.slice(max).map(([b, n]) => n > 1 ? `<div>${card(b)}${times(n)}</div>` : card(b)).join('')}</div></div>` + more(id, xs.length - max);
+      el.hidden = false;
+      el.innerHTML = (cited.length ? `<h2>Works cited</h2><p class="muted-line" style="font-size:13px;margin:-4px 0 10px">${fmt(cited.length)} article${cited.length === 1 ? '' : 's'} in this index, of ${fmt(r.n || 0)} law review citation${r.n === 1 ? '' : 's'} in the footnotes.</p>${cardsOf(cited, 'ft-cited', 6)}` : '')
+        + (cases.length ? `<h2>Cases cited</h2><ul class="mini-list">${cases.slice(0, 15).map(([c]) => precedentItem(c)).join('')}</ul>${cases.length > 15 ? `<div id="ft-cases-rest" hidden><ul class="mini-list">${cases.slice(15).map(([c]) => precedentItem(c)).join('')}</ul></div>${more('ft-cases', cases.length - 15)}` : ''}` : '')
+        + (by.length ? `<h2>Cited by</h2><p class="muted-line" style="font-size:13px;margin:-4px 0 10px">${fmt(by.length)} later article${by.length === 1 ? '' : 's'} in this index cite${by.length === 1 ? 's' : ''} this one in ${by.length === 1 ? 'its' : 'their'} footnotes.</p>${cardsOf(by.map(b => [b, 0]), 'ft-by', 6)}` : '')
+        + `<p class="attrib">Read from the footnotes of the free full texts linked here (where a script may download them) and matched by journal, volume and first page or title, and by U.S. Reports citation.</p>`;
+      el.querySelectorAll('[data-more]').forEach(b => b.addEventListener('click', () => { const x = document.getElementById(b.dataset.more + '-rest'); if (x) x.hidden = false; b.closest('p').remove(); }));
+    }).catch(() => {});
+  }
   const OPINION_KIND = { majority: 'Majority opinion', opinion: 'Opinions (the source does not separate majority and dissent)', concurrence: 'Concurrence', dissent: 'Dissent', separate: 'Separate opinion' };
   const normWords = t => t.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean);
   function articleMentions(a) {
@@ -1496,6 +1524,7 @@
         ${c.h ? `<h2>Holding <small>(supremecourt.gov)</small></h2><div class="callout">${esc(c.h)}</div>` : ''}
         <div id="case-live"><h2>Case summary</h2><p class="muted-line"><span class="spinner sm"></span> Loading facts, question and conclusion from Oyez…</p></div>
         <div id="case-audio"></div>
+        <div id="case-ftcites"></div>
         <div id="case-articles">${relatedArticles.length ? `<h2>Law review articles discussing this case</h2><div class="cards">${relatedArticles.map(a => card(a)).join('')}</div>` : ''}</div>
         </div>
       </div>
@@ -1525,6 +1554,12 @@
       const groups = {}; for (const [b, k] of cited) (groups[k] = groups[k] || []).push(b);
       el.innerHTML = (cited.length ? `<h2>Law review articles cited by the Court</h2>${['majority', 'opinion', 'concurrence', 'separate', 'dissent'].filter(k => groups[k]).map(k => `<div class="prec-h" style="margin:10px 0 6px">${OPINION_KIND[k]}</div><div class="cards">${groups[k].map(b => card(b)).join('')}</div>`).join('')}<p class="attrib">Citations read from the opinion text (Caselaw Access Project, Harvard Law School Library) and matched by journal, volume and first page or title.</p>` : '')
         + (named.length ? `<h2>Law review articles discussing this case</h2><div class="cards">${named.slice(0, 6).map(b => card(b)).join('')}</div>${named.length > 6 ? `<p class="muted-line" style="font-size:13px">${fmt(named.length)} articles in the index name this case in the title, abstract or keywords; the strongest matches shown. <a href="${hashFor('search', { q: '"' + c.n.replace(/\s*\(\d\)$/, '') + '"' })}" style="color:var(--accent)">Search them all →</a></p>` : ''}` : el.innerHTML);
+    }).catch(() => {});
+    loadFT('case', parseInt(String(c.y || '').slice(0, 4), 10)).then(FC => {
+      const xs = ((FC && FC[c.id]) || []).map(([aid, n]) => [byId.get(aid), n]).filter(([b]) => b), el = document.getElementById('case-ftcites');
+      if (!xs.length || token !== routeToken || !el) return;
+      const total = xs.reduce((t, [, n]) => t + n, 0);
+      el.innerHTML = `<h2>Cited in law reviews</h2><p class="muted-line" style="font-size:13px;margin:-4px 0 10px">Cited ${fmt(total)} time${total === 1 ? '' : 's'} in the footnotes of ${fmt(xs.length)} indexed article${xs.length === 1 ? '' : 's'} whose full text could be read; most citations first.</p><div class="cards">${xs.slice(0, 6).map(([b]) => card(b)).join('')}</div>`;
     }).catch(() => {});
     // Precedents panel (scripts/build_precedents.py, one file per year): what the opinion cites, the later decisions
     // citing it, related decisions (shared citations), overruled by / overrules; Oyez's "discussed" cases are merged in.
