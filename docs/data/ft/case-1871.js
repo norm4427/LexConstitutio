@@ -1,0 +1,1 @@
+window.FT_CASE=window.FT_CASE||{};Object.assign(window.FT_CASE,{"scdb/1870-069":[["hjlpps-11da6b67",1]],"scdb/1870-040":[["hjlpps-2fe33275",1]]});

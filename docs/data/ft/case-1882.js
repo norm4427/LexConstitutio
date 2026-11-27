@@ -1,0 +1,1 @@
+window.FT_CASE=window.FT_CASE||{};Object.assign(window.FT_CASE,{"scdb/1881-097":[["hlr-14629",1]],"scdb/1882-066":[["hlr-16077",1]],"scdb/1882-052":[["hlrs-9d0c8007",4],["slrs-a86a75a0",2],["slrs-a4f8b39e",2],["slr-22312",1],["nyulr-13943",1],["slrs-21e79593",1]],"scdb/1882-035":[["slr-22312",1]],"scdb/1881-180":[["slrs-a86a75a0",1]],"scdb/1882-065":[["tlr-14111",1]]});

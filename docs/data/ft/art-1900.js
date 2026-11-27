@@ -1,0 +1,1 @@
+window.FT_ART=window.FT_ART||{};Object.assign(window.FT_ART,{"colr-18908":{"b":["slr-22312"]},"ylj-17265":{"n":0},"ylj-17551":{"n":0}});

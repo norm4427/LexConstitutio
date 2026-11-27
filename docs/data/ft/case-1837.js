@@ -1,0 +1,1 @@
+window.FT_CASE=window.FT_CASE||{};Object.assign(window.FT_CASE,{"1789-1850/36us102":[["gljs-e5b5ee80",1]],"1789-1850/36us420":[["uclalr-14310",1]]});

@@ -1,0 +1,1 @@
+window.FT_CASE=window.FT_CASE||{};Object.assign(window.FT_CASE,{"1789-1850/21us543":[["uclalr-14273",1]]});
