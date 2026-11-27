@@ -22,6 +22,8 @@ HOW = {
     'Lower court': 'Which court the case comes from, and how often the Court has reversed that court recently.',
     'Jurisdiction': 'How the case reached the Court: certiorari, mandatory appeal, original jurisdiction or other routes.',
     'Issue area': 'The Supreme Court Database issue area (criminal procedure, civil rights, First Amendment, economic activity, …).',
+    'Oral argument interruptions and first/last questions': 'How often the justice, and the Court as a whole, cut off each side’s lawyer mid-sentence, and whether the justice asked the first or the last question of each side’s argument (official transcripts, cases since 2004).',
+    'Martin-Quinn ideology x direction below': 'The justice’s Martin–Quinn ideal point (a liberal–conservative score estimated from votes) from the previous Term, relative to the other justices, combined with whether the decision under review was liberal or conservative. The latest public scores are for 2021; later Terms use those.',
 }
 MIN = 12
 PRON = {'JGRoberts': 'he', 'CThomas': 'he', 'SAAlito': 'he', 'SSotomayor': 'she', 'EKagan': 'she', 'NMGorsuch': 'he',
@@ -51,6 +53,19 @@ def directions(V, code, last):
             out['Oral argument questioning'] = (f'{last} tends to vote {"against" if against else "for"} the side {pr} questions more: '
                                                 f'when {pr} spoke more to the respondent’s lawyer, {pr} voted for the petitioner {r1} of the time ({n1} votes); '
                                                 f'when {pr} spoke more to the petitioner’s lawyer, {r2} ({n2} votes).')
+    # first question: argFirst > 0 = the justice asked the respondent's lawyer the first question (and not the petitioner's)
+    if 'argFirst' in v:
+        notes = []
+        ir, ip = v[v.argInt > 0], v[v.argInt < 0]       # argInt > 0: interrupted the respondent's lawyer more
+        if len(ir) >= 5 and len(ip) >= 5:
+            notes.append(f'When {last} interrupted the respondent’s lawyer more, {pr} voted for the petitioner {pct(ir.y.mean())} of the time ({len(ir)} votes); '
+                         f'when {pr} interrupted the petitioner’s lawyer more, {pct(ip.y.mean())} ({len(ip)} votes).')
+        fr, fp = v[v.argFirst > 0], v[v.argFirst < 0]
+        if len(fr) >= 5 and len(fp) >= 5:
+            notes.append(f'When {pr} asked the respondent’s lawyer the first question, {pr} voted for the petitioner {pct(fr.y.mean())} of the time ({len(fr)} votes); '
+                         f'when {pr} asked the petitioner’s lawyer first, {pct(fp.y.mean())} ({len(fp)} votes).')
+        if notes:
+            out['Oral argument interruptions and first/last questions'] = ' '.join(notes)
     # United States
     u = v[v.usSide != 0]
     if len(u) >= MIN:

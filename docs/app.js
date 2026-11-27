@@ -1337,6 +1337,24 @@
     </div></div>`;
   }
   function viewJustice(id) { withData([['justices', 'JUSTICES'], ['votes', 'VOTES'], ['scotus', 'SCOTUS'], ['case_impact', 'CASE_IMPACT']], (J, V, S, I) => renderJustice(J, V, S, I, id)); }
+  /* appointment, education and career facts (scripts/justices_facts.py: Federal Judicial Center and senate.gov) */
+  function apptLine(r) {
+    const bits = [r.recess ? `recess appointment ${fmtDate(r.recess)}` : '', r.nom ? `nominated ${fmtDate(r.nom)}` : '',
+      r.conf ? `confirmed ${fmtDate(r.conf)}${r.vote ? ` (${r.vote === 'voice vote' ? 'voice vote' : r.vote})` : ''}` : '',
+      r.rejected ? `rejected by the Senate ${fmtDate(r.rejected)}${r.vote ? ` (${r.vote})` : ''}` : '', r.comm ? `commissioned ${fmtDate(r.comm)}` : ''].filter(Boolean);
+    return bits.length ? `<br><span style="font-size:13px;color:var(--ink-3)">${esc(bits.join(' · ').replace(/^./, c => c.toUpperCase()))}</span>` : '';
+  }
+  function fjcRows(j) {
+    const F = j.fjc;
+    if (!F) return '';
+    const list = (arr, n) => arr.length > n
+      ? `${arr.slice(0, n).map(esc).join('<br>')}<details><summary class="muted-line" style="font-size:13px;cursor:pointer">${arr.length - n} more</summary>${arr.slice(n).map(esc).join('<br>')}</details>`
+      : arr.map(esc).join('<br>');
+    return (F.edu ? `<dt>Education</dt><dd>${list(F.edu.map(([s, d, y]) => [s, d, y].filter(Boolean).join(', ')), 6)}</dd>` : '')
+      + (F.other ? `<dt>Other federal judicial service</dt><dd>${list(F.other, 4)}</dd>` : '')
+      + (F.career ? `<dt>Career</dt><dd>${list(F.career, 5)}</dd>` : '')
+      + (F.url ? `<dt>Source</dt><dd><a href="${esc(F.url)}" target="_blank" rel="noopener">Federal Judicial Center biography ↗</a><br><span class="muted-line" style="font-size:12px">Senate votes from senate.gov</span></dd>` : '');
+  }
   function renderJustice(J, V, S, I, id) {
     const j = J.justices.find(x => x.id === id);
     if (!j) return viewNotFound();
@@ -1362,7 +1380,7 @@
         <div>
           <h1>${esc(j.name)}</h1>
           <p class="justice-years">${esc(j.born || '')}${j.died ? '–' + esc(j.died) : j.born ? ' (born)' : ''}</p>
-          <dl class="kv">${j.roles.map(r => `<dt>${esc(r.pos)}</dt><dd>${esc(r.start || '')} – ${esc(r.end || 'present')}${r.appointer ? `<br><span class="muted-line" style="font-size:13px">Appointed by ${esc(r.appointer)}</span>` : ''}</dd>`).join('')}
+          <dl class="kv">${j.roles.map(r => `<dt>${esc(r.pos)}</dt><dd>${esc(r.start || '')} – ${esc(r.end || 'present')}${r.appointer ? `<br><span class="muted-line" style="font-size:13px">Appointed by ${esc(r.appointer)}</span>` : ''}${apptLine(r)}</dd>`).join('')}${fjcRows(j)}
             <dt>Opinions written</dt><dd>${fmt(wrote.maj.length)} for the Court · ${fmt(wrote.con.length)} concurrence${wrote.con.length === 1 ? '' : 's'} · ${fmt(wrote.dis.length)} dissent${wrote.dis.length === 1 ? '' : 's'}<br><span class="muted-line" style="font-size:12px">Among the cases indexed on this site</span></dd></dl>
           ${j.bio ? `<div class="prose-sm"><p>${esc(j.bio)}</p></div><p class="attrib">From Wikipedia${j.wiki ? ` (<a href="${esc(j.wiki)}" target="_blank" rel="noopener">full article</a>)` : ''}, licensed <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</p>` : ''}
         </div>
@@ -2525,7 +2543,9 @@
         <div class="callout">${esc(b.note)}</div>` : ''}
         ${b.blurb ? `<h2>About the book</h2><p class="book-blurb">${esc(b.blurb)}</p><p class="attrib">Description via Goodreads (truncated). <a href="${esc(b.gr.url)}" target="_blank" rel="noopener" style="color:var(--accent)">Full description ↗</a></p>` : ''}
         <h2>Law review book reviews</h2>
-        ${revs.length ? `<div class="cards">${revs.map(a => card(a)).join('')}</div>` : '<p class="muted-line">No reviews of this book are in the index yet. Try the searches below.</p>'}
+        ${revs.length ? `<div class="cards">${revs.map(a => card(a)).join('')}</div>` : ''}
+        ${b.oaReviews ? `${revs.length ? '<h3 style="margin-top:18px">More reviews</h3>' : ''}<ul class="mini-list">${b.oaReviews.map(r => `<li><a class="t" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.t)}</a><div class="m">${esc((r.a || []).join(', '))}${r.j ? ' · ' + esc(r.j) : ''}${r.y ? ' ' + r.y : ''}</div></li>`).join('')}</ul><p class="attrib">Reviews outside this index found through OpenAlex (matched by the book's title and author; open the link to confirm).</p>` : ''}
+        ${!revs.length && !b.oaReviews ? '<p class="muted-line">No reviews of this book are in the index yet. Try the searches below.</p>' : ''}
         <div class="actions" style="margin-top:14px">
           <a class="btn btn-ghost btn-sm" href="${esc(b.scholar)}" target="_blank" rel="noopener">Find reviews on Google Scholar ↗</a>
           <a class="btn btn-ghost btn-sm" href="${esc(b.jstor)}" target="_blank" rel="noopener">Search JSTOR ↗</a>
@@ -2639,6 +2659,7 @@
       ${c.nArticles > c.articles.length ? `<a class="btn btn-ghost btn-sm ac-all" href="${hashFor('search', { clause: c.id, sort: 'cited' })}">See all ${fmt(c.nArticles)} articles →</a>` : ''}`]);
     if (c.founding.length) secs.push(['founding', 'Founding-era commentary', c.founding.map(p => `<blockquote class="ac-q"><p>${esc(p.t)}</p><footer>${esc(SRC_LABEL[p.s] || p.s)}${p.loc ? ', ' + esc(p.loc) : ''}</footer></blockquote>`).join('')]);
     if (c.statutes.length) secs.push(['statutes', 'Early statutes', `<p class="muted-line" style="margin:0 0 10px">Acts of the first Congresses that put the clause into practice or bear on its early meaning.</p>${c.statutes.map(p => `<blockquote class="ac-q"><p>${esc(p.t)}</p><footer>${esc(p.loc || 'Statutes at Large, vol. 1')}</footer></blockquote>`).join('')}<a class="link-arrow" href="#/library/statutes">All early statutes →</a>`]);
+    if ((c.usc || []).length) secs.push(['usc', 'Federal statutes', `<p class="muted-line" style="margin:0 0 10px">Acts of Congress that implement the clause or that the Supreme Court has tested under it.</p><ul>${c.usc.map(s => `<li><a href="#/statutes/${esc(s.id)}">${esc(s.n)}</a></li>`).join('')}</ul>`]);
     return `<div class="ac-panel-head"><div><span class="eyebrow">${esc(c.loc)}</span><h2>${esc(c.name)}</h2></div><button class="icon-btn" id="ac-close" aria-label="Close" title="Close">✕</button></div>
       <blockquote class="ac-clause">“${esc(c.hl)}”</blockquote>
       ${c.lii ? `<a class="ac-lii" href="${esc(c.lii)}" target="_blank" rel="noopener">Read the full Constitution Annotated for this clause at Cornell LII ↗</a>` : ''}
@@ -2765,7 +2786,7 @@
     ['framing', 'Framing and ratification', 'The Convention’s debates and the public argument over ratification, for and against.',
       ['madison', 'federalist', 'antifederalist', 'lib:farrand-1-2', 'lib:farrand-3', 'lib:elliot-debates', 'lib:federalist-pamphlets', 'lib:ford-pamphlets', 'lib:ford-essays', 'lib:curtis-history']],
     ['practice', 'Early practice and commentary', 'How the first Congresses, the Virginia and Kentucky Resolutions and the early commentators applied and explained the Constitution.',
-      ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley', 'lib:annals-1', 'lib:annual-messages', 'lib:marshall-washington', 'lib:tucker-slavery']],
+      ['statutes', 'lib:state-papers', 'tucker', 'rawle', 'story', 'kent', 'cooley', 'lib:annals-1', 'lib:wilson-lectures', 'lib:annual-messages', 'lib:marshall-washington', 'lib:tucker-slavery']],
   ];
   const LIB_DESC = {
     'spirit-of-laws': 'Montesquieu’s comparative study of laws and governments, the source of the founders’ separation of powers.',
@@ -2801,6 +2822,7 @@
     'farrand-1-2': 'Farrand’s day-by-day record of the Convention, May 14 to September 17, 1787: the Journal with Madison’s, Yates’s, King’s and others’ notes side by side.',
     'elliot-debates': 'The state ratifying conventions of Massachusetts, Connecticut, New Hampshire, New York, Pennsylvania, Maryland, Virginia and the Carolinas, with early congressional debates on constitutional questions.',
     'annals-1': 'The First Congress’s debates, March 1789 to February 1790: Madison’s amendments of June 8 and the House debates of August 1789 that became the Bill of Rights.',
+    'wilson-lectures': 'Justice James Wilson’s Philadelphia lectures of 1790–91, by a framer and signer: natural law, the Constitution, judicial review, juries and crimes.',
   };
   function libraryLink(sid) {
     const fixed = { federalist: '#/library/federalist', documents: '#/library/documents', statutes: '#/library/statutes' }[sid];

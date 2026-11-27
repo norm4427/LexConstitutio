@@ -18,6 +18,7 @@ import collections, csv, glob, html, json, os, re, sys, time, urllib.parse, urll
 
 sys.path.insert(0, 'scripts')
 from clauses import C as CLAUSES
+from clause_extras import CI_EXTRA, USC, FOUNDING_FALLBACK
 
 RAW = 'data/raw/constitution'
 ROMAN = {v: i for i, v in enumerate('I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI XVII XVIII XIX XX XXI XXII XXIII XXIV XXV XXVI XXVII'.split(), 1)}
@@ -253,6 +254,7 @@ def main():
     arts = load_js('articles')['articles']
     clause_arts = {}
     corner = load_js('corner')
+    stat_names = {s['id']: s['n'] for s in load_js('statutes')['statutes']}
     passages = corner['passages']
     out = []
     missing = []
@@ -290,7 +292,7 @@ def main():
         if len(cs) < 3:   # no or few coded cases: constitutional cases whose summary names the clause
             rx = re.compile(c.get('cr') or c['art'], re.I)
             cs |= {i for i, t in case_text.items() if con.get(i) and rx.search(t)}
-        cs |= {i for i in c.get('ci', []) if i in case_text}   # leading cases named in clauses.py
+        cs |= {i for i in c.get('ci', []) + CI_EXTRA.get(c['id'], []) if i in case_text}   # leading cases named in clauses.py / clause_extras.py
         rec['cases'] = sorted(cs, key=lambda i: -(impact.get(i) or [0, 0, -1])[2])[:10]
         rec['nCases'] = len(cs)
         # articles
@@ -315,6 +317,12 @@ def main():
                         continue
                     seen.add(pid)
                     (stat if src == 'statutes' else found).append({'id': pid, 's': src, 'loc': p.get('loc'), 't': clip(p['t'], 1100)})
+        if not found and c['id'] in FOUNDING_FALLBACK:   # nothing under the clause's Corner topics: look through every passage for its words
+            fb = re.compile(FOUNDING_FALLBACK[c['id']], re.I)
+            for pid, p in passages.items():
+                if pid not in seen and fb.search(p['t']) and p.get('s') != 'statutes':
+                    seen.add(pid)
+                    found.append({'id': pid, 's': p['s'], 'loc': p.get('loc'), 't': clip(p['t'], 1100)})
         order = ['story', 'rawle', 'tucker', 'federalist', 'madison', 'kent', 'cooley', 'antifederalist', 'blackstone', 'documents', 'vattel', 'locke']
         found.sort(key=lambda p: (order.index(p['s']) if p['s'] in order else 99, -len(kw.findall(p['t']))))
         per = collections.Counter()
@@ -324,6 +332,7 @@ def main():
                 keep.append(p); per[p['s']] += 1
         rec['founding'] = keep[:10]
         rec['statutes'] = stat[:5]
+        rec['usc'] = [{'id': i, 'n': stat_names[i]} for i in USC.get(c['id'], []) if i in stat_names]   # Acts of Congress on statutes.js
         out.append(rec)
     # panels in the order of the text (the Jump menu lists them so)
     pos = {u['id']: i for i, u in enumerate(units)}

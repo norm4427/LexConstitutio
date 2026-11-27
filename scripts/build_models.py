@@ -33,15 +33,22 @@ Predictors (every one known before the decision; justice records use earlier ter
   United States  side supported by the United States as party or amicus (argument transcripts and docket pages,
               October Term 2004 on; as a party from SCDB before that), invitation to the Solicitor General (CVSG);
   amicus briefs  number of merits-stage amicus briefs on each side and at the cert stage (docket pages, 2004 on);
-  oral argument  the justice's and the whole Court's questioning of each side (words, turns, question marks) in the
-              official transcript (build_arguments.py, 2004 on).
+  oral argument  the justice's and the whole Court's questioning of each side (words, turns, question marks), the
+              justice's and the Court's interruptions of counsel for each side, and who asked each side's first and
+              last question, in the official transcript (build_arguments.py, 2004 on; Epstein, Landes & Posner 2010;
+              Jacobi & Rozema 2018);
+  ideology    the justice's Martin-Quinn score from the previous term (2021 release, the latest; imputed from the
+              liberal-vote share where missing), relative to the other justices, and times the direction below.
 Models, for each test term T, fitted only on terms before T:
   pooled  gradient-boosted trees over all justices' votes since 1946 (justice is a predictor, so effects can differ
           by justice);
-  own     logistic regression on the justice's own votes;
-  blend   the average of the two.
-Each sitting justice gets the candidate with the best accuracy on the validation terms 2016-2021 (predicted the same
-way, term by term); a justice with no validation votes gets the pooled model. Test terms: 2022-2025 (all cases decided
+  rf      a random forest over all justices' votes since 1986;
+  ens     the average of the two: used for every justice;
+  own     logistic regression on the justice's own votes; blend = average of pooled and own (shown for comparison).
+The predictors and the model were chosen on the validation terms 2016-2021 (predicted the same way, term by term) by the
+log loss of all justices' votes: the ensemble beat boosted trees, the random forest, regularized logistic regression
+and a per-justice choice of model; interruptions/first-last questions and Martin-Quinn scores lowered it, together.
+Test terms: 2022-2025 (all cases decided
 since Justice Jackson joined), never used for fitting or choosing. Two versions: "SCDB-coded" (uses SCDB's coding of the
 decision below and its issue) and "pending-case" (only what a pending case shows; this is the one applied to the docket).
 Baselines on the same votes: always the petitioner, the justice's more common vote in earlier terms, the better
@@ -77,7 +84,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
@@ -101,6 +108,11 @@ CASE_CAT = ['issueArea', 'srcGroup', 'petParty', 'resParty', 'jurisdiction']
 SCDB_CAT = ['issue', 'lawType', 'caseSource', 'lcDisposition', 'certReason', 'petitioner', 'respondent', 'adminAny', 'threeJudgeFdc', 'lcDisagreement']
 NUM = ['term', 'lcLib', 'ideoRev', 'ideoRevArea', 'jLib', 'jLibArea', 'jRev', 'jRevArea', 'jDis', 'usSide', 'usAmicus', 'usKnown', 'usIdeo', 'cvsg',
        'amKnown', 'amPetL', 'amResL', 'amDiff', 'amCertL', 'argHas', 'argW', 'argT', 'argQ', 'argCourt', 'argCourtQ', 'srcRev', 'courtRev']
+ARG_EXTRA = ['argInt', 'argFirst', 'argLast', 'argCourtInt']   # interruptions, first and last question by side (build_arguments.py)
+MQ_NUM = ['mqRel', 'mqDir']                                    # Martin-Quinn score relative to the Court, x direction below
+ARG_COLS = ['argHas', 'argW', 'argT', 'argQ', 'argCourt', 'argCourtQ'] + ARG_EXTRA
+NUM = NUM + ARG_EXTRA + MQ_NUM       # chosen on the validation terms (log loss of all justices' votes), not on the test terms
+RF_START = 1986                      # the random forest is fitted on the votes of the last ~30+ terms (speed)
 OLD_NUM = ['term']
 GROUPS = {   # feature groups for importance, as shown on the profile
     "Lower court's direction x the justice's lean": ['lcLib', 'ideoRev', 'ideoRevArea'],
@@ -108,6 +120,8 @@ GROUPS = {   # feature groups for importance, as shown on the profile
     'United States position': ['usSide', 'usAmicus', 'usKnown', 'usIdeo', 'cvsg'],
     'Amicus briefs': ['amKnown', 'amPetL', 'amResL', 'amDiff', 'amCertL'],
     'Oral argument questioning': ['argHas', 'argW', 'argT', 'argQ', 'argCourt', 'argCourtQ'],
+    'Oral argument interruptions and first/last questions': ARG_EXTRA,
+    'Martin-Quinn ideology x direction below': MQ_NUM,
     'Issue area': ['issueArea'],
     'Lower court': ['srcGroup', 'srcRev'],
     'Parties': ['petParty', 'resParty'],
@@ -238,15 +252,18 @@ def load_json(p):
 def arg_feats(rec, surname):
     """Oral argument questioning (build_arguments.py); positive = more aimed at the respondent's side.
     [has transcript, justice words (log ratio), justice turns (difference), justice questions (log ratio),
-     all justices' words (log ratio), all justices' questions (log ratio)]"""
+     all justices' words (log ratio), all justices' questions (log ratio), justice's interruptions of counsel (log
+     ratio), justice asked the first question (respondent's side minus petitioner's), asked the last question (same),
+     all justices' interruptions (log ratio)]"""
     if not rec:
-        return [0.0] * 6
+        return [0.0] * 10
     js = {k: v for k, v in rec.items() if not k.startswith('_')}
-    own = js.get(surname, [0] * 6)
-    own = list(own) + [0] * (6 - len(own))
-    tot = [sum((list(v) + [0] * 6)[i] for v in js.values()) for i in range(6)]
+    own = js.get(surname, [0] * 12)
+    own = list(own) + [0] * (12 - len(own))
+    tot = [sum((list(v) + [0] * 12)[i] for v in js.values()) for i in range(12)]
     lr = lambda a, b: float(np.log1p(b) - np.log1p(a))
-    return [1.0, lr(own[0], own[1]), float(own[3] - own[2]), lr(own[4], own[5]), lr(tot[0], tot[1]), lr(tot[4], tot[5])]
+    return [1.0, lr(own[0], own[1]), float(own[3] - own[2]), lr(own[4], own[5]), lr(tot[0], tot[1]), lr(tot[4], tot[5]),
+            lr(own[6], own[7]), float(own[9] - own[8]), float(own[11] - own[10]), lr(tot[6], tot[7])]
 
 
 def arg_spread(rec):
@@ -337,7 +354,37 @@ def add_justice_features(V, d, lc_col, area_col, out_suffix=''):
     X['ideoRevArea'] = 10 * leanA * (1 - 2 * lc)
     X['usIdeo'] = V.usSide * np.where(V.term.map(pres_dem) == 1, 1, -1) * 10 * lean
     X['lean'] = lean
+    # Martin-Quinn ideal point (positive = conservative) from the PREVIOUS term (the latest public release ends with
+    # OT2021, so later terms use the last score); justices without one get it imputed from their liberal-vote share
+    mq = mq_lookup(V.justiceName.values, V.term.astype(int).values, X.jLib.values)
+    X['mq'] = mq
+    mqr = mq - pd.Series(mq, index=V.index).groupby(V.caseId).transform('mean').values
+    X['mqRel'] = mqr
+    X['mqDir'] = mqr * (2 * lc - 1)      # conservative justice x liberal decision below -> reverse
     return X
+
+
+_MQ = {}
+
+
+def mq_lookup(codes, terms, jlib):
+    if not _MQ:
+        p = path('data/raw/mq/justices.csv')
+        m = pd.read_csv(p) if os.path.exists(p) else pd.DataFrame(columns=['term', 'justiceName', 'post_mn'])
+        _MQ['by'] = {c: g.sort_values('term')[['term', 'post_mn']].values for c, g in m.groupby('justiceName')}
+        _MQ['last'] = int(m.term.max()) if len(m) else 0
+    out = np.full(len(codes), np.nan)
+    for i, (c, t) in enumerate(zip(codes, terms)):
+        g = _MQ['by'].get(c)
+        if g is not None:
+            g = g[g[:, 0] <= min(t - 1, _MQ['last'])]
+            if len(g):
+                out[i] = g[-1, 1]
+    ok = ~np.isnan(out)
+    if ok.sum() > 50 and (~ok).any():   # impute: MQ ~ liberal-vote share (both measured before the term)
+        b = np.polyfit(jlib[ok], out[ok], 1)
+        out[~ok] = np.polyval(b, jlib[~ok])
+    return np.nan_to_num(out)
 
 
 # ------------------------------------------------------------- classifiers for pending cases
@@ -402,6 +449,21 @@ def pooled_model(cats, num):
                                                   encoded_missing_value=np.nan), cats), ('n', 'passthrough', num)])
     return Pipeline([('p', pre), ('m', HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, max_leaf_nodes=31, min_samples_leaf=40,
                                                                        l2_regularization=1.0, random_state=SEED, categorical_features=list(range(len(cats)))))])
+
+
+def rf_model(cats, num):
+    pre = ColumnTransformer([('c', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, min_frequency=5, max_categories=250,
+                                                  encoded_missing_value=-1), cats), ('n', 'passthrough', num)])
+    return Pipeline([('p', pre), ('m', RandomForestClassifier(n_estimators=300, min_samples_leaf=20, max_features=0.33, n_jobs=6, random_state=SEED))])
+
+
+class Avg:
+    """The ensemble used for every justice: the average of the boosted trees and the random forest."""
+    def __init__(self, *models):
+        self.models = models
+
+    def predict_proba(self, X):
+        return np.mean([m.predict_proba(X) for m in self.models], axis=0)
 
 
 def own_model(cats, num, C=0.1):
@@ -627,6 +689,16 @@ def cal_fit(kind, p, y):
 # at argument). Parameters th = [k0, k_spread, k_lean, k_amicus, k_argument, log s_u, log s_v], fitted on the validation
 # terms to the likelihood of the actual split (joint_fit).
 KMAX = 0.995
+# The two earlier versions scored on the same 2022-2025 cases (from their cached per-justice predictions; see the README):
+# fa90a18 = consensus/contested mixture that shrank the justices' probabilities; d20d0c8 = joint model keeping them.
+HISTORY = {
+    'previous (Nov. 17)': {'voteAcc': 0.7026, 'voteLL': 0.5831, 'voteBrier': 0.199, 'win': 0.7124, 'winLL': 0.5832, 'winBrier': 0.1985,
+                           'splitLL': -1.9784, 'unanPred': 0.3443, 'unanAct': 0.4513, 'unanBrier': 0.2547, 'topHit': 0.354,
+                           'topFold': {'9-0': 209, '8-1': 0, '7-2': 0, '6-3': 17, '5-4': 0}},
+    'previous (Nov. 25)': {'voteAcc': 0.6927, 'voteLL': 0.5753, 'voteBrier': 0.1964, 'win': 0.6814, 'winLL': 0.5827, 'winBrier': 0.1986,
+                           'splitLL': -1.9689, 'unanPred': 0.3454, 'unanAct': 0.4513, 'unanBrier': 0.2441, 'topHit': 0.3407,
+                           'topFold': {'9-0': 160, '8-1': 9, '7-2': 8, '6-3': 43, '5-4': 6}},
+}
 JOINT_START = np.array([1.0, 0.0, 0.0, 0.0, 0.0, np.log(1.5), np.log(0.5)])
 
 
@@ -709,6 +781,9 @@ def split_eval(dist, marg, Y, vote_lik=None):
     top = dist.argmax(1)
     r = {'voteAcc': round(acc, 4), 'voteLL': round(ll, 4), 'splitLL': round(float(np.mean(np.log(np.maximum(pk, 1e-12)))), 4),
          'win': round(float(((dist[:, (n + 1) // 2:].sum(1) >= 0.5) == (kk * 2 > n)).mean()), 4),
+         'winLL': round(acc_ll(dist[:, (n + 1) // 2:].sum(1), (kk * 2 > n).astype(int))[1], 4),
+         'winBrier': round(float(np.mean((dist[:, (n + 1) // 2:].sum(1) - (kk * 2 > n)) ** 2)), 4),
+         'voteBrier': round(float(np.mean((marg - Y) ** 2)), 4),
          'unanPred': round(float(unan.mean()), 4), 'unanAct': round(float(ua.mean()), 4),
          'unanBrier': round(float(np.mean((unan - ua) ** 2)), 4),
          'topHit': round(float((top == kk).mean()), 4),
@@ -771,7 +846,7 @@ def vote_rows(d, C, ARG, surname):
               'usKnown', 'amKnown', 'amPetL', 'amResL', 'amDiff', 'amCertL', 'cvsg', 'argKey', 'argSpread'] + SCDB_CAT:
         V[c] = C.loc[V.caseId, c].values
     af = np.array([arg_feats(ARG.get(k), surname.get(j, '')) for k, j in zip(V.argKey, V.justiceName)])
-    for i, c in enumerate(['argHas', 'argW', 'argT', 'argQ', 'argCourt', 'argCourtQ']):
+    for i, c in enumerate(ARG_COLS):
         V[c] = af[:, i]
     V['justice'] = V.justiceName
     return V
@@ -789,7 +864,7 @@ def design(V, d, ver):
     X['lcLib'] = V[lc]
     for c in J.columns:
         X[c] = J[c]
-    for c in NUM:
+    for c in NUM + ARG_EXTRA:
         if c not in X.columns:
             X[c] = V[c].astype(float)
     return X
@@ -833,7 +908,7 @@ def main():
         print('reused the cached per-justice predictions', STAGE, flush=True)
     else:
         final_cached = None
-        pred = {ver: {k: pd.Series(np.nan, index=V.index) for k in ('pooled', 'own', 'blend', 'old')} for ver in ('full', 'dock')}
+        pred = {ver: {k: pd.Series(np.nan, index=V.index) for k in ('pooled', 'rf', 'ens', 'own', 'blend', 'old')} for ver in ('full', 'dock')}
         keep = {}
         for T in VAL + TEST:
             tr = V.term < T
@@ -844,8 +919,13 @@ def main():
                 cols = ['justice'] + cats + num
                 pm = pooled_model(['justice'] + cats, num).fit(X.loc[tr, cols], y[tr.values])
                 pred[ver]['pooled'][te] = pm.predict_proba(X.loc[te, cols])[:, 1]
+                trr = tr.values & (V.term >= RF_START).values
+                rm = rf_model(['justice'] + cats, num).fit(X.loc[trr, cols], y[trr])
+                pred[ver]['rf'][te] = rm.predict_proba(X.loc[te, cols])[:, 1]
+                pred[ver]['ens'][te] = (pred[ver]['pooled'][te].values + pred[ver]['rf'][te].values) / 2
                 if T == TEST[0]:
                     keep[(ver, 'pooled')] = pm
+                    keep[(ver, 'ens')] = Avg(pm, rm)
                 for code in CURRENT:
                     mj = (V.justiceName == code).values
                     trj, tej = tr.values & mj, te & mj
@@ -876,15 +956,17 @@ def main():
             r = {'code': code}
             for ver in ('dock', 'full'):
                 vs = {}
-                for k in ('pooled', 'own', 'blend'):
+                for k in ('ens', 'pooled', 'rf', 'own', 'blend'):
                     m = val & mj & pred[ver][k].notna().values
                     if m.sum() >= 40:
                         vs[k] = acc_ll(pred[ver][k][m], y[m])
-                best = max(vs, key=lambda k: (round(vs[k][0], 3), -vs[k][1])) if vs else 'pooled'
+                # the same model for every justice: the ensemble had the lowest log loss on the validation votes of all
+                # justices; choosing a model per justice by validation accuracy did worse there (noisier)
+                best = 'ens'
                 choice[(ver, code)] = best
                 mt = tst & mj
                 yt = y[mt]
-                res = {k: acc_ll(pred[ver][k][mt], yt) for k in ('pooled', 'own', 'blend')}
+                res = {k: acc_ll(pred[ver][k][mt], yt) for k in ('ens', 'pooled', 'rf', 'own', 'blend')}
                 acc, ll = res[best]
                 r[ver] = {'choice': best, 'acc': round(acc, 4), 'll': round(ll, 4), 'ci': binom_ci(acc, mt.sum()),
                           'val': {k: [round(a, 4), round(l, 4)] for k, (a, l) in vs.items()}, 'nVal': int((val & mj).sum()),
@@ -905,14 +987,14 @@ def main():
             # what matters for this justice: grouped permutation importance of the term-2022 model on the test votes
             ver = 'dock'
             cats, num = cols_for(ver)
-            mdl = keep.get((ver, 'own', code)) if choice[(ver, code)] == 'own' and (ver, 'own', code) in keep else keep[(ver, 'pooled')]
-            cols = (cats + num) if mdl is not keep[(ver, 'pooled')] else ['justice'] + cats + num
+            mdl = keep[(ver, 'ens')]
+            cols = ['justice'] + cats + num
             r['imp'] = grouped_importance(mdl, XS[ver].loc[mt], yt, GROUPS, cols)
             import model_directions as MD      # hover notes: what each group measures, which way it moves this justice
             r['dir'] = MD.directions(V, code, surname.get(code, code).title())
             out[jid] = r
             print(f"{code:12} test={mt.sum():4} base={best_base:.3f} | pending-case model [{r['dock']['choice']:6}] {r['dock']['acc']:.3f} "
-                  f"(pooled {r['dock']['all']['pooled']:.3f} own {r['dock']['all']['own']:.3f} blend {r['dock']['all']['blend']:.3f}; previous {r['old']}) "
+                  f"(boosted {r['dock']['all']['pooled']:.3f} forest {r['dock']['all']['rf']:.3f} own {r['dock']['all']['own']:.3f}; previous {r['old']}) "
                   f"| SCDB-coded [{r['full']['choice']:6}] {r['full']['acc']:.3f} -> {r['verdict']}", flush=True)
             print('    matters most:', r['imp'][:4], flush=True)
 
@@ -1009,7 +1091,32 @@ def main():
     ev['historical frequencies']['win'] = round(float((kt >= 5).mean() if emp[5:].sum() >= 0.5 else (kt < 5).mean()), 4)
     ev['historical frequencies']['topFold'] = {f'{m}-{9 - m}': (nt if m == max(int(np.argmax(emp)), 9 - int(np.argmax(emp))) else 0) for m in range(9, 4, -1)}
     cnt = (pv[it] > 0.5).sum(1)                # the naive headline: how many justices are above 50%
-    ev['count above 50%'] = {'topHit': round(float((cnt == kt).mean()), 4), 'topFold': {f'{m}-{9 - m}': int(sum(max(k_, 9 - k_) == m for k_ in cnt)) for m in range(9, 4, -1)}}
+    ev['count above 50%'] = {'topHit': round(float((cnt == kt).mean()), 4), 'topFold': {f'{m}-{9 - m}': int(sum(max(k_, 9 - k_) == m for k_ in cnt)) for m in range(9, 4, -1)},
+                             'win': round(float(((cnt >= 5) == (kt >= 5)).mean()), 4)}
+    # baselines: always reverse (probability: the validation-era share of reversals) and, for votes, each justice's
+    # share of votes for the petitioner before the test terms
+    p_rev = float((kk[iv] >= 5).mean())
+    ev['always reverse'] = {'win': round(float((kt >= 5).mean()), 4), 'winLL': round(acc_ll(np.full(nt, p_rev), (kt >= 5).astype(int))[1], 4),
+                            'winBrier': round(float(np.mean((p_rev - (kt >= 5)) ** 2)), 4)}
+    rate = V[V.term < TEST[0]].groupby('justiceName').y.mean()
+    pr_ = np.array([[rate.get(nm_, 0.6) for nm_ in row] for row in W9.justiceName.values.reshape(-1, 9)[it]])
+    a_, l_ = acc_ll(pr_.ravel(), Yt.ravel())
+    ev['justice reversal rate'] = {'voteAcc': round(a_, 4), 'voteLL': round(l_, 4), 'voteBrier': round(float(np.mean((pr_ - Yt) ** 2)), 4)}
+    # headline rules, scored by how often the named split is the actual one
+    unan_t = prt[:, 0] + prt[:, 9]
+    pwin_t = prt[:, 5:].sum(1)
+    div = prt.copy(); div[:, [0, 9]] = 0
+    alt = np.where(unan_t >= 0.5, prt.argmax(1), div.argmax(1))
+    calib_headline = {'likeliest split': round(float((prt.argmax(1) == kt).mean()), 4),
+                      'likeliest divided split unless P(unanimous) >= 50%': round(float((alt == kt).mean()), 4),
+                      'count of justices above 50%': ev['count above 50%']['topHit'],
+                      'unanimous in the direction of the likelier side': round(float((np.where(pwin_t >= 0.5, 9, 0) == kt).mean()), 4)}
+    print('  headline rules (share of test cases where the named split was the actual one):', calib_headline, flush=True)
+    def reliability(p_, t_, bins=(0, 0.2, 0.35, 0.5, 0.65, 0.8, 1.01)):
+        return [[round(float(p_[(p_ >= a) & (p_ < b)].mean()), 3), round(float(t_[(p_ >= a) & (p_ < b)].mean()), 3), int(((p_ >= a) & (p_ < b)).sum())]
+                for a, b in zip(bins, bins[1:]) if ((p_ >= a) & (p_ < b)).any()]
+    calib_rel = {'votes': reliability(pv[it].ravel(), Yt.ravel()), 'reverse': reliability(pwin_t, (kt >= 5).astype(float))}
+    print('  reliability [predicted, actual, n]:', calib_rel, flush=True)
     for nm_, r_ in ev.items():
         print(f'  test {nm_:24}', r_, flush=True)
     for j, nm in enumerate(names):
@@ -1027,7 +1134,7 @@ def main():
     conf = np.abs(pwin - 0.5) >= 0.25
     kap_v = KMAX / (1 + np.exp(-(th_j[0] + joint_feats(pv[iv], S[iv]) @ th_j[1:5])))
     w_v = kap_v * (pv[iv].min(1) + (1 - pv[iv]).min(1))
-    calib = {'kind': 'joint', 'struct': best_struct, 'theta': [round(float(x), 4) for x in th_j], 'cv': jcv,
+    calib = {'kind': 'joint', 'struct': best_struct, 'headline': calib_headline, 'history': HISTORY, 'reliability': calib_rel, 'theta': [round(float(x), 4) for x in th_j], 'cv': jcv,
              'cal': cal_kind, 'calTheta': [round(float(x), 4) for x in cal_th[cal_kind]], 'calCv': cal_cv, 'calTest': cal_test,
              'eval': ev, 'nVal': int(iv.sum()), 'nTest': nt, 'emp': [round(float(x), 4) for x in emp],
              'unanVal': round(float(((kk[iv] == 0) | (kk[iv] == 9)).mean()), 4), 'kappa': round(float(kap_v.mean()), 4), 'wUnan': round(float(w_v.mean()), 4),
@@ -1080,7 +1187,7 @@ def main():
             rows.append(rr)
     PV = pd.DataFrame(rows)
     af = np.array([arg_feats(ARG.get(k), surname.get(j, '')) for k, j in zip(PV.argKey, PV.justiceName)])
-    for i, c in enumerate(['argHas', 'argW', 'argT', 'argQ', 'argCourt', 'argCourtQ']):
+    for i, c in enumerate(ARG_COLS):
         PV[c] = af[:, i]
     J = add_justice_features(PV.assign(lcLib=PV.lcLibD), d, 'lcLibD', 'issueD')
     XP = pd.DataFrame(index=PV.index)
@@ -1091,7 +1198,7 @@ def main():
     XP['lcLib'] = PV.lcLibD
     for c in J.columns:
         XP[c] = J[c]
-    for c in NUM:
+    for c in NUM + ARG_EXTRA:
         if c not in XP.columns:
             XP[c] = PV[c].astype(float)
     cats, num = cols_for('dock')
@@ -1101,6 +1208,9 @@ def main():
     else:
         pm = pooled_model(['justice'] + cats, num).fit(X[['justice'] + cats + num], y)
         pp = pm.predict_proba(XP[['justice'] + cats + num])[:, 1]
+        rsel = (V.term >= RF_START).values
+        rm = rf_model(['justice'] + cats, num).fit(X.loc[rsel, ['justice'] + cats + num], y[rsel])
+        pp = (pp + rm.predict_proba(XP[['justice'] + cats + num])[:, 1]) / 2     # the ensemble ('ens')
         final = np.array(pp)
         for code in CURRENT:
             mj = (V.justiceName == code).values

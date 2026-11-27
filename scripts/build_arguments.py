@@ -8,7 +8,8 @@ petitioner's or respondent's side (an amicus counts for the side it supports). W
 "JUSTICE <NAME>:" or "CHIEF JUSTICE <NAME>:" is counted (turns and words), except the Chief Justice's procedural
 lines (calling the case, "Thank you, counsel", "The case is submitted").
 Output: data/raw/transcripts/features.json  {"<term>/<docket>": {"<SURNAME>": [words_pet, words_res, turns_pet, turns_res,
-questions_pet, questions_res], "_us": [side of the United States (0 petitioner, 1 respondent, -1 not appearing), 1 if as amicus]}}
+questions_pet, questions_res, interruptions_pet, interruptions_res, first_question_pet, first_question_res,
+last_question_pet, last_question_res], "_us":[side of the United States (0 petitioner, 1 respondent, -1 not appearing), 1 if as amicus]}}
 (questions = question marks in the justice's turns; the United States' side is read from the appearances list, where
 government lawyers are listed with "Department of Justice, Washington, D.C.; on behalf of ...").
 Studies of oral argument (e.g. Epstein, Landes & Posner, J. Legal Analysis 2010; Johnson et al., Law & Society Rev.
@@ -52,27 +53,43 @@ def parse(text):
     end = re.search(r'\(Whereupon', body)                        # the word index follows the argument
     body = body[:end.start()] if end else body
     heads = []
-    for m in re.finditer(r'(?:ORAL|REBUTTAL) ARGUMENT OF', body):
+    for m in re.finditer(r'(ORAL|REBUTTAL) ARGUMENT OF', body):
         nxt = SPK.search(body, m.end())                          # the header runs to the next speaker label
-        heads.append((m.start(), side_of(body[m.end(): nxt.start() if nxt else m.end() + 300][:400])))
+        heads.append((m.start(), side_of(body[m.end(): nxt.start() if nxt else m.end() + 300][:400]), m.group(1) == 'ORAL'))
     if not heads:
         return None
     out = {}
-    for i, (pos, side) in enumerate(heads):
+    firsts, lasts = {}, {}     # side -> justice asking the first / last question of that side's main (not rebuttal) argument
+    for i, (pos, side, oral) in enumerate(heads):
         if side is None:
             continue
         seg = body[pos: heads[i + 1][0] if i + 1 < len(heads) else len(body)]
         marks = list(SPK.finditer(seg))
+        prev_text, last_q = '', None
         for k, m in enumerate(marks):
             who = m.group(1)
-            if 'JUSTICE' not in who:
-                continue
             words = seg[m.end(): marks[k + 1].start() if k + 1 < len(marks) else len(seg)].strip()
+            if 'JUSTICE' not in who:
+                prev_text = words
+                continue
             if PROC.match(words.split('\n')[0].strip()) and len(words.split()) < 15:
                 continue
             name = who.split()[-1]
-            r = out.setdefault(name, [0, 0, 0, 0, 0, 0])
+            r = out.setdefault(name, [0] * 12)
             r[side] += len(words.split()); r[2 + side] += 1; r[4 + side] += words.count('?')
+            # an interruption: the advocate's turn breaks off ("... the statute --") and a justice speaks
+            if re.search(r'(--|—)\s*$', prev_text):
+                r[6 + side] += 1
+            prev_text = ''
+            if oral:
+                firsts.setdefault(side, name)
+                last_q = name
+        if oral and last_q:
+            lasts[side] = last_q
+    for side, name in firsts.items():
+        out[name][8 + side] += 1
+    for side, name in lasts.items():
+        out[name][10 + side] += 1
     # the United States' side (party or amicus): from the appearances list before the argument, where government
     # lawyers are listed as "... Department of Justice, Washington, D.C.; on behalf of ..."
     us = [-1, 0]
@@ -83,7 +100,7 @@ def parse(text):
             us = [sd, int('AMICUS' in txt.upper())]
             break
     if us[0] < 0:
-        for pos, sd in heads:
+        for pos, sd, _ in heads:
             hd = body[pos: pos + 260].upper()
             if 'UNITED STATES' in hd and 'AMICUS' in hd and sd is not None:
                 us = [sd, 1]
@@ -109,7 +126,7 @@ def main():
             if us[0] >= 0 or '_us' not in cur:
                 cur['_us'] = us
             for name, v in r.items():
-                cur[name] = [a + b for a, b in zip(cur.get(name, [0] * 6), v)]
+                cur[name] = [a + b for a, b in zip(cur.get(name, [0] * 12), v)]
     json.dump(feats, open(OUT, 'w'), separators=(',', ':'))
     print(f'{len(feats)} transcripts with justice questioning; e.g.', next(iter(feats.items())) if feats else None)
 

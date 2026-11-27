@@ -331,7 +331,7 @@ def scdb_cases():
 
 
 # ---- legislative history -------------------------------------------------------------------------------------------
-# Laws of the 93rd Congress (1973) on: Congress.gov's API (api.data.gov key DATA_GOV_KEY in .keys.env, loaded by
+# Laws of the 82nd Congress (1951) on: Congress.gov's API (api.data.gov key DATA_GOV_KEY in .keys.env, loaded by
 # local_keys.py): the public law's bill, its sponsor and the Library of Congress's key actions, with the tallies the
 # action text gives and the roll-call links. Older laws: the legislation infobox of the statute's Wikipedia article
 # (bill, sponsor, passage votes, signature). Cached in data/raw/statutes/congress/ and data/raw/statutes/links.json.
@@ -519,6 +519,13 @@ LEG_OVERRIDES = {
     'cda': ('104-104', '110 Stat. 56'), 'dta': ('109-148', '119 Stat. 2680'), 'sra': ('98-473', '98 Stat. 1837'),
     'ssi': ('92-603', '86 Stat. 1329'), 'medicare': ('89-97', '79 Stat. 286'), 'medicaid': ('89-97', '79 Stat. 286'),
     'jencks': ('85-269', '71 Stat. 595'), 'hobbs': ('79-486', '60 Stat. 420'), 'ucmj': ('81-506', '64 Stat. 107'),
+    # laws before the 82nd Congress, which Congress.gov has no bill record for: the Statutes at Large page only
+    'afdc': ('74-271', '49 Stat. 620'), 'fpa': ('74-333', '49 Stat. 838'), 'miller': ('74-321', '49 Stat. 793'),
+    'lhwca': ('69-803', '44 Stat. 1424'), 'irc': ('99-514', '100 Stat. 2085'),
+    'enforcement': ('', '16 Stat. 140'),      # the Enforcement Act of May 31, 1870 (the Ku Klux Klan Act of 1871 is 17 Stat. 13)
+    'habeas': ('', '14 Stat. 385'),           # the Habeas Corpus Act of Feb. 5, 1867 (codified at 28 U.S.C. 2241 in 1948)
+    'fraud': ('', '17 Stat. 283'),            # the mail fraud provision of the Act of June 8, 1872
+    'majorcrimes': ('', '23 Stat. 362'),      # the Act of Mar. 3, 1885, sec. 9
 }
 
 
@@ -527,7 +534,7 @@ def legislative_history(sid, publaw, stat, wt, links):
         publaw, stat = LEG_OVERRIDES[sid][0], stat or LEG_OVERRIDES[sid][1]
     m = re.search(r'(\d+)\s*[-–−]\s*(\d+)', publaw or '')
     c, n = (int(m[1]), int(m[2])) if m else (None, None)
-    leg = leg_congress(c, n, links) if c and c >= 93 and sid not in ('s1983', 's1985') else None
+    leg = leg_congress(c, n, links) if c and c >= 82 and sid not in ('s1983', 's1985') else None
     if not leg or not leg['actions']:
         leg = leg_wiki(wt) or leg
     if not leg:
@@ -536,7 +543,7 @@ def legislative_history(sid, publaw, stat, wt, links):
     sm = re.match(r'^(?:ch\.\s*\d+,\s*)?(\d+)\s+Stat\.\s+(\d+)', stat or '')
     if c and c >= 104 and link_ok(f'https://www.govinfo.gov/link/plaw/{c}/public/{n}', links):
         leg['plaw'] = {'url': f'https://www.govinfo.gov/link/plaw/{c}/public/{n}', 'label': f'Pub. L. {c}–{n} (GovInfo)'}
-    elif sm and int(sm[1]) >= 65 and link_ok(f'https://www.govinfo.gov/content/pkg/STATUTE-{sm[1]}/pdf/STATUTE-{sm[1]}-Pg{sm[2]}.pdf', links):
+    elif sm and link_ok(f'https://www.govinfo.gov/content/pkg/STATUTE-{sm[1]}/pdf/STATUTE-{sm[1]}-Pg{sm[2]}.pdf', links):
         leg['plaw'] = {'url': f'https://www.govinfo.gov/content/pkg/STATUTE-{sm[1]}/pdf/STATUTE-{sm[1]}-Pg{sm[2]}.pdf', 'label': f'{sm[1]} Stat. {sm[2]} (GovInfo)'}
     return leg or None
 

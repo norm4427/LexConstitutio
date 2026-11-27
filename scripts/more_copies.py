@@ -17,7 +17,7 @@ Rules (err toward leaving a link out):
     must show our title, unless the host answers with a bot check (then kept only for .edu repositories, marked so).
   - sites: our `u` is the piece's page on the journal's site; a PDF counts only when it is on the same site, the page
     links exactly one such PDF in the piece's body, and the PDF answers with application/pdf.
-    python scripts/more_copies.py lookup [unpaywall|s2|openalex|sites ...]
+    python scripts/more_copies.py lookup [unpaywall|s2|openalex|openalex_titles|sites ...]
     python scripts/more_copies.py match          # writes the match file (see OUT) and prints counts and a sample
 """
 import hashlib, html, json, os, random, re, sys, time, unicodedata, urllib.error, urllib.parse, urllib.request
@@ -162,6 +162,7 @@ def lookup_unpaywall(cands):
     print('unpaywall done', n)
 
 
+ALL_TITLES = False
 OA_SELECT = 'id,doi,display_name,publication_year,authorships,locations,biblio'
 
 
@@ -192,7 +193,9 @@ def lookup_openalex(cands):
         json.dump({(w.get('doi') or '').replace('https://doi.org/', '').lower(): w for w in res}, open(p, 'w', encoding='utf-8'))
         if i % 1000 == 0:
             print('openalex doi', i + len(chunk), '/', len(dois), flush=True)
-    rest = [a for a in cands if not doi_of(a) and len(norm(a['t']).split()) >= 2]
+    # title search: articles without a DOI, and (lookup openalex_titles) DOI articles too, for repository records that
+    # OpenAlex never merged with the JSTOR DOI (an author's faculty-repository copy)
+    rest = [a for a in cands if (not doi_of(a) or ALL_TITLES) and len(norm(a['t']).split()) >= 2]
     for i in range(0, len(rest), 20):
         chunk = rest[i:i + 20]
         p = cache_path('openalex', 'title_' + key('|'.join(a['id'] for a in chunk)) + '.json')
@@ -220,6 +223,173 @@ def openalex_records():
             for i in r['ids']:
                 by_id[i] = r['results']
     return by_doi, by_id
+
+
+# Harvard Law Review issue scans on archive.org (Serials in Microfilm) that the Archive serves openly for 1931-1935
+# (it opens microfilmed periodicals of 1927-1963 whose copyright was not renewed; HathiTrust still lists these volumes
+# as in copyright, so this source is kept apart as 'ia_scan_1931'). Same rule as pd_copies.py's ia_scan: exactly one
+# page of the volume's open issues carries our first page as its printed label, and its OCR has most of our title words.
+IA_FROM, IA_TO = 1931, 1935
+
+
+def _pd():
+    import pd_copies as pd
+    pd.CACHE = os.path.join(CACHE, 'ia_scan')
+    pd.CUTOFF = IA_TO
+    return pd
+
+
+def lookup_ia(cands):
+    pd = _pd()
+    vols = {a['v'] for a in cands if a['j'] == 'hlr' and a.get('v') and IA_FROM <= a['y'] <= IA_TO + 1}
+    items = json.loads(pd.cached('sim/hlr_items.json', 'https://archive.org/advancedsearch.php?' + urllib.parse.urlencode(
+        {'q': 'identifier:sim_harvard-law-review_*', 'fl[]': ['identifier', 'volume', 'date'], 'rows': 5000, 'output': 'json'},
+        doseq=True)))['response']['docs']
+    got = 0
+    for it in items:
+        ident = it['identifier']
+        m = re.match(r'sim_harvard-law-review_(\d{4})[\d-]*_(\d+)_(\d+)$', ident)
+        if not m or int(m.group(2)) not in vols or not IA_FROM <= int(m.group(1)) <= IA_TO:
+            continue
+        meta = json.loads(pd.cached(f'ia_meta/{ident}.json', f'https://archive.org/metadata/{ident}') or '{}')
+        if (meta.get('metadata') or {}).get('access-restricted-item') in ('true', True):
+            continue
+        base = f'https://archive.org/download/{ident}/{ident}'
+        pd.cached(f'sim/{ident}/page_numbers.json', base + '_page_numbers.json')
+        pd.cached(f'sim/{ident}/pageindex.json.gz', base + '_hocr_pageindex.json.gz', binary=True)
+        pd.cached(f'sim/{ident}/searchtext.txt.gz', base + '_hocr_searchtext.txt.gz', binary=True)
+        got += 1
+    print('ia: open HLR issues cached for 1931-1935:', got, 'volumes', sorted(vols))
+
+
+def ia_matches(cands):
+    pd = _pd()
+    found = {}
+    for a in cands:
+        if a['j'] != 'hlr' or not IA_FROM <= a['y'] <= IA_TO + 1:
+            continue
+        url = pd.scan_match(a)
+        if url:
+            found[a['id']] = {'url': url, 'source': 'ia_scan_1931', 'host': 'archive.org', 'version': 'publishedVersion',
+                              'check': 'one page labelled with our first page; OCR has most title words',
+                              'title': a['t'], 'j': a['j'], 'y': a['y']}
+    return found
+
+
+# Wayback Machine: PDFs the journals' own sites once hosted, listed with the CDX API (mimetype application/pdf, one row
+# per URL) into data/raw/more_copies/cdx/<domain>.txt.
+CDX_SITES = {'hlr': 'harvardlawreview.org', 'colr': 'columbialawreview.org', 'valr': 'virginialawreview.org',
+             'uclalr': 'uclalawreview.org', 'slr': 'stanfordlawreview.org', 'ylj': 'yalelawjournal.org',
+             'calr': 'californialawreview.org', 'pennlr': 'pennlawreview.com'}
+
+
+def cdx_rows(dom):
+    """[(url, timestamp, path, file-name words, citation (vol, page) or None, path volume or None, upload year or None)]."""
+    p = os.path.join(CACHE, 'cdx', dom + '.txt')
+    rows = []
+    for line in open(p, encoding='utf-8') if os.path.exists(p) else []:
+        f = line.split()
+        if len(f) < 3 or (len(f) >= 4 and f[3].isdigit() and int(f[3]) <= 20000):
+            continue
+        url, ts = f[0], f[1]
+        path = urllib.parse.unquote(urllib.parse.urlsplit(url).path)
+        fn = norm(path.rsplit('/', 1)[-1].rsplit('.', 1)[0].replace('_', ' ').replace('-', ' '))
+        cite = re.search(r'(\d+)uclalrev(\d+)', fn.replace(' ', ''))
+        pv = re.search(r'vol(\d+)', path, re.I) or re.search(r'/pdfs/(\d+)/\d+/', path) or re.search(r'/(\d{2,3})\.\d\.\d+-', path) \
+            or re.search(r'/(\d{2,3})-\d-\d+', path)
+        up = re.search(r'/(?:uploads|inbrief)/(\d{4})/', path)
+        rows.append((url, ts, path, set(fn.split()), (int(cite.group(1)), int(cite.group(2))) if cite else None,
+                     int(pv.group(1)) if pv else None, int(up.group(1)) if up else None))
+    return rows
+
+
+def cdx_candidates(a, rows):
+    """Archived PDFs whose file name fits the article: our citation (UCLA's 52UCLALRev1487), or an author's surname
+    together with our volume (vol127_, /108/1/, 66.1.1-) or, with no volume in the path, an upload year within 1 of ours."""
+    v, fp, y = a.get('v'), a.get('fp'), a['y']
+    names = {n for n in surnames(a.get('a')) if len(n) >= 4}
+    out = {}
+    for url, ts, path, words, cite, pv, up in rows:
+        if cite:
+            if v and fp and cite == (v, fp):
+                out.setdefault(url, ts)
+            continue
+        if not names & words:
+            continue
+        if pv is not None:
+            if v and pv == v:
+                out.setdefault(url, ts)
+            continue
+        if up and abs(up - y) <= 1:
+            out.setdefault(url, ts)
+    return out
+
+
+def pdf_text_words(b, title):
+    """How many of the title's longer words appear in the PDF's text (literal strings of its deflated streams). Linear-time:
+    streams are cut at the next 'endstream', inflated to at most 4 MB each, and strings found with an unrolled pattern."""
+    import zlib
+    txt, n = [], 0
+    for mm in re.finditer(rb'stream\r?\n', b):
+        end = b.find(b'endstream', mm.end())
+        if end < 0:
+            break
+        try:
+            st = zlib.decompressobj().decompress(b[mm.end():end], 4 << 20)
+        except Exception:
+            continue
+        if b'BT' not in st:
+            continue
+        txt += [t.decode('latin-1') for t in re.findall(rb'\(([^()\\]*(?:\\.[^()\\]*)*)\)', st)]
+        n += 1
+        if len(txt) > 8000 or n > 40:
+            break
+    flat = norm(' '.join(txt)).replace(' ', '')
+    # PDF strings run words together, so short words match anywhere: count only words of 6+ letters, and report
+    # separately whether the title's opening (up to 24 letters) appears in sequence
+    words = [w for w in norm(title).split() if len(w) >= 6]
+    head = norm(title).replace(' ', '')[:24]
+    return sum(1 for w in words if w in flat), len(words), len(head) >= 12 and head in flat
+
+
+def wayback_matches(cands):
+    found = {}
+    rows = {j: cdx_rows(d) for j, d in CDX_SITES.items()}
+    for a in cands:
+        if a['j'] not in rows:
+            continue
+        c = cdx_candidates(a, rows[a['j']])
+        # the same file under several URLs (http/https, www, cdn) counts once
+        by_file = {}
+        for url, ts in c.items():
+            by_file.setdefault(urllib.parse.urlsplit(url).path.lower().rsplit('/', 1)[-1], (url, ts))
+        if len(by_file) != 1:
+            continue
+        url, ts = next(iter(by_file.values()))
+        arch = f'https://web.archive.org/web/{ts}id_/{url}'
+        p = cache_path('wayback', key(arch) + '.pdf')
+        if not os.path.exists(p):
+            # curl with a hard time limit: a slow Wayback transfer can otherwise stall urllib for good
+            import subprocess
+            time.sleep(2)
+            r = subprocess.run(['curl', '-sL', '-m', '180', '-A', UA['User-Agent'], arch], capture_output=True)
+            b = r.stdout if r.returncode == 0 else b''
+            if not b:
+                continue                    # not cached: retried on the next run
+            open(p, 'wb').write(b)
+        b = open(p, 'rb').read()
+        if not b.startswith(b'%PDF'):
+            continue
+        have, n, head = pdf_text_words(b, a['t'])
+        cite = bool(re.search(r'\d+uclalrev\d+', norm(urllib.parse.unquote(url).rsplit('/', 1)[-1]).replace(' ', '')))
+        if head or (n >= 2 and have >= -(-n * 8 // 10)) or (cite and have == 0 and not head):
+            found[a['id']] = {'url': f'https://web.archive.org/web/{ts}/{url}', 'source': 'wayback',
+                              'host': 'web.archive.org', 'version': 'publishedVersion',
+                              'check': ('archived PDF; title in its text' if head else
+                                        f'archived PDF; {have}/{n} long title words in its text' if have else
+                                        'archived PDF; no extractable text; file name is our citation'),
+                              'title': a['t'], 'j': a['j'], 'y': a['y']}
+    return found
 
 
 def lookup_s2(cands):
@@ -402,12 +572,13 @@ def doi_matches(cands):
             if (not theirs or not ours or ours & theirs) and host_kind(url):
                 opts.append(('s2', url, '', ''))
         # OpenAlex: the DOI record, or a title-search hit (title, year and an author surname must all agree)
-        works = ([oa_doi[doi]] if doi in oa_doi else []) + ([w for w in oa_title.get(a['id'], [])] if not doi else [])
+        works = ([oa_doi[doi]] if doi in oa_doi else []) + list(oa_title.get(a['id'], []))
         for w in works:
             if not title_ok(a['t'], w.get('display_name')) or not w.get('publication_year')                     or abs(w['publication_year'] - a['y']) > 1:
                 continue
             theirs = surnames((x.get('author') or {}).get('display_name') for x in w.get('authorships') or [])
-            if not doi and not (ours and theirs and ours & theirs):
+            wd = (w.get('doi') or '').replace('https://doi.org/', '').lower()
+            if wd != (doi or '') and not (ours and theirs and ours & theirs):
                 continue
             if ours and theirs and not ours & theirs:
                 continue
@@ -523,8 +694,12 @@ def main():
     print(len(cands), 'candidates')
     if cmd == 'lookup':
         which = sys.argv[2:] or ['s2', 'unpaywall', 'sites']
+        global ALL_TITLES
+        if 'openalex_titles' in which:
+            ALL_TITLES = True
+            which = ['openalex' if w == 'openalex_titles' else w for w in which]
         for w in which:
-            {'unpaywall': lookup_unpaywall, 's2': lookup_s2, 'sites': lookup_sites, 'core': lookup_core, 'openalex': lookup_openalex}[w](cands)
+            {'unpaywall': lookup_unpaywall, 's2': lookup_s2, 'sites': lookup_sites, 'core': lookup_core, 'openalex': lookup_openalex, 'ia': lookup_ia}[w](cands)
     elif cmd == 'match':
         found = site_matches(cands)
         # law-school repositories added to repo_copies.py for this pass (its `apply --dry-run` writes the matches):
@@ -539,6 +714,10 @@ def main():
                             'check': 'repo_copies.py ' + v.get('via', '') + ' match; record ' + v.get('page', ''),
                             'title': a['t'], 'j': a['j'], 'y': a['y']}
         for k, v in doi_matches(cands).items():
+            found.setdefault(k, v)
+        for k, v in ia_matches(cands).items():
+            found.setdefault(k, v)
+        for k, v in wayback_matches(cands).items():
             found.setdefault(k, v)
         os.makedirs(os.path.dirname(OUT), exist_ok=True)
         json.dump(found, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
