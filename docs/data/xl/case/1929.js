@@ -1,0 +1,1 @@
+window.XL_CASE=window.XL_CASE||{};Object.assign(window.XL_CASE,{"scdb/1928-056":{"a":[["mlr_mich-1427",1]]},"scdb/1929-017":{"a":[["mlr_mich-1458",1]]},"scdb/1928-094":{"a":[["mlr_mich-2083",1],["mlr_mich-2264",1]]},"scdb/1928-055":{"a":[["mlr_mich-2470",3]]}});

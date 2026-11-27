@@ -1,0 +1,1 @@
+window.XL_CASE=window.XL_CASE||{};Object.assign(window.XL_CASE,{"scdb/1880-103":{"a":[["calr-20933",3],["ylj-17352",3]]}});

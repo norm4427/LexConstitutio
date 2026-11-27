@@ -98,6 +98,8 @@ python scripts/courtlistener.py cites  # CourtListener citation counts for cases
 python scripts/courtlistener.py audio  # cl_audio.js: CourtListener argument recordings, played when Oyez has none or is unreachable
 python scripts/build_case_impact.py    # writes case_impact.js: later Supreme Court citations + citation PageRank per case (CAP; CourtListener counts for later cases)
 python scripts/build_precedents.py     # writes precedents/<year>.js: cases cited, later citing decisions, related decisions (citation coupling + co-citation), overruled by / overrules
+python scripts/cap_text_fetch.py       # caches Supreme Court opinion texts from CAP's volume zips (data/raw/cap/text/, about 180 MB)
+python scripts/build_crosslinks.py     # writes xl/: articles naming cases, law review articles cited in the opinions (by majority, concurrence, dissent)
 python scripts/crs_fetch.py           # caches CRS Legal Sidebars (public domain) from EveryCRSReport in data/raw/crs/
 python scripts/flashcards_fetch.py     # caches Oyez case details (facts, conclusion, vote) in data/raw/oyez/cases/
 perl scripts/build_flashcards.pl       # writes flashcards.js (run after build_extras.pl and build_advanced.pl)

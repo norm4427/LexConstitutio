@@ -1,0 +1,1 @@
+window.XL_ART=window.XL_ART||{};Object.assign(window.XL_ART,{"lcp-13567":{"c":[["1981/80-1832",2]]},"lcp-13579":{"c":[["1964/496",2]]},"lcp-13663":{"c":[["scdb/1930-079",2]]},"lcp-13604":{"cb":[["scdb/1952-030","majority"]]},"lcp-13590":{"aa":["mlr_mich-786"]}});

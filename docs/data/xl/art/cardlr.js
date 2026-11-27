@@ -1,0 +1,1 @@
+window.XL_ART=window.XL_ART||{};Object.assign(window.XL_ART,{"cardlr-4214":{"c":[["2017/16-476",2]]}});

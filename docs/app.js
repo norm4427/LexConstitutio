@@ -568,13 +568,19 @@
   // Supreme Court cases and indexed articles named in an article's title, abstract and keywords (the full text sits behind
   // the repositories' download protection, so it is not scanned)
   let artTitleIdx = null, landmarkShort = null;
+  // precomputed links between articles and cases (scripts/build_crosslinks.py): one file per journal / per year
+  const loadXL = (kind, key) => loadData('xl-index', 'XL_INDEX').catch(() => null)
+    .then(ix => ix && (ix[kind] || []).includes(String(key)) ? loadScriptOnce(`data/xl/${kind}/${key}.js`).catch(() => {}) : null)
+    .then(r => r === null ? null : (window[kind === 'art' ? 'XL_ART' : 'XL_CASE'] || {}));   // null: no index file to read
+  const OPINION_KIND = { majority: 'Majority opinion', opinion: 'Opinions (the source does not separate majority and dissent)', concurrence: 'Concurrence', dissent: 'Dissent', separate: 'Separate opinion' };
   const normWords = t => t.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean);
   function articleMentions(a) {
     const token = routeToken;
     const text = [a.t, a.ab || '', (a.kw || []).join('; ')].join(' . ');
-    Promise.all([loadData('scotus', 'SCOTUS'), loadData('case_impact', 'CASE_IMPACT'), loadData('essential', 'ESSENTIAL')]).then(([S, I, E]) => {
+    Promise.all([loadData('scotus', 'SCOTUS'), loadData('case_impact', 'CASE_IMPACT'), loadData('essential', 'ESSENTIAL'), loadXL('art', a.j)]).then(([S, I, E, XA]) => {
       if (token !== routeToken) return;
       if (!caseById) caseById = new Map(S.cases.map(c => [c.id, c]));
+      const xl = (XA && XA[a.id]) || {};
       const byCite = new Map(S.cases.filter(c => c.cit).map(c => [c.cit, c]));
       const cases = new Map();
       for (const m of text.matchAll(/\b(\d{1,3}) U\.\s?S\. (\d{1,4})\b/g)) { const c = byCite.get(`${m[1]} U.S. ${m[2]}`); if (c) cases.set(c.id, c); }
@@ -610,12 +616,16 @@
       }
       const words = normWords(a.ab || ''), arts = new Map();
       for (let i = 0; i + 4 <= words.length; i++) for (const [w, b] of artTitleIdx.get(words.slice(i, i + 4).join(' ')) || []) if (b !== a && w.every((x, k) => words[i + k] === x)) arts.set(b.id, b);
+      if (XA) { cases.clear(); for (const [cid] of xl.c || []) { const c = caseById.get(cid); if (c) cases.set(c.id, c); } }   // the index (every article was read), strongest first; the regex matching above only when it cannot load
+      for (const bid of xl.aa || []) { const b = byId.get(bid); if (b && b !== a) arts.set(b.id, b); }
+      const court = (xl.cb || []).map(([cid, k]) => [caseById.get(cid), k]).filter(([c]) => c);
       const el = document.getElementById('art-mentions');
-      if (!el || (!cases.size && !arts.size)) return;
+      if (!el || (!cases.size && !arts.size && !court.length)) return;
       el.hidden = false;
-      el.querySelector('.art-mentions-body').innerHTML = (cases.size ? `<div class="prec-h">Supreme Court cases</div><ul class="mini-list">${[...cases.values()].map(precedentItem).join('')}</ul>` : '')
+      el.querySelector('.art-mentions-body').innerHTML = (court.length ? `<div class="prec-h">Cited by the Supreme Court</div><ul class="mini-list">${court.map(([c, k]) => `<li><a class="t" href="#/case/${esc(c.id)}">${esc(c.n)}</a><div class="m">${c.cit ? esc(c.cit) + ' · ' : ''}${c.y || ''}${OPINION_KIND[k] ? ' · ' + OPINION_KIND[k] : ''}</div></li>`).join('')}</ul><p class="muted-line" style="font-size:12px;margin:4px 0 10px">Law review citations in the opinions (Caselaw Access Project, to about 2020).</p>` : '')
+        + (cases.size ? `<div class="prec-h">Supreme Court cases</div><ul class="mini-list">${[...cases.values()].map(precedentItem).join('')}</ul>` : '')
         + (arts.size ? `<div class="prec-h" style="margin-top:10px">Law review articles</div><ul class="mini-list">${[...arts.values()].map(b => `<li><a class="t" href="${articleHref(b)}">${esc(b.t)}</a><div class="m">${esc(journalById[b.j]?.name || '')}${b.y ? ' · ' + b.y : ''}</div></li>`).join('')}</ul>` : '')
-        + '<p class="muted-line" style="font-size:12px;margin:10px 0 0">Found in the title and abstract.</p>';
+        + (cases.size || arts.size ? `<p class="muted-line" style="font-size:12px;margin:10px 0 0">Found in the ${XA ? 'title, abstract and keywords, strongest first' : 'title and abstract'}.</p>` : '');
     }).catch(() => {});
   }
 
@@ -1486,7 +1496,7 @@
         ${c.h ? `<h2>Holding <small>(supremecourt.gov)</small></h2><div class="callout">${esc(c.h)}</div>` : ''}
         <div id="case-live"><h2>Case summary</h2><p class="muted-line"><span class="spinner sm"></span> Loading facts, question and conclusion from Oyez…</p></div>
         <div id="case-audio"></div>
-        ${relatedArticles.length ? `<h2>Law review articles discussing this case</h2><div class="cards">${relatedArticles.map(a => card(a)).join('')}</div>` : ''}
+        <div id="case-articles">${relatedArticles.length ? `<h2>Law review articles discussing this case</h2><div class="cards">${relatedArticles.map(a => card(a)).join('')}</div>` : ''}</div>
         </div>
       </div>
       <aside id="case-aside"${tab ? ' hidden' : ''}>
@@ -1507,6 +1517,15 @@
     </div></div>`;
 
     const token = routeToken;
+    loadXL('case', parseInt(String(c.y || '').slice(0, 4), 10)).then(XC => {
+      const x = XC && XC[c.id], el = document.getElementById('case-articles');
+      if (!x || token !== routeToken || !el) return;
+      const named = (x.a || []).map(([aid]) => byId.get(aid)).filter(Boolean);
+      const cited = (x.ct || []).map(([aid, k]) => [byId.get(aid), k]).filter(([b]) => b);
+      const groups = {}; for (const [b, k] of cited) (groups[k] = groups[k] || []).push(b);
+      el.innerHTML = (cited.length ? `<h2>Law review articles cited by the Court</h2>${['majority', 'opinion', 'concurrence', 'separate', 'dissent'].filter(k => groups[k]).map(k => `<div class="prec-h" style="margin:10px 0 6px">${OPINION_KIND[k]}</div><div class="cards">${groups[k].map(b => card(b)).join('')}</div>`).join('')}<p class="attrib">Citations read from the opinion text (Caselaw Access Project, Harvard Law School Library) and matched by journal, volume and first page or title.</p>` : '')
+        + (named.length ? `<h2>Law review articles discussing this case</h2><div class="cards">${named.slice(0, 6).map(b => card(b)).join('')}</div>${named.length > 6 ? `<p class="muted-line" style="font-size:13px">${fmt(named.length)} articles in the index name this case in the title, abstract or keywords; the strongest matches shown. <a href="${hashFor('search', { q: '"' + c.n.replace(/\s*\(\d\)$/, '') + '"' })}" style="color:var(--accent)">Search them all →</a></p>` : ''}` : el.innerHTML);
+    }).catch(() => {});
     // Precedents panel (scripts/build_precedents.py, one file per year): what the opinion cites, the later decisions
     // citing it, related decisions (shared citations), overruled by / overrules; Oyez's "discussed" cases are merged in.
     let precRec = null, precLoaded = false, oyezCited = [];

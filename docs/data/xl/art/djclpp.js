@@ -1,0 +1,1 @@
+window.XL_ART=window.XL_ART||{};Object.assign(window.XL_ART,{"djclpp-159":{"c":[["2021/19-1392",5],["1971/70-18",2]]}});

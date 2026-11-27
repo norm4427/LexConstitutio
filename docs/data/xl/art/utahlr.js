@@ -1,0 +1,1 @@
+window.XL_ART=window.XL_ART||{};Object.assign(window.XL_ART,{"utahlr-13135":{"c":[["1940-1955/347us483",2],["1850-1900/163us537",2]]},"utahlr-13186":{"c":[["1940-1955/347us483",2],["1940-1955/347us497",2]]}});

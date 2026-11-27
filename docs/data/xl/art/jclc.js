@@ -1,0 +1,1 @@
+window.XL_ART=window.XL_ART||{};Object.assign(window.XL_ART,{"jclc-13760":{"c":[["1965/759",2]]},"jclc-13755":{"c":[["1986/85-6461",2]]}});
