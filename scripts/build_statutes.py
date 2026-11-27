@@ -600,7 +600,7 @@ def main():
                     'leg': legislative_history(sid, publaw, stat, wt, links)})
         json.dump(links, open(LINKS, 'w'), indent=0)
     out.sort(key=lambda x: x['n'].lstrip('0123456789 .U.S.C§').lower())
-    data = {'src': 'Summaries from Wikipedia (CC BY-SA 4.0). Statute text from the U.S. Code (GovInfo, Office of the Law Revision Counsel), the National Archives and Wikisource. Legislative history from Congress.gov (laws since 1973) or the article’s Wikipedia infobox (older laws); public-law text from GovInfo. Case links from the Supreme Court Database (lawSupp) and case summaries.', 'statutes': out}
+    data = {'src': 'Summaries from Wikipedia (CC BY-SA 4.0). Statute text from the U.S. Code (GovInfo, Office of the Law Revision Counsel), the National Archives and Wikisource. Legislative history from Congress.gov (laws since 1951) or the article’s Wikipedia infobox (older laws); enacted text from GovInfo. Case links from the Supreme Court Database and case summaries.', 'statutes': out}
     open('docs/data/statutes.js', 'w', encoding='utf-8').write('window.STATUTES=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';')
     print(f'{len(out)} statutes ({sum(1 for x in out if x["link"])} with a link to the text); {sum(len(x["cases"]) for x in out)} case links')
     L = [x['leg'] for x in out if x.get('leg')]
