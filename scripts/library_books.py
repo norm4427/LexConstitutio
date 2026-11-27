@@ -249,6 +249,28 @@ ELLIOT_HEADS = (r'^(?:[\w\[\]. ]{0,25}\]\s*)?(?:MASSACHUSETTS|CONNECTICUT|NEW\s+
                 r'NORTH\s+CAROLINA|SOUTH\s+CAROLINA|DEBATES|PROCEEDINGS|CONSTITUTIONAL\s+PRINCIPLES|OPINIONS)\.?(?:\s+[\w\[\]^.,"\'-]{1,14}){0,3}\s*$'
                 r'|^\d+\s+[A-Z][A-Z .]+\.\s*\[')
 
+# Wilson's Lectures on Law: the chapter titles as printed in the tables of contents of the 1804 edition
+WILSON_CHAPTERS = {f'{part} · Chapter {num}': f'{part} · Chapter {num}: {title}' for part, chapters in (
+    ('Part I', ['Of the Study of the Law in the United States', 'Of the General Principles of Law and Obligation', 'Of the Law of Nature',
+                'Of the Law of Nations', 'Of Municipal Law', 'Of Man, as an Individual', 'Of Man, as a Member of Society',
+                'Of Man, as a Member of a Confederation', 'Of Man, as a Member of the Great Commonwealth of Nations', 'Of Government',
+                'Comparison of the Constitution of the United States, with That of Great Britain', 'Of the Common Law',
+                'Of the Nature and Philosophy of Evidence']),
+    ('Part II', ['Of the Constitutions of the United States and of Pennsylvania. Of the Legislative Department', 'Of the Executive Department',
+                 'Of the Judicial Department', 'Of the Nature of Courts', 'Of the Constituent Parts of Courts. Of the Judges',
+                 'The Subject Continued. Of Juries', 'The Subject Continued. Of Sheriffs and Coroners',
+                 'The Subject Continued. Of Counsellors and Attornies', 'The Subject Continued. Of Constables', 'Of Corporations',
+                 'Of Citizens and Aliens', 'Of the Natural Rights of Individuals']),
+    ('Part III', ['Of the Nature of Crimes; and the Necessity and Proportion of Punishments',
+                  'Of Crimes against the Right of Individuals to Their Property', 'Of Crimes against the Right of Individuals to Liberty, and to Reputation',
+                  'Of Crimes against the Right of Individuals to Personal Safety', 'Of Crimes Immediately against the Community',
+                  'Of Crimes Affecting Several of the Natural Rights of Individuals', 'Of Crimes against the Rights of Individuals Acquired under Civil Government',
+                  'Of the Persons Capable of Committing Crimes; and of the Different Degrees of Guilt Incurred in the Commission of the Same Crime',
+                  'Of the Direct Means Used by the Law to Prevent Offences',
+                  'Of the Different Steps Prescribed by the Law, for Apprehending, Detaining, Trying, and Punishing Offenders']))
+    for num, title in zip(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII'], chapters)}
+
+
 # Kent's lectures in volume I and the page of the original edition each begins on (the scan misses most LECTURE headings)
 KENT_LECTURES = [
     ('Lecture I: Of the Foundation and History of the Law of Nations', 1),
@@ -314,6 +336,24 @@ ARCHIVE = [
               (r'^THE\s+TARIFF\.\s+SOUTH\s+CAROLINA', 'Nullification and the Tariff, 1828–1833'),
               (r'^MADISON\s+ON\s+THE\s+TARIFF', 'Madison on the Tariff and the Bank; Hamilton on the Bank'),
               (r'^LIST\s+OF\s+THE\s+VETOES', 'Stop')]}}}),
+    ('wilson-lectures', 'Lectures on Law, Delivered in the College of Philadelphia', 'James Wilson', '1790–1791 (pub. 1804)',
+     ['DKC0006', 'DKC0007', 'DKC0008'], '',
+     {'head_re': r'^CHAPTER\s+[\wIVXL]{1,6}[.,]?\s*$', 'seq': 'Chapter', 'start_last': True, 'merge_below': 0, 'vol_labels': ['', '', ''],
+      'groups': [(r'^PART\s+I\.\s*$', 'Part I'), (r'^PART\s+II\.\s*$', 'Part II'), (r'^PART\s+III\.\s*$', 'Part III')],
+      'names': WILSON_CHAPTERS,
+      'note_re': r'^(?:\d{1,3}|[a-z]|[*†‡§])\s+(?:[A-Z0-9"“‘(\[]|ibid|id\.)',
+      'strip_re': [r'(?<=[.,;:”"’!?])\s[b-hj-z](?=\s[A-Z“"])', r'(?<=\w)\*+(?=[\s.,;:”"’]|$)', r'\s[\^°•■«»\\]+(?=\s)', r'(?<=\s)[\^•°■«»](?=\w)',
+                   r'(?<=\w)\^ (?=[a-z])', r'(?<=\w)[°•■«»]+(?=[\s.,;:])'],
+      'furniture_re': r'^\W{0,3}\d{0,3}\s*LECTURES\s+ON\b.{0,12}$|^[VY]OL\.\s+[IVl]+\.?(?:\s+\S{1,4}){0,3}\s*$',
+      # the scanner's misreadings, corrected wherever they occur (period spellings such as "errour" and "publick" are kept)
+      'text_fix': [(r'\blav/', 'law'), (r'\bLAV[/^]', 'LAW'), (r'\blor\b', 'for'), (r'\bior\b', 'for'), (r'(?:\^|\b1 |\bI )hey\b', 'They'),
+                   (r'\bw T hich\b', 'which'), (r'\bT hich\b', 'which'), (r'\bwdiich\b', 'which'), (r'\bwinch\b', 'which'),
+                   (r'\bFie (?=enjoyed|favoured|says|was)', 'He '), (r'\bfie was\b', 'he was'), (r'\bshall fie deemed\b', 'shall be deemed'),
+                   (r'^([A-Z]) (?=[A-Z]{1,12}\b)', r'\1'), (r'(?<=\s)u (?=[a-z])', '“'),      # a drop capital set apart; an opening quote read as "u"
+                   (r'\bo£', 'of'), (r'\bajudge\b', 'a judge'), (r'\beveiy\b', 'every'), (r'\bthfe\b', 'the'), (r'\bothei\b', 'other'),
+                   (r'\b1 he\b', 'The'), (r'\bT he\b', 'The')],
+      'vol_opt': {1: {'start_re': r'^Part I$'}, 2: {'start_re': r'^Part I$', 'seq_start': {'Part I': 11}},
+                  3: {'start_re': r'^Part III$', 'cut_re': r'^ON\s*\n\s*\n+\s*THE HISTORY OF\s*$'}}}),
     ('kent-commentaries-1', 'Commentaries on American Law, Volume I: The Law of Nations, the Government and Constitutional Jurisprudence of the United States, and the Sources of Municipal Law',
      'James Kent', '1826 (rev. ed., 1889)', ['commentariesonam01kentuoft'], 'kent',
      {'start_re': r'^Lecture I\b', 'star_splits': KENT_LECTURES, 'merge_below': 0,
@@ -469,7 +509,7 @@ def write_book(meta, parts):
             t = t.replace('ſ', 's')            # the long s of 18th-century printing
             # a paragraph cut by a page break (it goes on in lower case after one that doesn't end a sentence)
             if b and kind == 'p' and b[-1][0] == 'p' and re.match(r'^[a-z]', t) and not re.search(r'[.!?:"”’)\]]$', b[-1][1]):
-                b[-1][1] += ' ' + t
+                b[-1][1] = b[-1][1][:-1] + t if re.search(r'[a-z]-$', b[-1][1]) else b[-1][1] + ' ' + t
                 continue
             b.append([kind, t])
         w = sum(len(x[1].split()) for x in b)
@@ -1158,7 +1198,15 @@ def build_archive(bid, title, author, year, idents, corner, opt):
     parts, group, seq_n = [], '', 0
     for v, ident in enumerate(idents, 1):
         vo = dict(opt, **opt.get('vol_opt', {}).get(v, {}))
-        blocks = ocr_blocks(ia_text(ident), vo)
+        txt = ia_text(ident)
+        if vo.get('cut_re'):      # the work ends where another begins in the same volume
+            m = re.search(vo['cut_re'], txt, re.M)
+            txt = txt[:m.start()] if m else txt
+        for bad, good in vo.get('ocr_fix', []):      # misreadings corrected by hand, each listed in the work's entry
+            if bad not in txt:
+                raise ValueError(f'ocr_fix {bad!r} not found in {ident}')
+            txt = txt.replace(bad, good)
+        blocks = ocr_blocks(txt, vo)
         if vo.get('star_splits'):
             marks, last = {}, -1
             for title_, page in vo['star_splits']:
@@ -1187,13 +1235,16 @@ def build_archive(bid, title, author, year, idents, corner, opt):
             blocks = out
         for pat in vo.get('strip_re', []):
             blocks = [[k, re.sub(pat, '', t).strip()] for k, t in blocks]
-            blocks = [b for b in blocks if b[1]]
+        for pat, good in vo.get('text_fix', []):      # misread words corrected by hand, each listed in the work's entry
+            blocks = [[k, re.sub(pat, good, t)] for k, t in blocks]
+        blocks = [[k, re.sub(r'(?<=[a-z])- (?=[a-z])', '', t)] if k == 'p' else [k, t] for k, t in blocks]      # "permit- ted"
+        blocks = [b for b in blocks if b[1]]
         vparts, cur, name = [], [], None
         for kind, t in blocks:
             if kind == 'group':      # a new section (a state's convention): its opening text is a part of its own
                 if name is not None or cur:
                     vparts.append((name or 'Front matter', cur))
-                group, seq_n = t, 0
+                group, seq_n = t, vo.get('seq_start', {}).get(t, 0)
                 name, cur = t, [['h', t]]
             elif kind == 'split':
                 if name is not None or cur:
@@ -1217,6 +1268,8 @@ def build_archive(bid, title, author, year, idents, corner, opt):
             vparts = [(sub_title(n, b), b) for n, b in vparts]
         if vo.get('fix_titles'):
             vparts = [(fix_ocr_words(n), b) for n, b in vparts]
+        if vo.get('names'):      # chapter titles as printed in the volume's table of contents
+            vparts = [(vo['names'].get(n, n), b) for n, b in vparts]
         if vo.get('word_fix'):      # misread words in titles, corrected by hand
             wf = vo['word_fix']
             vparts = [(re.sub(r"[^\s]+", lambda m: wf.get(m.group(0), m.group(0)), n), b) for n, b in vparts]
